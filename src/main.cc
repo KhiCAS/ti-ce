@@ -1195,6 +1195,22 @@ namespace giac {
 extern "C" unsigned char __heapbot[];
 extern "C" unsigned char __heaptop[];
 
+static void runProgramAndExit(const char* prgmName)
+{
+  python_free();
+#if KHICAS_STACK
+  asm("assume	adl = 1\n\t"
+    "ld  sp, ($D19888)\n\t"
+    : /* output */
+    : /* input */
+    : /* clobbered registers */
+  );
+#endif
+  lcd_Control = 0b100100101101; // TI-OS default
+  os_RunPrgm(prgmName, nullptr, 0, nullptr);
+  exit(1);
+}
+
 int main1(){
   ustl::vector<giac::gen> ustlv;
   unsigned * ustlptr=(unsigned *)&ustlv;
@@ -1293,7 +1309,10 @@ int main1(){
     const Char *expr;
     if ( (expr=Console_GetLine())==NULL )
       stop("memory error");
-    if (strcmp((const char *)expr,"kill")==0
+    if (strcmp(expr, "asmhook") == 0) {
+      runProgramAndExit("ASMHOOK");
+    }
+    if (strcmp(expr,"kill")==0
         // && confirm("Quitter?",lang?"F1: confirmer,  F5: annuler":"F1: confirm,  F5: cancel")==KEY_CTRL_F1
         ){
       save("session"); // FIXME TICE
@@ -1301,9 +1320,9 @@ int main1(){
         save(session_filename);
       break;
     }
-    if (strcmp((const char *)expr,"restart")==0){
+    else if (strcmp(expr,"restart")==0){
       if (confirm(lang?"Effacer variables?":"Clear variables?",lang?"F1: annul,  F5: confirmer":"F1: cancel,  F5: confirm")!=KEY_CTRL_F5){
-        Console_Output((const Char *)" cancelled");
+        Console_Output(" cancelled");
         Console_NewLine(LINE_TYPE_OUTPUT,1);
         //ck_getkey(&key);
         Console_Disp(1);
@@ -1311,13 +1330,13 @@ int main1(){
       }
     }
     // should save in another file
-    if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
+    else if (strcmp(expr,"=>")==0 || strcmp(expr,"=>\n")==0){
       save_session();
       Console_Output((Char*)"Session saved");
     }
     else {
       save_console_state_smem("session.xw"); 
-      run((char *)expr);
+      run(expr);
     }
     //print_mem_info();
     Console_NewLine(LINE_TYPE_OUTPUT,1);
