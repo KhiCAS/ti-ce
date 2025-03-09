@@ -27,7 +27,7 @@ jobs:
       - name: Prepare files for upload
         run: |
           mkdir upload
-          cp -R install_fr.txt shared/ti/app upload/
+          cp -R install_fr.txt shared/ti/app shared/ti/*.8x* upload/
 
       - name: Upload French version
         uses: actions/upload-artifact@v4
@@ -45,6 +45,8 @@ jobs:
         run: |
           mkdir -p shared/ti/
           curl -sL https://github.com/YvanTT/arTIfiCE/releases/latest/download/arTIfiCE.8xv -o shared/ti/arTIfiCE.8xv
+          curl -sL https://github.com/jacobly0/asmhook/releases/latest/download/ASMHOOK.zip -p /tmp/ASMHOOK.zip
+          unzip /tmp/ASMHOOK.zip ASMHOOK.8xp -d shared/ti/ && rm /tmp/ASMHOOK.zip
           cp app_tools/INST.8xp shared/ti/INST.8xp
 
       - name: Download and extract CEdev
@@ -59,7 +61,7 @@ jobs:
       - name: Prepare files for upload
         run: |
           mkdir upload
-          cp -R install_en.txt shared/ti/app upload/
+          cp -R install_en.txt shared/ti/app shared/ti/*.8x* upload/
 
       - name: Upload English version
         uses: actions/upload-artifact@v4
