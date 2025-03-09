@@ -1,5 +1,7 @@
 //#define DBG 0
 #define WITH_LCDMALLOC 1
+#define KHICAS_STACK 1
+
 #include <string>
 #include <stdlib.h>
 #include <giac/giacPCH.h>
@@ -1131,7 +1133,19 @@ void load_khicas_vars(const char * BUF){
 }  
 
 
-void stop(const char * s){
+void stop(const char * s)
+{
+  python_free();
+#if KHICAS_STACK
+  asm("assume	adl = 1\n\t"
+    "ld  sp, ($D19888)\n\t"
+    : /* output */
+    : /* input */
+    : /* clobbered registers */
+  );
+#endif
+  lcd_Control = 0b100100101101; // TI-OS default
+  exit(1);
 }
 
 #ifdef KMALLOC
@@ -1314,8 +1328,6 @@ int main1(){
 }
 
 unsigned stack_ptr=0;
-
-#define KHICAS_STACK 1
 
 int main(){
   unsigned appstart=(0x3b0000-3);
