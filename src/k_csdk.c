@@ -248,7 +248,7 @@ int getkey(int allow_suspend){
       }
 #endif
       if (j<joff){
-        if (j&0x3ff==0x3ff)
+        if ((j&0x3ff)==0x3ff)
           display_time();
         i=os_GetCSC();
       }

@@ -3690,6 +3690,9 @@ namespace giac {
       if (it->type==_MOD)
 	res.push_back(it->_MODptr->val);
       else {
+#ifdef TICE
+  #warning "FIX THIS CODE"
+#endif
 	int r=it->type==_ZINT?modulo(*it->_ZINTptr,m):(it->val % m);
 	r += (unsigned(r)>>31)*m; // make positive
 	r -= (unsigned((m>>1)-r)>>31)*m;

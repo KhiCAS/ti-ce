@@ -3,6 +3,9 @@
 #if 0 // def KMALLOC // mem config, start at 0x88052800 end at 0x8807d000
 const size_t stackptr=0x38000,stack_mask=0x3ffff;
 #else
+#ifdef TICE
+  #warning "FIX THIS CODE"
+#endif
 // malloc/realloc check is done in stdlib.c
 const size_t stackptr=0xffffffff,stack_mask=0x1ffff; 
 #endif
@@ -5612,13 +5615,29 @@ namespace giac {
 
   static gen mult_cplx(const gen & a,const gen & b,GIAC_CONTEXT){
     gen * aptr=a._CPLXptr,*bptr=b._CPLXptr;
-    unsigned t= (aptr->type | ((aptr+1)->type << 8) | (bptr->type << 16) | ((bptr+1)->type << 24));
-    if (t==(_DOUBLE_ | (_DOUBLE_<<8) | (_DOUBLE_ <<16) | (_DOUBLE_ <<24))){
+    uint_least32_t t =
+      (
+        static_cast<uint_least32_t>(aptr->type) |
+        (static_cast<uint_least32_t>((aptr+1)->type) << 8) |
+        (static_cast<uint_least32_t>(bptr->type) << 16) |
+        (static_cast<uint_least32_t>((bptr+1)->type) << 24)
+      );
+    if (t ==(
+      static_cast<uint_least32_t>(_DOUBLE_) |
+      (static_cast<uint_least32_t>(_DOUBLE_) << 8) |
+      (static_cast<uint_least32_t>(_DOUBLE_) << 16) |
+      (static_cast<uint_least32_t>(_DOUBLE_) << 24)
+    )){
       double ar=aptr->_DOUBLE_val,ai=(aptr+1)->_DOUBLE_val,
 	br=bptr->_DOUBLE_val,bi=(bptr+1)->_DOUBLE_val;
       return gen(ar*br-ai* bi, br*ai+ar*bi);
     }
-    if (t==(_ZINT | (_ZINT<<8) | (_ZINT <<16) | (_ZINT <<24))){
+    if (t==(
+      static_cast<uint_least32_t>(_ZINT) |
+      (static_cast<uint_least32_t>(_ZINT) << 8) |
+      (static_cast<uint_least32_t>(_ZINT) << 16) |
+      (static_cast<uint_least32_t>(_ZINT) << 24)
+    )){
       mpz_t & ax=*aptr->_ZINTptr;
       mpz_t & ay=*((aptr+1)->_ZINTptr);
       mpz_t & bx=*bptr->_ZINTptr;
@@ -6659,13 +6678,19 @@ namespace giac {
         else
             return algebraic_EXTension(a*(*b._EXTptr),*(b._EXTptr+1));
     }
-    if ( (a.type==_INT_) && (a.val<0) && (a.val!=1<<31)){
+    #ifdef TICE
+      #warning "FIX THIS CODE"
+    #endif
+    if ( (a.type==_INT_) && (a.val<0) && (a.val!=INT32_C(1)<<31)){
       if (b.is_inv() && (b._SYMBptr->feuille.type<_POLY || b._SYMBptr->feuille.is_neg()))
 	return sym_mult(-a,inv(-b._SYMBptr->feuille,contextptr),contextptr);
       else
 	return -sym_mult(-a,b,contextptr);
     }
-    if ( (b.type==_INT_) && (b.val<0) && (b.val!=1<<31)){
+    #ifdef TICE
+      #warning "FIX THIS CODE"
+    #endif
+    if ( (b.type==_INT_) && (b.val<0) && (b.val!=INT32_C(1)<<31)){
       if (a.is_inv())
 	return sym_mult(-b,inv(-a._SYMBptr->feuille,contextptr),contextptr);
       else
@@ -12300,7 +12325,10 @@ namespace giac {
   string gen::print(GIAC_CONTEXT) const{
     switch (type ) {
     case _INT_: 
-      if (val<0 && val != (1<<31) && calc_mode(contextptr)==38)
+    #ifdef TICE
+      #warning "FIX THIS CODE"
+    #endif
+      if (val<0 && val != (INT32_C(1)<<31) && calc_mode(contextptr)==38)
 	return "−"+(-*this).print(contextptr);
       if (subtype)
 	return localize(printint32(val,subtype,contextptr),language(contextptr));
@@ -12445,7 +12473,7 @@ namespace giac {
     case _POINTER_: {
       // handle 64 bits pointers
       unsigned long long u=(unsigned long long)_POINTER_val;
-      if (u<(1U<<31))
+      if (u<(UINT32_C(1)<<31))
 	return "pointer("+hexa_print_INT_(int((alias_type)_POINTER_val))+","+print_INT_(subtype)+")";
     }
     default:

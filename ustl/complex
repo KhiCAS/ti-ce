@@ -53,7 +53,14 @@ namespace std {
    */
 
   // Forward declarations.
+#ifdef TICE
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
   template<typename _Tp> class complex;
+#ifdef TICE
+  #pragma clang diagnostic pop
+#endif
 
   ///  Return magnitude of @a z.
   template<typename _Tp> _Tp abs(const complex<_Tp>&);

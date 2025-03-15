@@ -1360,7 +1360,7 @@ namespace giac {
       eps=1e-14;
     if (d<0)
       return -exact_double(-d,eps);
-    if (d > (1<<30) )
+    if (d > (INT32_C(1)<<30) )
       return _floor(d,context0);
     if (d==0)
       return 0;
@@ -1381,7 +1381,7 @@ namespace giac {
       if (d<=eps)
 	break;
       d=1/d;
-      if (d > (1<<30))
+      if (d > (INT32_C(1)<<30))
 	break;
       eps=eps*d*d;
     }

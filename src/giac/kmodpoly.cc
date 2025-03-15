@@ -4662,6 +4662,9 @@ namespace giac {
       h -= sizeinbase2(D);
     }
     // reconstruct resultant/D
+#ifdef TICE
+  #warning "FIX THIS CODE"
+#endif
     int m=2147483647;
     gen pim=m;
     vecteur2vector_int(P,m,p);
