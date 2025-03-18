@@ -2749,6 +2749,9 @@ namespace giac {
 	    mpz_mul(*jt1->_ZINTptr,*jt1->_ZINTptr,*c1._ZINTptr);
 	    mpz_addmul(*jt1->_ZINTptr,*it2->_ZINTptr,*c2._ZINTptr);
 	    mpz_divexact(*jt1->_ZINTptr,*jt1->_ZINTptr,*c._ZINTptr);
+      #ifdef TICE
+        #warning "VERIFY THIS CODE FOR 24BIT"
+      #endif
 	    if (mpz_sizeinbase(*jt1->_ZINTptr,2)<31)
 	      *jt1=int(mpz_get_si(*jt1->_ZINTptr));
 	    continue;

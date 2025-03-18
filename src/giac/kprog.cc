@@ -3341,7 +3341,10 @@ namespace giac {
     int n=x2x1.bindigits()/gen(rand_max2).bindigits()+1;
     gen res=zero;
 #ifndef USE_GMP_REPLACEMENTS
-    if (unsigned(rand_max2)==(1u<<31)-1){
+    #ifdef TICE
+      #warning "VERIFY THIS CODE FOR INT24"
+    #endif
+    if (unsigned(rand_max2)==(1u<<INT_MAXSHIFT)-1){
       mpz_t tmp;
       mpz_init(tmp);
       for (int i=0;i<n;++i){
@@ -3511,7 +3514,7 @@ namespace giac {
 	unsigned r;
 	for (;;){
 	  r=tinymt32_generate_uint32(rs) >> 1;
-	  if (!(r>>31))
+	  if (!(r>>INT_MAXSHIFT))
 	    break;
 	}
 	return int(argsval*(r*inv_rand_max2_p1));

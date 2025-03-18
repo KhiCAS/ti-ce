@@ -72,7 +72,7 @@ namespace giac {
   struct lexer_tab_int_type {
     const char * keyword;
     unsigned char status;
-    int value;
+    int_least32_t value;
     signed char subtype;
     short int return_value;
   };
