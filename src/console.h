@@ -21,6 +21,12 @@ typedef char Char;
 #endif
 
 #ifdef TICE
+// #include <ce_sprintf.h>
+// if we find out that the OS sprintf is faster than nanoprintf, use it instead
+#define ce_sprintf sprintf
+#endif
+
+#ifdef TICE
 #define LARGEDOUBLE 3e38
 #else
 #define LARGEDOUBLE 1e307
@@ -60,7 +66,6 @@ bool tooltip(int x,int y,int pos,const char * editline);
   
 int print_color(int print_x,int print_y,const char *s,int color,bool invert,bool minimini);
   void print_alpha_shift(int keyflag);
-std::string print_INT_(int i);
 #ifdef FX
 int print_msg12(const char * msg1,const char * msg2,int textY=15);
 #else

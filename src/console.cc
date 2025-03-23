@@ -628,26 +628,14 @@ void print_alpha_shift(int keyflag){
   }
   
   string printint(int i){
-    if (!i)
-      return string("0");
-    if (i<0)
-      return string("-")+printint(-i);      
-    int length = (int) floor(log10((double) i));
-#if defined VISUALC || defined BESTA_OS
-    char * s =new char[length+2];
-#else
-    char s[length+2];
-#endif
-    s[length+1]=0;
-    for (;length>-1;--length,i/=10)
-      s[length]=i%10+'0';
-#if defined VISUALC || defined BESTA_OS
-     string res=s;
-     delete [] s;
-     return res;
-#else
+#ifndef TICE
+    char s[sizeof("-2147483648")];
+    sprintf(s, "%d", i);
+#else // TICE
+    char s[sizeof("-8388608")];
+    ce_sprintf(s, "%d", i);
+#endif // TICE
     return s;
-#endif
   }
 
 int giacmax(int a,int b){
@@ -1621,23 +1609,26 @@ bool inputdouble(const char * msg1,double & d){
     return cmdname+l;
   }
  
-  string print_INT_(int i){
-    char c[256];
-    sprint_int(c,i); // my_sprintf(c,"%d",i);
+  static string print_INT_(int i) {
+#ifndef TICE
+  char c[sizeof("-2147483648")];
+  sprint_int(c,i); // my_sprintf(c,"%d",i);
+#else // TICE
+    char c[sizeof("-8388608")];
+    ce_sprintf(c, "%d", i);
+#endif // TICE
     return c;
   }
 
-  string hexa_print_INT_(int i){
-    string res;
-    for (i=(i&0x7fffffff);i;){
-      int j=i&0xf;
-      i >>= 4;
-      if (j>=10)
-	res =char('a'+(j-10))+res;
-      else
-	res =char('0'+j)+res;
-    }
-    return "0x"+res;
+  static string hexa_print_INT_(int i){
+#ifndef TICE
+    char c[sizeof("0xffffffff")];
+    sprintf(c, "0x%x", i);
+#else // TICE
+    char c[sizeof("0xffffff")];
+    ce_sprintf(c, "0x%x", i);
+#endif // TICE
+    return c;
   }
   int chartab(){
     // display table
@@ -2565,9 +2556,9 @@ int Console_GetKey(){
       }
       else {
 	int c=chartab();
-	string s=" ";
+	char s[] = {' ', '\0'};
 	if (c>32 && c<127) s[0]=char(c);
-	Console_Input((const Char *)s.c_str());
+	Console_Input((const Char *)s);
       }
       Console_Disp(1);
       continue;
