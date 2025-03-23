@@ -1,0 +1,3 @@
+[submodule "src/giac"]
+	path = src/giac
+	url = https://github.com/KhiCAS/ti-ce-giac.git
