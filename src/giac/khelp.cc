@@ -163,7 +163,9 @@ namespace giac {
   const char default_helpfile[]=giac_aide_location; // help filename
   const int HELP_MAXLENSIZE = 1600; // less than 20 lines of 80 chars
 
+#ifndef TICE
   string printint(int i){
+    // infinite loop when i == INT_MIN
     if (!i)
       return string("0");
     if (i<0)
@@ -185,6 +187,13 @@ namespace giac {
     return s;
 #endif
   }
+#else // TICE
+  string printint(int i) {
+    char s[sizeof("-8388608")];
+    ce_sprintf(s, "%d", i);
+    return s;
+  }
+#endif // TICE
 
   inline int max(int a,int b,int c){
     if (a>=b){
@@ -219,7 +228,7 @@ namespace giac {
     return "";
   }
 
-  // static char otherchars[]="_.~ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ";
+  // static char otherchars[]="_.~Â Â¡Â¢Â£Â¤Â¥Â¦Â§Â¨Â©ÂªÂ«Â¬Â­Â®Â¯Â°Â±Â²Â³Â´ÂµÂ¶Â·Â¸Â¹ÂºÂ»Â¼Â½Â¾Â¿Ã€ÃÃ‚ÃƒÃ„Ã…Ã†Ã‡ÃˆÃ‰ÃŠÃ‹ÃŒÃÃŽÃÃÃ‘Ã’Ã“Ã”Ã•Ã–Ã—Ã˜Ã™ÃšÃ›ÃœÃÃžÃŸÃ Ã¡Ã¢Ã£Ã¤Ã¥Ã¦Ã§Ã¨Ã©ÃªÃ«Ã¬Ã­Ã®Ã¯Ã°Ã±Ã²Ã³Ã´ÃµÃ¶Ã·Ã¸Ã¹ÃºÃ»Ã¼Ã½Ã¾Ã¿";
 
   bool isalphan(char ch){
     if (ch>='0' && ch<='9')

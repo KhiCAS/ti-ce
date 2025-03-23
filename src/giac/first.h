@@ -61,6 +61,11 @@
 #define NO_STDEXCEPT 1
 #endif
 
+#ifdef TICE
+// #include <ce_sprintf.h>
+#define ce_sprintf sprintf
+#endif
+
 #if defined FXCG || defined TICE
 #define clock() 0
 #define CLOCK() 0

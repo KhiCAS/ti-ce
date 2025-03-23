@@ -627,12 +627,14 @@ void print_alpha_shift(int keyflag){
     Printxy(x,y,text,0);
   }
   
+#ifndef TICE
   string printint(int i){
+    // infinite loop when i == INT_MIN
     if (!i)
       return string("0");
     if (i<0)
       return string("-")+printint(-i);      
-    int length = (int) floor(log10((double) i));
+    int length = (int) std::floor(std::log10((double) i));
 #if defined VISUALC || defined BESTA_OS
     char * s =new char[length+2];
 #else
@@ -649,6 +651,13 @@ void print_alpha_shift(int keyflag){
     return s;
 #endif
   }
+#else // TICE
+  string printint(int i){
+    char s[sizeof("-8388608")];
+    ce_sprintf(s, "%d", i);
+    return s;
+  }
+#endif // TICE
 
 int giacmax(int a,int b){
   return a<b?b:a;
@@ -1621,24 +1630,42 @@ bool inputdouble(const char * msg1,double & d){
     return cmdname+l;
   }
  
+#ifndef TICE
   string print_INT_(int i){
     char c[256];
     sprint_int(c,i); // my_sprintf(c,"%d",i);
     return c;
   }
+#else // TICE
+  static string print_INT_(int i) {
+    char c[sizeof("-8388608")];
+    ce_sprintf(c, "%d", i);
+    return c;
+  }
+#endif // TICE
 
+#ifndef TICE
   string hexa_print_INT_(int i){
+    // this prints "0x" when `i == 0`
     string res;
     for (i=(i&0x7fffffff);i;){
       int j=i&0xf;
       i >>= 4;
       if (j>=10)
-	res =char('a'+(j-10))+res;
+  res =char('a'+(j-10))+res;
       else
-	res =char('0'+j)+res;
+  res =char('0'+j)+res;
     }
     return "0x"+res;
   }
+#else // TICE
+  static string hexa_print_INT_(int i){
+    char c[sizeof("0xffffff")];
+    ce_sprintf(c, "0x%x", i);
+    return c;
+  }
+#endif // TICE
+
   int chartab(){
     // display table
     drawRectangle(0,18,LCD_WIDTH_PX,LCD_HEIGHT_PX-18,_WHITE);
@@ -2560,14 +2587,20 @@ int Console_GetKey(){
     
     if (key == KEY_CTRL_INS) {
       if (Current_Line<Last_Line){
-	Console_Insert_Line();
-	Console_Insert_Line();
+        Console_Insert_Line();
+        Console_Insert_Line();
       }
       else {
-	int c=chartab();
-	string s=" ";
-	if (c>32 && c<127) s[0]=char(c);
-	Console_Input((const Char *)s.c_str());
+        int c=chartab();
+        #ifndef TICE
+          string s=" ";
+          if (c>32 && c<127) s[0]=char(c);
+          Console_Input((const Char *)s.c_str());
+        #else // TICE
+          char s[] = {' ', '\0'};
+          if (c>32 && c<127) s[0]=char(c);
+          Console_Input((const Char *)s);
+        #endif // TICE
       }
       Console_Disp(1);
       continue;

@@ -17,19 +17,37 @@ struct stdostream {
 struct stdistream {
 };
 
+#ifndef TICE
 inline stdostream & operator << (stdostream & os,int i){
   char buf[256];
   sprintf(buf,"%d",i);
   dConsolePut(buf);
   return os;
 }
+#else // TICE
+inline stdostream & operator << (stdostream & os,int i){
+  char buf[sizeof("-8388608")];
+  sprintf(buf, "%d", i);
+  dConsolePut(buf);
+  return os;
+}
+#endif // TICE
 
+#ifndef TICE
 inline stdostream & operator << (stdostream & os,unsigned i){
   char buf[256];
   sprintf(buf,"%u",i);
   dConsolePut(buf);
   return os;
 }
+#else // TICE
+inline stdostream & operator << (stdostream & os,unsigned i){
+  char buf[sizeof("16777215")];
+  sprintf(buf,"%u",i);
+  dConsolePut(buf);
+  return os;
+}
+#endif // TICE
 
 inline stdostream & operator << (stdostream & os,char ch){
   dConsolePutChar(ch);

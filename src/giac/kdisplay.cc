@@ -110,15 +110,30 @@ const int col_width=45;
 const int row_height=20;
 const int col_width=60;
 #endif
-string printcell(int i,int j){
-  string s="";
-  s+=char('A'+j);
-  s+=giac::print_INT_(i);
-  return s;
-}
-string printsel(int r,int c,int R,int C){
-  return printcell(r,c)+":"+printcell(R,C);
-}
+
+#ifndef TICE
+  string printcell(int i,int j){
+    string s="";
+    s+=char('A'+j);
+    s+=giac::print_INT_(i);
+    return s;
+  }
+  string printsel(int r,int c,int R,int C){
+    return printcell(r,c)+":"+printcell(R,C);
+  }
+#else // TICE
+  string printcell(int i,int j) {
+    char s[sizeof("A-8388608")];
+    s[0] = 'A' + j;
+    sprintf(&s[1],"%d", i);
+    return s;
+  }
+  string printsel(int r,int c,int R,int C){
+    char s[sizeof("A-8388608:A-8388608")];
+    sprintf(s, "%c%d:%c%d", 'A' + c, r, 'A' + C, R);
+    return s;
+  }
+#endif // TICE
 
 void change_undo(tableur & t){
   t.undo=t.m;

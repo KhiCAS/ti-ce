@@ -218,32 +218,59 @@ namespace giac {
     return true;
   }
 
+#ifndef TICE
   void add_print_INT_(string & s,int i){
     char c[256];
     my_sprintf(c,"%d",i);
     s += c;
   }
+#else // TICE
+  void add_print_INT_(string & s,int i){
+    char c[sizeof("-8388608")];
+    ce_sprintf(c,"%d",i);
+    s += c;
+  }
+#endif // TICE
 
+
+#ifndef TICE
   string print_INT_(int i){
     char c[256];
     // sprint_int(c,i); 
     sprintf(c,"%d",i);
     return c;
   }
+#else // TICE
+  string print_INT_(int i){
+    char c[sizeof("-8388608")];
+    ce_sprintf(c, "%d", i);
+    return c;
+  }
+#endif // TICE
 
+#ifndef TICE
   string hexa_print_INT_(int i){
+    // this prints "0x" when `i == 0`
     string res;
     for (i=(i&0x7fffffff);i;){
       int j=i&0xf;
       i >>= 4;
       if (j>=10)
-	res =char('a'+(j-10))+res;
+  res =char('a'+(j-10))+res;
       else
-	res =char('0'+j)+res;
+  res =char('0'+j)+res;
     }
     return "0x"+res;
   }
+#else // TICE
+  string hexa_print_INT_(int i){
+    char c[sizeof("0xffffff")];
+    ce_sprintf(c, "0x%x", i);
+    return c;
+  }
+#endif // TICE
 
+#ifndef TICE
   string octal_print_INT_(int i){
     char c[256];
     mpz_t tmp;
@@ -252,7 +279,15 @@ namespace giac {
     mpz_clear(tmp);
     return string("0o")+c;
   }
+#else // TICE
+  string octal_print_INT_(int i){
+    char c[sizeof("0o77777777")];
+    ce_sprintf(c, "0o%o", i);
+    return c;
+  }
+#endif // TICE
 
+#ifndef TICE
   string binary_print_INT_(int i){
     char c[256];
     mpz_t tmp;
@@ -261,6 +296,18 @@ namespace giac {
     mpz_clear(tmp);
     return string("0b")+c;
   }
+#else // TICE
+  string binary_print_INT_(int i){
+    char c[sizeof("0b100010001000100010001000")];
+    c[0] = '0';
+    c[1] = 'b';
+    mpz_t tmp;
+    mpz_init_set_ui(tmp, i);
+    mpz_get_str(&c[2], 2, tmp);
+    mpz_clear(tmp);
+    return c;
+  }
+#endif // TICE
 
   /*
   string print_INT_(int i){
@@ -277,6 +324,7 @@ namespace giac {
   }
   */
 
+#ifndef TICE
   string print_INT_(const vector<short int> & m){
     vector<short int>::const_iterator it=m.begin(),itend=m.end();
     if (it==itend)
@@ -286,14 +334,34 @@ namespace giac {
       s += print_INT_(*it);
       ++it;
       if (it==itend){
-	s +=']';
-	return s;
+        s +=']';
+        return s;
       }
       else
-	s += ',';
+        s += ',';
     }
   }
-  
+#else // TICE
+  string print_INT_(const vector<short int> & m) {
+    vector<short int>::const_iterator it=m.begin(),itend=m.end();
+    if (it==itend) {
+      return "";
+    }
+    string s("[");
+    char buf[sizeof("-8388608,")];
+    for (;;) {
+      ce_sprintf(buf, "%d,", *it);
+      s += buf;
+      ++it;
+      if (it==itend){
+        s.back() = ']';
+        return s;
+      }
+    }
+  }
+#endif // TICE
+
+#ifndef TICE
   string print_INT_(const vector<int> & m){
     vector<int>::const_iterator it=m.begin(),itend=m.end();
     if (it==itend)
@@ -303,12 +371,31 @@ namespace giac {
       s += print_INT_(*it);
       ++it;
       if (it==itend)
-	return s+']';
+        return s+']';
       else
-	s += ',';
+        s += ',';
     }
   }
-  
+#else // TICE
+  string print_INT_(const vector<int> & m){
+    vector<int>::const_iterator it=m.begin(),itend=m.end();
+    if (it==itend) {
+      return "";
+    }
+    string s("[");
+    char buf[sizeof("-8388608,")];
+    for (;;) {
+      ce_sprintf(buf, "%d,", *it);
+      s += buf;
+      ++it;
+      if (it==itend){
+        s.back() = ']';
+        return s;
+      }
+    }
+  }
+#endif // TICE
+
 #ifdef NSPIRE
   template<class T> nio::ios_base<T> & operator << (nio::ios_base<T> & os, const index_t & m ){
     return os << ":index_t: " << print_INT_(m) << " " ;
