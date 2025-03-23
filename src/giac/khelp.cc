@@ -164,28 +164,10 @@ namespace giac {
   const int HELP_MAXLENSIZE = 1600; // less than 20 lines of 80 chars
 
 #ifndef TICE
-  string printint(int i){
-    // infinite loop when i == INT_MIN
-    if (!i)
-      return string("0");
-    if (i<0)
-      return string("-")+printint(-i);      
-    int length = (int) std::floor(std::log10((double) i));
-#if defined VISUALC || defined BESTA_OS
-    char * s =new char[length+2];
-#else
-    char s[length+2];
-#endif
-    s[length+1]=0;
-    for (;length>-1;--length,i/=10)
-      s[length]=i%10+'0';
-#if defined VISUALC || defined BESTA_OS
-     string res=s;
-     delete [] s;
-     return res;
-#else
+  string printint(int i) {
+    char s[sizeof("-2147483648")];
+    sprintf(s, "%d", i);
     return s;
-#endif
   }
 #else // TICE
   string printint(int i) {

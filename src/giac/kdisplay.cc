@@ -112,14 +112,16 @@ const int col_width=60;
 #endif
 
 #ifndef TICE
-  string printcell(int i,int j){
-    string s="";
-    s+=char('A'+j);
-    s+=giac::print_INT_(i);
+  string printcell(int i,int j) {
+    char s[sizeof("A-2147483648")];
+    s[0] = 'A' + j;
+    sprintf(&s[1],"%d", i);
     return s;
   }
   string printsel(int r,int c,int R,int C){
-    return printcell(r,c)+":"+printcell(R,C);
+    char s[sizeof("A-2147483648:A-2147483648")];
+    sprintf(s, "%c%d:%c%d", 'A' + c, r, 'A' + C, R);
+    return s;
   }
 #else // TICE
   string printcell(int i,int j) {

@@ -220,7 +220,7 @@ namespace giac {
 
 #ifndef TICE
   void add_print_INT_(string & s,int i){
-    char c[256];
+    char c[sizeof("-2147483648")];
     my_sprintf(c,"%d",i);
     s += c;
   }
@@ -235,9 +235,8 @@ namespace giac {
 
 #ifndef TICE
   string print_INT_(int i){
-    char c[256];
-    // sprint_int(c,i); 
-    sprintf(c,"%d",i);
+    char c[sizeof("-2147483648")];
+    sprintf(c, "%d", i);
     return c;
   }
 #else // TICE
@@ -250,17 +249,9 @@ namespace giac {
 
 #ifndef TICE
   string hexa_print_INT_(int i){
-    // this prints "0x" when `i == 0`
-    string res;
-    for (i=(i&0x7fffffff);i;){
-      int j=i&0xf;
-      i >>= 4;
-      if (j>=10)
-  res =char('a'+(j-10))+res;
-      else
-  res =char('0'+j)+res;
-    }
-    return "0x"+res;
+    char c[sizeof("0xffffffff")];
+    sprintf(c, "0x%x", i);
+    return c;
   }
 #else // TICE
   string hexa_print_INT_(int i){
@@ -272,12 +263,9 @@ namespace giac {
 
 #ifndef TICE
   string octal_print_INT_(int i){
-    char c[256];
-    mpz_t tmp;
-    mpz_init_set_ui(tmp, i);
-    mpz_get_str(c, 8, tmp);
-    mpz_clear(tmp);
-    return string("0o")+c;
+    char c[sizeof("0o37777777777")];
+    sprintf(c, "0o%o", i);
+    return c;
   }
 #else // TICE
   string octal_print_INT_(int i){
@@ -289,12 +277,14 @@ namespace giac {
 
 #ifndef TICE
   string binary_print_INT_(int i){
-    char c[256];
+    char c[sizeof("0b10001000100010001000100010001000")];
+    c[0] = '0';
+    c[1] = 'b';
     mpz_t tmp;
     mpz_init_set_ui(tmp, i);
-    mpz_get_str(c, 2, tmp);
+    mpz_get_str(&c[2], 2, tmp);
     mpz_clear(tmp);
-    return string("0b")+c;
+    return c;
   }
 #else // TICE
   string binary_print_INT_(int i){
@@ -325,20 +315,21 @@ namespace giac {
   */
 
 #ifndef TICE
-  string print_INT_(const vector<short int> & m){
+  string print_INT_(const vector<short int> & m) {
     vector<short int>::const_iterator it=m.begin(),itend=m.end();
-    if (it==itend)
+    if (it==itend) {
       return "";
+    }
     string s("[");
-    for (;;){
-      s += print_INT_(*it);
+    char buf[sizeof("-2147483648,")];
+    for (;;) {
+      sprintf(buf, "%d,", *it);
+      s += buf;
       ++it;
       if (it==itend){
-        s +=']';
+        s.back() = ']';
         return s;
       }
-      else
-        s += ',';
     }
   }
 #else // TICE
@@ -364,16 +355,19 @@ namespace giac {
 #ifndef TICE
   string print_INT_(const vector<int> & m){
     vector<int>::const_iterator it=m.begin(),itend=m.end();
-    if (it==itend)
+    if (it==itend) {
       return "";
+    }
     string s("[");
-    for (;;){
-      s += print_INT_(*it);
+    char buf[sizeof("-2147483648,")];
+    for (;;) {
+      sprintf(buf, "%d,", *it);
+      s += buf;
       ++it;
-      if (it==itend)
-        return s+']';
-      else
-        s += ',';
+      if (it==itend){
+        s.back() = ']';
+        return s;
+      }
     }
   }
 #else // TICE
