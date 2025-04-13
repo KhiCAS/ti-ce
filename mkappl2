@@ -3,9 +3,9 @@
 set -e
 
 # standalone compilation
-ln -sf app_tools/app_src2 app_tools/app_src
+ln -sf app.src2 app_tools/app.src
 make -j -f makefile.l2 V=1 app
-ln -sf app_tools/app_src1 app_tools/app_src
+ln -sf app.src1 app_tools/app.src
 
 # remove relocations in the app (save about 600Ko)
 g++ -O2 reloc.cc -o reloc

@@ -3,6 +3,7 @@
 set -e
 
 # standalone compilation
+ln -sf app.src1 app_tools/app.src
 make -j -f makefile.en V=1 app
 
 # remove relocations in the app (save about 600Ko)
