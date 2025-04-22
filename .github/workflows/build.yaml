@@ -14,12 +14,15 @@ jobs:
           - variant: "fr"
             langname: "Francais"
             buildscript: "mkappfr"
+            bundlename: "khicas83.b83"
           - variant: "en"
             langname: "English"
             buildscript: "mkappen"
+            bundlename: "khicas84.b84"
           - variant: "l2"
             langname: "FrancaisL2"
             buildscript: "mkappl2"
+            bundlename: "khicasl2.b83"
 
     steps:
       - name: Checkout repository
@@ -48,9 +51,22 @@ jobs:
         run: |
           mkdir upload
           cp -R install_*.txt shared/ti/app shared/ti/*.8x* upload/
+          mv upload/app/${{ matrix.bundlename }} upload/
+          mv upload KhiCAS_CE_${{ matrix.langname }}
+          zip -9r KhiCAS_CE_${{ matrix.langname }}.zip KhiCAS_CE_${{ matrix.langname }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: KhiCAS_CE_${{ matrix.langname }}
-          path: upload
+          path: KhiCAS_CE_${{ matrix.langname }}
+
+      - name: Update nightly release
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        with:
+          tag_name: nightly
+          prerelease: true
+          files: |
+            KhiCAS_CE_${{ matrix.langname }}.zip
+            KhiCAS_CE_${{ matrix.langname }}/${{ matrix.bundlename }}
