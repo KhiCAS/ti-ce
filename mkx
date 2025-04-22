@@ -1,5 +1,0 @@
-#! /bin/bash
-# This will not work, too large
-# instead #undef NDEBUG #include<debug.h> and dbg_printf()
-make V=1 debug # app
-/bin/cp bin/DEMO.8* /shared/ti

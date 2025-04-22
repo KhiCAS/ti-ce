@@ -1,3 +1,0 @@
-#! /bin/bash
-make -j -f makefile V=1 app install_prog && rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app && cp bin/APPINST.8xp shared/ti
-/bin/cp bin/DEMO.8* shared/ti

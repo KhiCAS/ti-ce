@@ -1,7 +1,0 @@
-#! /bin/bash
-/bin/rm ~/ti83/khicas83.zip
-zip ~/ti83/khicas83.zip install_en install_fr
-cd ~/shared/ti
-zip -r ~/ti83/khicas83.zip COPYING APPINST.8xp arTIfiCE.8xv ASMHOOK.8xp app/
-scp ~/ti83/khicas83.zip malherbe:public_html/tmp
-scp ~/shared/ti/DEMO.8ek malherbe:public_html/tmp

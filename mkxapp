@@ -1,3 +1,0 @@
-#! /bin/bash
-make V=1 debug app
-/bin/cp bin/DEMO.8* /shared/ti

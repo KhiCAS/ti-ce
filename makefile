@@ -8,7 +8,7 @@ COMPRESSED = NO
 ARCHIVED = NO
 
 CFLAGS = -Wall -Wextra -Oz -DMP_16BIT -DTICE -Isrc/tommath
-CXXFLAGS = -Wall -Wextra -Wno-sign-compare -Oz -DMP_16BIT -DHAVE_CONFIG_H -DTICE -DXLIGHT -DCOMPILE_FOR_STABILITY -Iustl -Isrc/tommath -Wno-unused-parameter -Wno-deprecated-register -Wno-reorder-ctor -Wno-unused-variable -Wno-inline-new-delete -DWITH_LAPLACE # -DWITH_DESOLVE -DFRANCAIS
+CXXFLAGS = -Wall -Wextra -Wno-sign-compare -Oz -DMP_16BIT -DHAVE_CONFIG_H -DTICE -DXLIGHT -DCOMPILE_FOR_STABILITY -Iustl -Isrc/tommath -Wno-unused-parameter -Wno-deprecated-register -Wno-reorder-ctor -Wno-unused-variable -Wno-inline-new-delete -DWITH_LAPLACE -DWITH_PERIODIC -DWITH_UNITS -DWITH_DESOLVE  -DWITH_EQW -DWITH_PLOT -DWITH_SHEET -DWITH_TABVAR #
 CPP_EXTENSION = cc
 APP_NAME = KhiCAS
 APP_VERSION = 5.0.0.0000

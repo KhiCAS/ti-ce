@@ -1,5 +1,0 @@
-#! /bin/bash
-make clean
-cd ..
-tar cvfz khicas.tgz khicas
-scp khicas.tgz malherbe:tmp
