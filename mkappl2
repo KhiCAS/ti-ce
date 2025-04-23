@@ -4,7 +4,7 @@ set -e
 
 # standalone compilation
 ln -sf app.src2 app_tools/app.src
-make -j -f makefile.l2 V=1 app
+make -j LANG=fr VARIANT=l2 # V=1
 ln -sf app.src1 app_tools/app.src
 
 # remove relocations in the app (save about 600Ko)
@@ -12,10 +12,12 @@ g++ -O2 reloc.cc -o reloc
 cd bin
 ../reloc DEMO.bin
 cd ..
+
 # build 8ek and segments appvar for INST
 python3 app_tools/make_8ek.py bin/_DEMO.bin bin/DEMO.8ek DEMO
 python3 app_tools/make_segments.py bin/_DEMO.bin bin
 echo "L2 done"
+
 # local install, assumes you have a link to a folder shared/ti with artifice
 if [ ! -d "shared/ti" ]
 then
@@ -24,6 +26,6 @@ then
 fi
 cp bin/DEMO.8* shared/ti/
 rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app 
-echo "Running ./bundlel2 to make khicasl2.b83 (run ./bundle84 to test French on a 84)"
-./bundlel2
+echo "Creating bundle file..."
+./bundle khicasl2 b83
 ls -l shared/ti/DEMO.8ek

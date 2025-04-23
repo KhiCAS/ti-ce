@@ -4,7 +4,7 @@ set -e
 
 # standalone compilation
 ln -sf app.src2 app_tools/app.src
-make -j -f makefile.fr V=1 app
+make -j LANG=fr # V=1
 ln -sf app.src1 app_tools/app.src
 
 # remove relocations in the app (save about 600Ko)
@@ -26,6 +26,6 @@ then
 fi
 cp bin/DEMO.8* shared/ti/
 rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app
-echo "Running ./bundle83 to make khicas83.b83 (run ./bundle84 to test French on a 84)"
-./bundle83
+echo "Creating bundle file..."
+./bundle khicas83 b83
 ls -l shared/ti/DEMO.8ek

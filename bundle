@@ -1,8 +1,19 @@
 #!/bin/bash
 
+[[ $# -eq 2 ]] || {
+  echo "Error, need 2 args: bundle name, and bundle extension (b83/b84)"; exit 1;
+}
+
+bname=$1
+bext=$2
+
+[[ "$bext" =~ ^b8[34]$ ]] || {
+  echo "Error: extension must be b83 or b84"; exit 1;
+}
+
 [ -d ~/shared/ti/app ] && cd ~/shared/ti/app || cd shared/ti/app || exit 1
 
-convbin -j 8x -k b83 -i AppIns00.8xv -i AppIns01.8xv \
+convbin -j 8x -k "${bext}" -i AppIns00.8xv -i AppIns01.8xv \
 -i AppIns02.8xv -i AppIns03.8xv -i AppIns04.8xv -i AppIns05.8xv -i AppIns06.8xv \
 -i AppIns07.8xv -i AppIns08.8xv -i AppIns09.8xv -i AppIns10.8xv -i AppIns11.8xv \
 -i AppIns12.8xv -i AppIns13.8xv -i AppIns14.8xv -i AppIns15.8xv -i AppIns16.8xv \
@@ -12,4 +23,4 @@ convbin -j 8x -k b83 -i AppIns00.8xv -i AppIns01.8xv \
 -i AppIns32.8xv -i AppIns33.8xv -i AppIns34.8xv -i AppIns35.8xv -i AppIns36.8xv \
 -i AppIns37.8xv -i AppIns38.8xv -i AppIns39.8xv -i AppIns40.8xv  \
 -i AppIns41.8xv -i AppIns42.8xv -i AppIns43.8xv -i../arTIfiCE.8xv -i../INST.8xp \
--o khicasl2.b83
+-o "${bname}.${bext}"
