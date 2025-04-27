@@ -1285,6 +1285,10 @@ int main1(){
     confirm("!!! Downgradez l'OS avec CERMASTR","pour utiliser KhiCAS en mode examen");
   // do_confirm("console init");
   restore_session("session");
+#ifndef FAKE_GIAC
+  angle_radian(os_get_angle_unit(),contextptr);
+#endif
+	
   //dbg_printf("main1\n");
 #ifdef FXCG
   if (prizmoremu && pythonjs_heap_size>=370*1024)
