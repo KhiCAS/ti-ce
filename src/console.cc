@@ -1258,7 +1258,7 @@ int Console_Input(const Char *str)
     }
   else
     {
-      return CONSOLE_ARG_ERR;
+      return CONSOLE_NO_EVENT; // return CONSOLE_ARG_ERR;
     }
 }
 
