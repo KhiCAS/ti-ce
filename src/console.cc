@@ -2548,7 +2548,7 @@ int Console_GetKey(){
       Cursor.x = 0;
       return CONSOLE_SUCCEEDED;
     }
-    
+   #ifndef TICE 
     if (key == KEY_CTRL_INS) {
       if (Current_Line<Last_Line){
 	Console_Insert_Line();
@@ -2563,7 +2563,7 @@ int Console_GetKey(){
       Console_Disp(1);
       continue;
     }
-    
+    #endif
     if (key == KEY_CTRL_SETUP) {
       menu_setup();
       Console_Disp(1);
