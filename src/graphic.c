@@ -54,16 +54,11 @@ void vGL_putChar(unsigned int x0, unsigned int y0, char ch, unsigned char fg, un
   }
   const unsigned char * pCh = charptrbase + (ch - ' ') * font_h;
   int shift=my_min(font_w,VIR_LCD_PIX_W-x0); // shift>0
-#ifdef TICE // replace multiplication by 320=256+64 by bit operations
   unsigned char * ptry=ti8bpp_screen+x0+(y0<<8)+(y0<<6);
   int tmp=VIR_LCD_PIX_H-y0;
   if (font_h<tmp)
     tmp=font_h;
   unsigned char * ptryend=ptry+(tmp<<8)+(tmp<<6);
-#else
-  unsigned char * ptry=&ti8bpp_screen[x0+VIR_LCD_PIX_W*y0];
-  unsigned char * ptryend=ptry+my_min(font_h,VIR_LCD_PIX_H-y0)*VIR_LCD_PIX_W;
-#endif
   for (;ptry<ptryend;ptry+=VIR_LCD_PIX_W,++pCh){
     unsigned char * ptr=ptry;
     unsigned char * ptrend = ptr+shift;

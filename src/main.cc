@@ -8,11 +8,9 @@
 #include <giac/input_parser.h>
 //#include "gmp_replacements.h"
 #include "calc.h"
-#ifdef TICE
 #include <sys/lcd.h>
 #include <ti/vars.h>
 #include <ti/info.h>
-#endif
 
 #include "console.h"
 //#include "menu_config.h"
@@ -21,13 +19,10 @@
 #include "file.h"
 #include "main.h"
 #include <giac/kdisplay.h>
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
 using namespace std;
-#ifdef NSPIRE_NEWLIB
-#include "os.h"
-#endif
 
 #define EXPR_BUF_SIZE 256
 #define GIAC_HISTORY_SIZE 2
@@ -41,9 +36,6 @@ char * python_heap=0;
 giac::context * contextptr=0;
 extern "C" int mp_token(const char * line);
 extern "C" {
-#ifdef FXCG
-#include <fxcg/rtc.h>
-#endif
   extern int execution_in_progress_py;
   extern volatile int ctrl_c_py;
   //void set_abort_py();
@@ -688,11 +680,7 @@ void edit_script(const char * fname){
     if (!edptr) return;
     edptr->elements.clear();
     edptr->clipline=-1;
-#if defined FX || defined FXCG
-    edptr->filename="\\\\fls0\\"+remove_path(remove_extension(filename))+".py";
-#else
     edptr->filename=remove_path(remove_extension(filename));
-#endif
     //cout << "script " << edptr->filename << endl;
     edptr->editable=true;
     edptr->changed=false;
@@ -1148,42 +1136,6 @@ void stop(const char * s)
   exit(1);
 }
 
-#ifdef KMALLOC
-kmalloc_arena_t static_ram = { 0 },ram3M={0};
-#ifdef FXCG
-#ifdef GINT_MALLOC
-// #define VAR_HEAP
-#ifdef VAR_HEAP
-__attribute__((aligned(4))) char malloc_heap[240*1024];
-#else
-/* Unused part of user stack; provided by linker script */
-extern char sextra, eextra;
-#endif
-#endif // KMALLOC
-
-int get_free_memory(){
-  kmalloc_gint_stats_t * s;
-  s=kmalloc_get_gint_stats(&ram3M);
-  if (!s) return 0;
-  int res=s->free_memory;
-  return res;
-}
-#else // FXCG
-#ifdef FX
-int get_free_memory(){
-  kmalloc_gint_stats_t * s;
-  s=kmalloc_get_gint_stats(&static_ram);
-  int res=s?s->free_memory:0;
-  return res;
-}
-#else // FX
-int get_free_memory(){
-  return freeslotmem();
-}
-#endif // FX
-#endif // FXCG
-#endif // KMALLOC
-
 vector<logo_turtle> & turtle_stack();
 
 #ifdef FAKE_GIAC
@@ -1238,25 +1190,6 @@ int main1(){
   giac::epsilon(contextptr)=1e-5;
 #endif // FAKE_GIAC
 
-#ifdef KMALLOC
-
-  /* À appeler une seule fois au début de l'exécution */
-  kmalloc_init();
-  
-  /* Ajouter une arène sur la RAM inutilisée */
-  static_ram.name = "_uram";
-  static_ram.is_default = 1; // 0 for system malloc first
-#ifdef VAR_HEAP
-  static_ram.start = malloc_heap;
-  static_ram.end = malloc_heap+sizeof(malloc_heap);
-#else
-  static_ram.start = (void *)  0x88053800; // tab24+6144
-  static_ram.end =  (void *) 0x8807f000;
-#endif
-  kmalloc_init_arena(&static_ram, true);
-  kmalloc_add_arena(&static_ram);
-#endif // KMALLOC
-
   //do_confirm("SDK init"); return 0;
   // main starts after malloc init
   int i = 0, j = 0;
@@ -1290,10 +1223,6 @@ int main1(){
 #endif
 	
   //dbg_printf("main1\n");
-#ifdef FXCG
-  if (prizmoremu && pythonjs_heap_size>=370*1024)
-    pythonjs_heap_size=370*1024;
-#endif
   //dbg_printf("plus %x %x\n",(size_t)giac::at_plus->ptr(),(size_t) giac::_plus);
   //pythonjs_static_heap=(char *)malloc(pythonjs_heap_size);
   python_init(pythonjs_stack_size,pythonjs_heap_size);
@@ -1362,16 +1291,6 @@ int main(){
   if (pcmain<appstart || pcmain>=0x3b0000)
     return 1;
 #if KHICAS_STACK
-#if 0
-  unsigned localsp=0;
-  asm("assume	adl = 1\n\t"
-      "ld  ($D19888), sp\n\t"
-      "ld  %0, ($D19888)\n\t"
-      :"=r"(localsp)        /* output */
-    );
-  stack_ptr=localsp;
-  //dbg_printf("start sp %x\n",stack_ptr);
-#else
   asm("assume	adl = 1\n\t"
       "ld  ($D19888), sp\n\t"
       "ld  sp, $D2a800\n\t"
@@ -1379,7 +1298,6 @@ int main(){
       :  /* input */
       : /* clobbered registers */
     );
-#endif
 #endif
   sdk_init();
   mp_stack_ctrl_init();

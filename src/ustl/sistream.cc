@@ -5,17 +5,6 @@
 #include "sistream.h"
 #include "sostream.h"
 #include "ustring.h"
-//extern "C" long my_strtol(const char * nptr, char ** endptr, int base);
-
-#if 0
-void * memchr(const void * s,int c,unsigned n){
-  for (unsigned i=0;i<n;++i){
-    if (((unsigned char *)s)[i]==c)
-      return ((char *)s)+i;
-  }
-  return 0;
-}
-#endif
 
 namespace ustl {
 

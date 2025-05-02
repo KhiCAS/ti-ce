@@ -11,14 +11,8 @@ namespace xcas {
   bool eqws(char * s,bool eval);
 }
 #endif
-#ifdef TICE
 #include <sys/lcd.h>
-#else
-inline void raw_set_pixel(unsigned x,unsigned y,int c){
-  os_set_pixel(x,y,c);
-}
-#endif
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
 using namespace std;
@@ -117,11 +111,7 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
       double dx=L[j+1][0]-L[j][0];
       double dy=L[j+1][1]-L[j][1];
       p[j]=dy==0?(dx>0?
-#ifdef TICE
                   1e38:-1e38
-#else
-                  1e300:-1e300
-#endif
                   ):dx/dy;
     }
     // initialization, lowest horizontal that is crossing the polygon
@@ -396,11 +386,7 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
   unsigned char * lcdptr=0;
   int doit=motif;
   if (w==1 && motif==0xffff){
-#ifdef TICE
     lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
-#else
-    lcdptr=((unsigned char *) lcd_Ram)+x1+y1*LCD_WIDTH_PX;
-#endif
     *lcdptr=color;
     if (x1==x2){ // vertical segment
       if (y1>y2){
@@ -515,9 +501,6 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
   }
 }
 
-#ifndef TICE
-static
-#endif
 bool isalpha(char c){
   return (c>='A' && c<='Z') || (c>='a' && c<='z');
 }
@@ -547,15 +530,10 @@ const char * paste_clipboard(){
 }
 
 
-#ifndef FX
 void PrintMini(int x,int y,const char * s,int mode){
   x *=3;
   y *=3;
-#ifdef FXCG  
-  PrintMini(&x,&y,(Char *)s,mode,0xFFFFFFFF,0,0,COLOR_BLACK, COLOR_WHITE, 1, 0);
-#else
   x=os_draw_string_medium(x,y,COLOR_BLACK,mode?COLOR_SELECTED:COLOR_WHITE,s,false);
-#endif
 }
 int print_msg12(const char * msg1,const char * msg2,int textY){
   drawRectangle(0, textY+10, LCD_WIDTH_PX, 60, SDK_WHITE);
@@ -565,24 +543,15 @@ int print_msg12(const char * msg1,const char * msg2,int textY){
   drawRectangle(3,textY+70,300,3, SDK_BLACK);
   int textX=30;
   if (msg1){
-#ifdef FXCG
-    PrintMini(&textX,&textY,(Char*)msg1,0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-#else
     textX=os_draw_string_medium(textX,textY,COLOR_BLACK,COLOR_WHITE,msg1,false);
-#endif
   }
   textX=10;
   textY+=25;
   if (msg2){
-#ifdef FXCG
-    PrintMini(&textX,&textY,(Char*)msg2,0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-#else
     textX=os_draw_string_medium(textX,textY,COLOR_BLACK,COLOR_WHITE,msg2,false);
-#endif
   }
   return textX;
 }
-#endif
 
 void insert(string & s,int pos,const char * add){
   if (pos>int(s.size()))
@@ -593,20 +562,11 @@ void insert(string & s,int pos,const char * add){
 }
 
 void print_alpha_shift(int keyflag){
-#ifdef FX
-  int x=85;
-  int y=58;
-#else
   int x=85*3;
   int y=58*3;
-#endif
   // if (keyflag==0) Printmini(x,y,"| A<>a",MINI_REV);
   if (keyflag==1){
-#ifdef TICE
     Printmini(x,y," 2nd ",0);
-  #else
-    Printmini(x,y,"SHIFT",0);
-#endif
   }
   if (keyflag==4)
     Printmini(x,y,"ALPHA",0);
@@ -621,20 +581,13 @@ void print_alpha_shift(int keyflag){
   void printCentered(const char* text, int y) {
     int len = strlen(text);
     int x = LCD_WIDTH_PX/2-(len*6)/2;
-#ifndef FX
     x/=3;
-#endif
     Printxy(x,y,text,0);
   }
   
   string printint(int i){
-#ifndef TICE
-    char s[sizeof("-2147483648")];
-    sprintf(s, "%d", i);
-#else // TICE
     char s[sizeof("-8388608")];
     ce_sprintf(s, "%d", i);
-#endif // TICE
     return s;
   }
 
@@ -650,29 +603,6 @@ int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,i
   // s="";
   int pos=s.size(),beg=0;
   for (;;){
-#ifdef FX
-    int X1=print_msg12(msg1,msg2,ypos-19);
-    int textX=X1,textY=ypos;
-    drawRectangle(textX,textY,LCD_WIDTH_PX-textX-8,8,_WHITE);
-    if (pos-beg>36)
-      beg=pos-12;
-    if (int(s.size())-beg<36)
-      beg=giacmax(0,int(s.size())-36);
-    if (beg>pos)
-      beg=pos;
-    textX=X1;
-    Printxy(textX,textY,s.substr(beg,pos-beg).c_str(),0);
-    textX+=(pos-beg)*6;
-    int cursorpos=textX;
-    Printxy(textX+2,textY,s.substr(pos,s.size()-pos).c_str(),0);
-    //Cursor_SetPosition(cursorpos,textY+1);
-    drawRectangle(cursorpos,textY+1,1,6,_BLACK); // cursor
-    int keyflag = (Char)Setup_GetEntry(0x14);
-    Printmini(0,58,"     |     |     |     |     |     ",MINI_REV);
-    print_alpha_shift(keyflag);
-    unsigned int key;
-    GetKey(&key);
-#else // FX
     int X1=print_msg12(msg1,msg2,ypos-25);
     int textX=X1,textY=ypos;
     drawRectangle(textX,textY+24,LCD_WIDTH_PX-textX-4,18,COLOR_WHITE);
@@ -690,7 +620,6 @@ int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,i
     int keyflag = GetSetupSetting( (unsigned int)0x14);
     int key;
     ck_getkey(&key);
-#endif
     if (key==KEY_CTRL_F3){
       key=chartab();
       if (key<0)
@@ -753,11 +682,7 @@ void cleanup(std::string & s){
 
 int confirm(const char * msg1,const char * msg2,bool acexit){
   print_msg12(msg1,msg2);
-#ifdef FX
-  Printmini(0,C58," F1 |     |     |     |     | F6  ",MINI_REV);
-#else
   Printmini(0,C58,"    F1      |            |            |           |     F5    ",4);
-#endif  
   int key=0;
   while (key!=KEY_CTRL_F1 && key!=KEY_CTRL_F5){
     ck_getkey(&key);
@@ -823,11 +748,7 @@ int run_session(int start=0){
     // Line[j].type=LINE_TYPE_OUTPUT;
   }
   int cl=Current_Line;
-#ifdef FX
-#define c8 6
-#else
 #define c8 8
-#endif
   Cursor.y += (Start_Line-savestartline);
   if (Cursor.y<0) Cursor.y=0;
   Start_Line=savestartline;
@@ -1520,16 +1441,6 @@ int Console_Backspace()
 unsigned translate_fkey(unsigned input_key){
   if (input_key==KEY_CHAR_MAT) input_key=KEY_CTRL_F10;
   if (input_key==KEY_CTRL_QUIT) input_key=KEY_CTRL_F16;
-#ifndef TICE
-  if (input_key==KEY_CTRL_MIXEDFRAC) input_key=KEY_CTRL_F11;
-  //if (input_key==KEY_CTRL_FRACCNVRT) input_key=KEY_CTRL_F13;
-  //if (input_key==KEY_CHAR_LIST) input_key=KEY_CTRL_F13;
-  if (input_key==KEY_CTRL_OPTN) input_key=KEY_CTRL_F15;
-  //if (input_key==KEY_CTRL_PRGM) input_key=KEY_CTRL_F18;
-  if (input_key==KEY_CTRL_FD) input_key=KEY_CTRL_F12;
-  if (input_key==KEY_CHAR_ANGLE) input_key=KEY_CTRL_F17;
-  if (input_key==KEY_CHAR_FRAC) input_key=KEY_CTRL_F20;
-#endif
   return input_key;
 }
 
@@ -1610,24 +1521,14 @@ bool inputdouble(const char * msg1,double & d){
   }
  
   static string print_INT_(int i) {
-#ifndef TICE
-  char c[sizeof("-2147483648")];
-  sprint_int(c,i); // my_sprintf(c,"%d",i);
-#else // TICE
     char c[sizeof("-8388608")];
     ce_sprintf(c, "%d", i);
-#endif // TICE
     return c;
   }
 
   static string hexa_print_INT_(int i){
-#ifndef TICE
-    char c[sizeof("0xffffffff")];
-    sprintf(c, "0x%x", i);
-#else // TICE
     char c[sizeof("0xffffff")];
     ce_sprintf(c, "0x%x", i);
-#endif // TICE
     return c;
   }
   int chartab(){
@@ -1736,11 +1637,7 @@ const char * trig(){
       return "_";
     case KEY_CHAR_MULT:
       return "*";
-#ifndef TICE
-    case KEY_CHAR_FRAC:
-      return py?"\\":"solve(";
-#endif
-    case KEY_CHAR_DIV: 
+    case KEY_CHAR_DIV:
       return "/";
     case KEY_CHAR_POW:
       return "^";
@@ -1748,22 +1645,8 @@ const char * trig(){
       return "sqrt(";
     case KEY_CHAR_SQUARE:
       return py?"**2":"^2";
-#ifndef TICE
-    case KEY_CHAR_CUBEROOT:
-      return py?"**(1/3)":"^(1/3)";
-    case KEY_CHAR_POWROOT:
-      return py?"**(1/":"^(1/";
-#endif
     case KEY_CHAR_RECIP:
       return py?"**-1":"^-1";
-#ifndef TICE
-    case KEY_CHAR_THETA:
-      return "phase(";
-    case KEY_CHAR_VALR:
-      return "abs(";
-    case KEY_CHAR_ANGLE:
-      return "polar_complex(";
-#endif
     case KEY_CTRL_XTT:
       return xthetat?"t":"x";
       //return "x"; 
@@ -1792,15 +1675,6 @@ const char * trig(){
       return "acos(";
     case KEY_CHAR_ATAN:
       return "atan(";
-#endif
-#ifndef TICE
-    case KEY_CTRL_MIXEDFRAC:
-      return "limit(";
-    case KEY_CTRL_FRACCNVRT:
-      return "approx(";
-      //case KEY_CTRL_FORMAT: return "purge(";
-    case KEY_CTRL_FD:
-      return "exact(";
 #endif
     case KEY_CHAR_STORE:
       // if (keyflag==1) return "inf";
@@ -1865,20 +1739,6 @@ const char * trig(){
       if(showCatalog(text,1)) 
 	return text;
       return "";
-#if 0
-    case KEY_CTRL_F4:
-      if(showCatalog(text,0)) 
-	return text;
-      return "";
-    case KEY_CTRL_QUIT: 
-      if(showCatalog(text,11))
-	return text;
-      return "";
-    case KEY_CTRL_SETUP:
-      if(showCatalog(text,7))
-	return text;
-      return "";
-#endif
     }
     return 0;
   }
@@ -2069,7 +1929,6 @@ int Console_GetKey(){
     if (key==KEY_CTRL_SHIFT || key==KEY_CTRL_ALPHA)
       continue;
     //if (1){ char buf1[32],buf2[32]; sprint_double(buf1,key),sprint_double(buf2,KEY_CTRL_F7); confirm(buf1,buf2); }
-#ifdef TICE
     if (key==KEY_CHAR_MAT) key=KEY_CTRL_F10;
     if (key==KEY_CTRL_STATS) {
 #ifdef WITH_SHEET
@@ -2079,11 +1938,7 @@ int Console_GetKey(){
       key=KEY_CTRL_F16;
 #endif
     }
-#else
-    if (key!=KEY_CHAR_FRAC && key!=KEY_CTRL_MIXEDFRAC)
-      key=translate_fkey(key);
-#endif
-    if (key==KEY_CHAR_LIST) 
+    if (key==KEY_CHAR_LIST)
       return Console_FMenu(KEY_CTRL_F12);
     if (key>=KEY_LIST1 && key<=KEY_LIST9){
       tmp_str[0] = 'Y';
@@ -2111,22 +1966,6 @@ int Console_GetKey(){
       if (ptr)
 	return Console_Input((const Char *)ptr);
     }
-#ifndef TICE
-    if (key==KEY_CTRL_OPTN){
-      char buf[256];
-      if (doCatalogMenu(buf,"OPTIONS",14)) // should be doCatalogMenu(buf,"OPTION",1)
-	return Console_Input((const Char *)buf);
-      Console_Disp(1);  oldkeyflag=-1;
-      continue;      
-    }
-#endif
-#if 0 // CATALOG is not returned by GetKey, we will use OPTN instead
-    if (key==KEY_CTRL_CATALOG){
-      char buf[256];
-      if (doCatalogMenu(buf,"CATALOG",0))
-	return Console_Input((const Char *)buf);
-    }
-#endif
     if (key == KEY_CTRL_F4){
       int key=chartab();
       if (key>0){
@@ -2548,22 +2387,6 @@ int Console_GetKey(){
       Cursor.x = 0;
       return CONSOLE_SUCCEEDED;
     }
-   #ifndef TICE 
-    if (key == KEY_CTRL_INS) {
-      if (Current_Line<Last_Line){
-	Console_Insert_Line();
-	Console_Insert_Line();
-      }
-      else {
-	int c=chartab();
-	char s[] = {' ', '\0'};
-	if (c>32 && c<127) s[0]=char(c);
-	Console_Input((const Char *)s);
-      }
-      Console_Disp(1);
-      continue;
-    }
-    #endif
     if (key == KEY_CTRL_SETUP) {
       menu_setup();
       Console_Disp(1);
@@ -2575,19 +2398,12 @@ int Console_GetKey(){
         return Console_NewLine(LINE_TYPE_INPUT, 1);
       tmp = Line[Current_Line].str;
       
-#if 1
       int x=editline_cursor;
       move_line = Last_Line - Current_Line;
       for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
       Cursor.x=x;
       if (Cursor.x>COL_DISP_MAX)
         Line[Last_Line].start_col=Cursor.x-COL_DISP_MAX;
-#else
-      move_line = Last_Line - Current_Line;
-      for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
-      move_col = Line[Current_Line].disp_len - Current_Col;
-      for (i = 0; i <= move_col; i++) Console_MoveCursor(CURSOR_RIGHT);
-#endif
       return Console_Input(tmp);
     }
     
@@ -2906,11 +2722,7 @@ void update_fmenu(const Char * cfg){
 #ifndef FX
 
 #ifndef CURSOR
-#ifdef TICE
 int print_x=0,print_y=0,vfontsize=15,hfontsize=8;
-#else
-int print_x=0,print_y=0,vfontsize=18,hfontsize=12;
-#endif 
 #endif
 
 void locate(int x,int y){
@@ -2927,17 +2739,10 @@ void Cursor_SetPosition(int x,int y){
 }
 
 void print(int &X,int&Y,const char * buf,int color,bool revert,bool fake,bool minimini){
-#if defined FX || defined FXCG
-  if (minimini) 
-     PrintMiniMini( &X, &Y, (Char *)buf, revert?4:0, color, fake?1:0 );
-  else 
-    PrintMini(&X, &Y, (Char *)buf, revert?4:0, 0xFFFFFFFF, 0, 0, color, COLOR_WHITE, fake?0:1, 0);
-#else
-  if(minimini) 
+  if(minimini)
     X=os_draw_string_small(X,Y,color,revert?COLOR_SELECTED:COLOR_WHITE,buf,fake);
   else 
     X=os_draw_string_medium(X,Y+1,color,revert?COLOR_SELECTED:COLOR_WHITE,buf,fake);
-#endif
 }
 
 void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
@@ -2991,21 +2796,10 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
       int bg=65529; // background
       x=os_draw_string_small(x,y,_BLACK,bg,": ",false);
       if (howto && strlen(howto)){
-#ifdef NSPIRE_NEWLIB
-	y-=2;
-#endif
 	os_draw_string_small(x,y,_BLACK,bg,
-#ifdef NUMWORKS
-			     remove_accents(howto).c_str(),
-#else
 			     howto,
-#endif
 			     false);
-#ifdef NSPIRE_NEWLIB
-	y+=12;
-#else
 	y+=11;
-#endif
       }
       string toolt;
       if (related && strlen(related)){
@@ -3342,34 +3136,7 @@ void Console_FMenu_Init()
   int i, number=0, key, handle;
   Char* tmp_realloc = NULL;
   Char temp[20] = {'\0'};
-#if 0
-  if (!original_cfg){
-#if 1
-    string s;
-    if (load_script("MENU.py",s)>0){
-      original_cfg=(Char *)malloc(s.size()+1);
-      strcpy((char *)original_cfg,s.c_str());
-    }
-#else
-    original_cfg = (Char *)memory_load((char *)"\\\\fls0\\MENU.py");
-#endif
-    // Does the file exists ?
-    // Todo : check the error codes...
-    if(!original_cfg) {
-#if 1
-      save_script((const char *)"MENU.py",conf_standard);
-#else
-      memory_createfile((char *)"\\\\fls0\\MENU.py", strlen((char*)conf_standard)+1);
-      handle = memory_openfile((char *)"\\\\fls0\\MENU.py", _OPENMODE_READWRITE);
-      memory_writefile(handle, conf_standard, strlen((char*)conf_standard)+1);
-      memory_closefile(handle);
-#endif
-      original_cfg = (Char *)conf_standard;
-    }
-  }
-#else
   original_cfg = (Char *)conf_standard;
-#endif
   Char* cfg=original_cfg;
   update_fmenu(cfg);
 }

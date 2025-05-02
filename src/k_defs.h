@@ -1,6 +1,5 @@
 #ifndef K_DEFS_H
 #define K_DEFS_H
-#define NSPIRE_FILEBUFFER 512*1024
   // Character codes
 #define KEY_CHAR_0          0x30
 #define KEY_CHAR_1          0x31

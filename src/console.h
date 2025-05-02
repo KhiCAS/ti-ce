@@ -11,26 +11,16 @@
 #include "calc.h"
 #include <string>
 #include <vector>
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
-#if defined FX || defined FXCG
-typedef unsigned char Char;
-#else
 typedef char Char;
-#endif
 
-#ifdef TICE
 // #include <ce_sprintf.h>
 // if we find out that the OS sprintf is faster than nanoprintf, use it instead
 #define ce_sprintf sprintf
-#endif
 
-#ifdef TICE
 #define LARGEDOUBLE 3e38
-#else
-#define LARGEDOUBLE 1e307
-#endif
 
 #ifdef XLIGHT
 #ifdef FRANCAIS
@@ -46,9 +36,7 @@ extern int lang; // menufr.cc
 extern Char* original_cfg;
 
   bool isalphanum(char c);
-#ifdef TICE
   bool isalpha(char c);
-#endif
 const char * paste_clipboard();
 const char * select_var();
   void copy_clipboard(const std::string & s,bool status=true);
@@ -66,18 +54,10 @@ bool tooltip(int x,int y,int pos,const char * editline);
   
 int print_color(int print_x,int print_y,const char *s,int color,bool invert,bool minimini);
   void print_alpha_shift(int keyflag);
-#ifdef FX
-int print_msg12(const char * msg1,const char * msg2,int textY=15);
-#else
 int print_msg12(const char * msg1,const char * msg2,int textY=40);
 void PrintMini(int x,int y,const char * s,int mode);
-#endif
 void insert(std::string & s,int pos,const char * add);
-#ifdef FX
-int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,int ypos=35);
-#else
 int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,int ypos=65);
-#endif
   void set_pixel(int xc,int yc,unsigned short color);
   extern "C" int clip_ymin; // 0 or 24
   void draw_line(int x1, int y1, int x2, int y2, int color=0,unsigned short motif=0xffff);
@@ -100,15 +80,6 @@ int giacmax(int a,int b);
 #define MAX_FILENAME_SIZE 32 // was 270
 //#define CONSOLESTATEFILE (char*)DATAFOLDER"\\khicas.erd"
 
-#ifdef FX
-
-enum CONSOLE_SCREEN_SPEC{
-  LINE_MAX = 32,
-  LINE_DISP_MAX = 7,
-  COL_DISP_MAX = 21,//21
-  EDIT_LINE_MAX = 2048
-};
-#else
 struct DISPBOX {
   int     left;
   int     top;
@@ -119,17 +90,11 @@ struct DISPBOX {
 
 enum CONSOLE_SCREEN_SPEC{
   LINE_MAX = 64,
-#ifdef TICE
   LINE_DISP_MAX = 14,
-  COL_DISP_MAX = 39,//21
-#else
-  LINE_DISP_MAX = 9,
-  COL_DISP_MAX = 32,//21
-#endif
+  COL_DISP_MAX = 39,
   EDIT_LINE_MAX = 2048
 };
 
-#endif
 struct location{
   int x;
   int y;
@@ -171,11 +136,6 @@ struct line{
   short int type;
   int start_col;
   int disp_len;
-#ifdef TEX
-  Char *tex_str;
-  Char tex_flag;
-  int tex_height, tex_width;
-#endif
 };
 extern struct line * Line;
 extern int Start_Line, Last_Line,editline_cursor;

@@ -11,25 +11,15 @@
 #define C10 18 
 #define C6 6 
 #define COLOR_SELECTED 52857 // ((15<<11)|(15<<5)|15)
-#if defined FX
-#define LCD_WIDTH_PX 128
-#define LCD_HEIGHT_PX 64
-#elif defined FXCG
-#define LCD_WIDTH_PX 384
-#define LCD_HEIGHT_PX 128
-#else
+
 #define LCD_WIDTH_PX 320
 #define LCD_HEIGHT_PX 240
-#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 #include "stdio.h"
-#ifdef NSPIRE_NEWLIB
-  inline int min(int a,int b){ return a<b?a:b;}
-  inline int max(int a,int b){ return a<b?b:a;}
-#endif
-#if !defined FX && !defined FXCG
+
 #define C58 214
 #define COLOR_WHITE SDK_WHITE
 #define TEXT_COLOR_WHITE SDK_WHITE
@@ -52,11 +42,9 @@ extern "C" {
 #define MINI_REV 4
 #define false 0
 #define true 1
-#endif // not FX and not FXCG
-  
-#ifdef TICE
+
 #include <stdlib.h>
-  //long my_strtol(const char * nptr, char ** endptr, int base);
+
   int convertcolor(int c);
   #define STANDALONE // don't use graphx and fileioc
   #define kb_Data (uint8_t)((volatile uint16_t*)0xF50010)
@@ -65,24 +53,10 @@ extern "C" {
   void sdk_init(void);
   void sdk_end(void);
   void clear_screen(void);
-#ifdef STANDALONE
+
 #include "graphic.h"
-#endif
-#else // TICE
-  inline int convertcolor(int c){ return c; }
-  inline void sdk_init(void){}
-  inline void sdk_end(void){}
-#endif
 
   extern short exam_mode,nspire_exam_mode;
-  // nspire_exam_mode==0 normal mode
-  // ==1 led are blinking
-  // ==2 OS exam mode is on but led are not blinking
-  // Set the Nspire in normal exam mode at home, transfer ndless and khicas
-  // activate khicas: will detect led blinking (mode ==1)
-  // prepare exam mode with Khicas menu item (clear led, mode==2),
-  // in that mode menu menu will not leave KhiCAS anymore but
-  // will clean data and do a hardware reset (launch again exam mode and leds)
   extern unsigned exam_start;
   extern int exam_duration;
   int ext_main();
@@ -92,51 +66,6 @@ extern "C" {
   void os_show_graph(); // show graph inside Python shell (Numworks), not used
   void os_hide_graph(); // hide graph, not used anymore
   void os_redraw(); // force redraw of window class hierarchy
-#ifdef NUMWORKS
-#define max_heap_size 96
-  void raisememerr();
-  extern unsigned _heap_size;
-  extern void * _heap_ptr;
-  extern void * _heap_base;
-  int inexammode();
-  int extapp_restorebackup(int mode);
-  void numworks_set_pixel(int x,int y,int c);
-  int numworks_get_pixel(int x,int y);
-  void numworks_fill_rect(int x,int y,int w,int h,int c);
-#ifdef __cplusplus
-  int numworks_draw_string(int x,int y,int c,int bg,const char * s,int fake=false);
-  int numworks_draw_string_small(int x,int y,int c,int bg,const char * s,int fake=0);
-#else
-  int numworks_draw_string(int x,int y,int c,int bg,const char * s,int fake);
-  int numworks_draw_string_small(int x,int y,int c,int bg,const char * s,int fake);
-#endif
-  void numworks_show_graph();
-  void numworks_hide_graph();
-  void numworks_redraw();
-  void numworks_wait_1ms(int ms);
-  // access to Numworks OS, defined in port.cpp (or modkandinsky.cpp)
-  inline void os_set_pixel(int x,int y,int c){
-    numworks_set_pixel(x,y,c);
-  }
-  inline int os_get_pixel(int x,int y){
-    return numworks_get_pixel(x,y);
-  }
-  inline void os_fill_rect(int x,int y,int w,int h,int c){
-    numworks_fill_rect(x,y,w,h,c);
-  }
-  inline int os_draw_string(int x,int y,int c,int bg,const char * s,int fake){
-    return numworks_draw_string(x,y,c,bg,s,fake);
-  }
-  inline int os_draw_string_small(int x,int y,int c,int bg,const char * s,int fake){
-    return numworks_draw_string_small(x,y,c,bg,s,fake);
-  }
-  inline void os_shaw_graph(){ return numworks_show_graph(); }
-  inline void os_hide_graph(){ return numworks_hide_graph(); }
-  inline void os_redraw(){ return numworks_redraw(); }
-  inline void os_wait_1ms(int ms) { numworks_wait_1ms(ms); }
-  int getkey_raw(int allow_suspend); // Numworks scan code
-  inline void sync_screen(){}
-#endif // NUMWORKS
 
   void os_wait_1ms(int ms);
   int os_set_angle_unit(int mode);
@@ -178,27 +107,15 @@ extern "C" {
   inline int os_draw_string_small_(int x,int y,const char * s){ return os_draw_string_small(x,y,SDK_BLACK,SDK_WHITE,s,0);}
   
 #ifdef __cplusplus
-#ifdef NUMWORKS
-  inline int os_draw_string_medium(int x,int y,int c,int bg,const char * s,int fake=0){ return os_draw_string_small(x,y,c,bg,s,fake);}
-#else
   int os_draw_string_medium(int x,int y,int c,int bg,const char * s,int fake=0);
-#endif
-#else
-#ifdef NUMWORKS
-  inline int os_draw_string_medium(int x,int y,int c,int bg,const char * s,int fake){ return os_draw_string_small(x,y,c,bg,s,fake);}
 #else
   int os_draw_string_medium(int x,int y,int c,int bg,const char * s,int fake);
-#endif
 #endif
   inline int os_draw_string_medium_(int x,int y,const char * s){ return os_draw_string_medium(x,y,SDK_BLACK,SDK_WHITE,s,0);}
 
   inline void Printmini(int x,int y,const char * s,int i){
     // dbg_printf("Printmini %i %i %s %i\n",x,y,s,i);
-#if defined FX || defined FXCG
-    os_draw_string_small(x,y,i?0xffff:0,i?0:0xffff,s,false);
-#else
     os_draw_string_small(x,y,SDK_BLACK,i?COLOR_SELECTED:SDK_WHITE,s,false);
-#endif
   }
 
   inline void Printxy(int x,int y,const char * s,int i){ os_draw_string_medium(x,y,0,i?COLOR_SELECTED:0xffff,s,false);}
@@ -224,23 +141,8 @@ extern "C" {
   void statusline(int mode);
 #endif
   void statusflags(void);
-#ifdef TICE
   void display_time();
-#endif
-#ifdef NUMWORKS
-  inline int iskeydown(int key){ return getkey(key | 0x80000000); }
-#else
   int iskeydown(int key);
-#endif
-  
-#if defined NSPIRE || defined NSPIRE_NEWLIB
-#define max_heap_size 60
-  extern int nspireemu;
-  extern char nspire_filebuf[NSPIRE_FILEBUFFER];
-  extern int on_key_enabled;
-  void get_hms(int *h,int *m,int *s);
-  void reset_gc();  
-#endif
 
   extern int (*shutdown)(); // function called after 2 hours of idle
   extern short int shutdown_state;
@@ -251,9 +153,6 @@ extern "C" {
   inline int Setup_GetEntry(int k){ return GetSetupSetting(k); }
   void SetQuitHandler( void (*f)(void));
 #define RTC_GetTicks millis
-#ifndef TICE
-    inline void clear_screen(void){os_fill_rect(0,0,LCD_WIDTH_PX,LCD_HEIGHT_PX,SDK_WHITE);}
-#endif
   inline void Bdisp_AllClr_VRAM(void){ clear_screen(); }
   
 #ifdef __cplusplus

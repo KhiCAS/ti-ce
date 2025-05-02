@@ -4,10 +4,8 @@
 #include "textGUI.h"
 #include "console.h"
 #include "main.h"
-#ifdef TICE
 #include <ti/vars.h>
 #include <sys/lcd.h>
-#endif
 using namespace std;
 const int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
 
@@ -282,11 +280,7 @@ int get_filename(char * filename,const char * extension){
       handle_f5();
   }
   string str;
-#ifdef NSPIRE_NEWLIB
-  int res=inputline((lang==1)?"esc ou chaine vide: annulation":"esc or empty string: cancel",(lang==1)?"Nom de fichier:":"Filename:",str,false);
-#else
   int res=inputline((lang==1)?"EXIT ou chaine vide: annulation":"EXIT or empty string: cancel",(lang==1)?"Nom de fichier:":"Filename:",str,false);
-#endif
   if (res==KEY_CTRL_EXIT || str.empty())
     return 0;
   strcpy(filename,str.c_str());
@@ -297,17 +291,12 @@ int get_filename(char * filename,const char * extension){
   if (!file_exists(filename))
     return 1;
   if (confirm((lang==1)?"  Le fichier existe!":"  File exists!",
-#ifdef NSPIRE_NEWLIB
-              (lang==1)?"enter: ecraser, esc: annuler":"enter:overwrite, esc: cancel"
-#else
               (lang==1)?"OK: ecraser,Back: annuler":"OK:overwrite, Back: cancel"
-#endif
               )==KEY_CTRL_F1)
     return 1;
   return 0;
 }
 
-#ifdef TICE
 // read equation or matrix from 83 OS to a string
 // token list https://github.com/adriweb/tivars_lib_cpp/blob/master/programs_tokens.csv
 string detokenize(const unsigned char * ptr,int len){
@@ -1255,17 +1244,10 @@ const AtomDef atomsdefs[] = {
   
 };
   
-#ifdef HP39
-  const int C16=13;
-  const int C17=14;
-  const int c18=15;
-  const int c6=1;
-#else
   const int C16=16;
   const int C17=17;
   const int c18=18;
   const int c6=18;
-#endif
 
   int rgb24to16(int c){
     int r=(c>>16)&0xff,g=(c>>8)&0xff,b=c&0xff;
@@ -1336,11 +1318,7 @@ void drawAtom(uint8_t id) {
 	  drawRectangle(0, 185, LCD_WIDTH_PX, 15, _WHITE);
 	} else {
 	  drawRectangle(0,STATUS_AREA_PX,LCD_WIDTH_PX,LCD_HEIGHT_PX-STATUS_AREA_PX,_WHITE);
-#if defined NSPIRE_NEWLIB  || defined TICE
           os_draw_string_medium_(2,200,"enter: all, P:protons, N:nucl., M:mass, E:khi");
-#else
-          os_draw_string_small_(2,200,gettext("OK: all, P:protons, N:nucleons, M:mass, E:khi"));
-#endif
           for(int i = 0; i < ATOM_NUMS; i++) {
             drawAtom(i);
           }
@@ -1362,22 +1340,13 @@ void drawAtom(uint8_t id) {
 	symbol=atomsdefs[cursor_pos].symbol;
 	os_draw_string_(73,23,symbol);
 	name=atomsdefs[cursor_pos].name;
-#ifdef HP39
-	os_draw_string_small_(100,27,gettext(name));
-#else
 	os_draw_string_small_(110,27,name);
-#endif
 	os_draw_string_small_(50,18,nucleons);
 	os_draw_string_small_(50,31,protons);
 	sprintf(mass,"M:%f",atomsdefs[cursor_pos].mass);
 	sprintf(electroneg,"khi:%f",atomsdefs[cursor_pos].electroneg);
-#ifdef HP39
-	os_draw_string_small_(60,2,mass);
-	os_draw_string_small_(135,2,electroneg);
-#else
 	os_draw_string_medium_(2,186,mass);
 	os_draw_string_medium_(160,186,electroneg);
-#endif
       }
       redraw=false; partial_draw=true;
       int key;
@@ -1440,5 +1409,3 @@ void drawAtom(uint8_t id) {
   } // end periodic_table
 
 #endif
-
-#endif // TICE

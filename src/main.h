@@ -3,7 +3,7 @@
 #include "dbg.h"
 #include <vector>
 #include <string>
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
 #define GEN_PRINT_BUFSIZE 1024
@@ -71,9 +71,7 @@ inline int absint(int x){ return x<0?-x:x; }
 int select_script_and_run();
 int fileBrowser(char * filename, const char * ext, const char * title);
 
-#ifdef TICE
 void runExternalProgramAndExit(const char* prgmName) __attribute__((noreturn));
-#endif
 
 // MICROPY & color compat
 extern "C" {

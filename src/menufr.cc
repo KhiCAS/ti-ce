@@ -14,7 +14,7 @@
 #include "textGUI.h"
 #include "main.h"
 #include "console.h"
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
 using namespace std;
@@ -26,10 +26,7 @@ void fix_f(int & key){
     key -= 912;
 }
 
-#if defined FX || defined FXCG
-#else
 #define MB_ElementCount strlen
-#endif
 
 int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what user did. selection is on menu->selection. menu->selection starts at 1!
   int itemsStartY=menu->startY; // char Y where to start drawing the menu items. Having a title increases this by one
@@ -121,19 +118,6 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
           }
           // deal with multiselect menus
           if(menu->type == MENUTYPE_MULTISELECT) {
-            if((curitem+itemsStartY-menu->scroll)>=itemsStartY &&
-              (curitem+itemsStartY-menu->scroll)<=(itemsStartY+itemsHeight) &&
-              icontable != NULL
-            ) {
-#if 0
-              if (menu->items[curitem].isfolder == 1) {
-                // assumes first icon in icontable is the folder icon
-                CopySpriteMasked(icontable[0].data, (menu->startX)*fontwidth, (curitem+itemsStartY-menu->scroll)*C10, 0x12, 0x18, 0xf81f  );
-              } else {
-                if(menu->items[curitem].icon >= 0) CopySpriteMasked(icontable[menu->items[curitem].icon].data, (menu->startX)*fontwidth, (curitem+itemsStartY-menu->scroll)*C10, 0x12, 0x18, 0xf81f  );
-              }
-#endif
-            }
             if (menu->items[curitem].isselected) {
               if (menu->selection == curitem+1) {
                 Printxy(C6*menu->startX+1,C10*(curitem+itemsStartY-menu->scroll)+1,"+", TEXT_MODE_NORMAL);
@@ -326,11 +310,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     case KEY_CTRL_AC:
       if (strlen(keyword)){
 	keyword[0]=0;
-#if defined FX || defined FXCG
-  SetSetupSetting( (unsigned int)0x14, 0x88);	
-#else
-	lock_alpha(); // 
-#endif  
+	lock_alpha(); //
 	//DisplayStatusArea();
 	break;
       }
@@ -420,11 +400,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
 }
 
 void reset_alpha(){
-#if defined FX || defined FXCG
-  SetSetupSetting( (unsigned int)0x14, 0);
-#else
   reset_kbd();
-#endif
   //DisplayStatusArea();
 }
 

@@ -7,7 +7,6 @@
 
 #include "menuGUI.h"
 
-#ifdef TICE
 #include <string>
 #define std ustl
 std::string detokenize(const unsigned char * ptr,int len);
@@ -16,12 +15,9 @@ std::string get_tivar(const char * varname);
 int in_tokenize(const char * s,unsigned char * t);
 void tokenize(const char * s,std::vector<unsigned char> & v);
 std::string get_timatrix(int i);
-#endif
 
 #define MAX_FILENAME_SIZE 32 // 270 //full path with //fls0/, extension and everything
-// #define MAX_NAME_SIZE 128 //friendly name (in "//fls0/folder/file.txt", this would be "file.txt")
 #define MAX_ITEMS_IN_DIR 200
-//#define MAX_ITEMS_IN_CLIPBOARD 51
 #define MAX_TEXTVIEWER_FILESIZE 16*1024
 extern "C" int file_exists(const char * filename);
 int get_filename(char * filename,const char * extension);
@@ -35,9 +31,6 @@ typedef struct
   int size; // file size
 } File; // right now File only holds the filename as other fields are now set directly on a MenuItem array
 
-#ifdef FX
-typedef FILE_INFO file_type_t;
-#else// definition of FILE_INFO
 typedef struct
 {
   unsigned short id, type;
@@ -45,7 +38,6 @@ typedef struct
   unsigned int property;
   unsigned long address;
 } file_type_t;
-#endif
 
 #define GETFILES_SUCCESS 0
 #define GETFILES_MAX_FILES_REACHED 1

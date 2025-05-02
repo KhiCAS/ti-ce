@@ -6,15 +6,10 @@
 #include <math.h>
 #include <string>
 #include <vector>
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
-#if defined FX || defined FXCG
-typedef unsigned char Char;
-#else
 typedef char Char;
-#endif
-
 
 const Char *toksplit(const Char *src, /* Source of tokens */
 			      char tokchar, /* token delimiting char */
@@ -30,28 +25,6 @@ const Char *toksplit(const Char *src, /* Source of tokens */
     _MAGENTA=0xf81f,
     _CYAN=0x07ff,
     _WHITE=0xffff,
-#ifndef TICE
-    _POINT_LOSANGE= 1 << 25,
-    _POINT_PLUS = 1 << 26,
-    _POINT_INVISIBLE = 1 << 27,
-    _POINT_CARRE = 100663296,
-    _POINT_TRIANGLE = 167772160,
-    _POINT_ETOILE = 201326592, 
-    _POINT_POINT = 234881024,
-    _FILL_POLYGON = 1 << 30,
-    _QUADRANT1 = 0,
-    _QUADRANT2 = 1 << 28,
-    _QUADRANT3 = 1 << 29,
-    _QUADRANT4 = 805306368,
-    _DASH_LINE = 1 << 22,
-    _DOT_LINE = 2 << 22,
-    _DASHDOT_LINE = 3 << 22,
-    _DASHDOTDOT_LINE = 4 << 22,
-    _CAP_FLAT_LINE = 5 << 22,
-    _CAP_ROUND_LINE = 6 << 22,
-    _CAP_SQUARE_LINE = 7 << 22,
-    _HIDDEN_NAME = 1 << 31
-#endif
     _LINE_WIDTH_1 = 0,
     _LINE_WIDTH_2 = 1 << 16,
     _LINE_WIDTH_3 = 2 << 16,
@@ -72,11 +45,7 @@ const Char *toksplit(const Char *src, /* Source of tokens */
 
 bool is_alphanum(char c);
 void chk_restart();
-#ifdef FX
-typedef Char color_t;
-#else
 typedef short unsigned int color_t;
-#endif
 typedef struct textElement
 {
   std::string s;
@@ -99,11 +68,7 @@ typedef struct textArea
   int clipline,undoclipline;
   int clippos,undoclippos;
   int width=LCD_WIDTH_PX;
-#ifdef FX
-  int lineHeight=8; // -2 if minimini is true
-#else
-  int lineHeight=16; // -2 if minimini is true  
-#endif
+  int lineHeight=16; // -2 if minimini is true
   std::vector<textElement> elements,undoelements;
   char* title = NULL;
   std::string filename;

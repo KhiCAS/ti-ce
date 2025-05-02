@@ -11,7 +11,7 @@
 #include "file.h"
 #include "main.h"
 #include <sys/lcd.h>
-#if defined TICE && !defined std
+#if !defined std
 #define std ustl
 #endif
 using namespace std;
@@ -19,21 +19,12 @@ using namespace std;
 //typedef scrollbar TScrollbar;
 textArea * edptr=0;
 void displaylogo();
-#ifdef FX
-#define C24 8 // 24 on 90
-#define C22 8
-#define C19 8
-#define C154 48
-#define C6 2 // 6
-#define C7 7
-#else
 #define C24 24 // 24 on 90
 #define C22 22
 #define C19 19
 #define C154 154
 #define C6 6 // 6
 #define C7 21
-#endif
 
 void swapint(int &a,int &b){
   int t=a;
@@ -529,50 +520,7 @@ void chk_restart(){
     do_restart();
 }
 
-#ifdef FX
-// 0 not alpha symbol, blue (7) Xcas command, red (2) keyword, cyan (3) number,  green (4) comment, yellow (6) string
-void print(int &X,int&Y,const char * buf,int color,bool revert,bool fake,bool minimini,bool preciseminimini=false){
-  if (!buf)
-    return;
-  // if (!fake) cout << "print:" << buf << " " << strlen(buf) << " " << color << endl;
-  if (!isalpha(buf[0]) && color!=_YELLOW && color!=_GREEN)
-    color=0;
-  if (fake && minimini && preciseminimini && Y>=0 && Y<LCD_HEIGHT_PX){
-    // hack: fake print assumes the menu line will be redrawn
-    // X=os_draw_string_small(X,57,SDK_BLACK,SDK_WHITE,buf,0);
-    X=PrintMini(X,57,(const Char *)buf,0);
-    //drawRectangle(X,57,LCD_WIDTH_PX,C7,SDK_WHITE);
-    return;
-  }
-  if (!fake){
-    if (minimini || color==_GREEN || color==_YELLOW){ // comment in small font
-      X = os_draw_string_small(X,Y,revert?SDK_WHITE:SDK_BLACK,revert?SDK_BLACK:SDK_WHITE,buf,0);//Printmini(X, Y, buf, revert?MINI_REV:0);
-      return;
-    }
-    else {
-      Printxy(X,Y,buf,revert?1:0);
-      // overline/underline style according to color
-      if (!revert){
-        if (color==_RED){ // command
-          draw_line(X,Y+7,X+6*strlen(buf),Y+7,_BLACK,0xaaaa);
-        }
-        if (color==_BLUE){ // keyword
-          draw_line(X,Y+7,X+6*strlen(buf),Y+7,_BLACK);
-          //draw_line(X,Y+7,X+6,Y+7,_BLACK);
-          //draw_line(X+6*strlen(buf)-6,Y+7,X+6*strlen(buf),Y+7,_BLACK);
-        }
-        if (color==_CYAN){ // 2 (builtin)
-          draw_line(X,Y+7,X+6*strlen(buf),Y+7,_BLACK,0x6666);
-        }
-      }
-    }
-  }
-  X+=( (minimini || color==_GREEN || color==_YELLOW ) ?4:6)*strlen(buf);
-}
-#else
 void print(int &X,int&Y,const char * buf,int color,bool revert,bool fake,bool minimini);
-
-#endif
 
 bool match(textArea * text,int pos,int & line1,int & pos1,int & line2,int & pos2){
   line2=-1;line1=-1;
@@ -647,66 +595,6 @@ bool match(textArea * text,int pos,int & line1,int & pos1,int & line2,int & pos2
   } // end for linepos
   return false;
 }
-#if 0
-bool match(const char * s,int pos_orig,const char * & match1,const char * & match2){
-  match1=0; match2=0;
-  int pos=pos_orig;
-  int ss=strlen(s);
-  if (pos<0 || pos>=ss) return false;
-  char ch=s[pos_orig];
-  int open1=0,open2=0,open3=0,inc=0;
-  if (ch=='(' || ch=='['
-      // || ch=='{'
-      ){
-    match1=s+pos_orig;
-    inc=1;
-  }
-  if (
-      //ch=='}' ||
-      ch==']' || ch==')'
-      ){
-    match2=s+pos_orig;
-    inc=-1;
-  }
-  if (!inc) return false;
-  bool instring=false;
-  for (pos=pos_orig;pos>=0 && pos<ss;pos+=inc){
-    if (s[pos]=='"' && (pos==0 || s[pos-1]!='\\'))
-      instring=!instring;
-    if (instring)
-      continue;
-    switch (s[pos]){
-    case '(':
-      open1++;
-      break;
-    case '[':
-      open2++;
-      break;
-    case '{':
-      open3++;
-      break;
-    case ')':
-      open1--;
-      break;
-    case ']':
-      open2--;
-      break;
-    case '}':
-      open3--;
-      break;
-    }
-    if (open1==0 && open2==0 && open3==0){
-      //char buf[128];sprintf(buf,"%i %i",pos_orig,pos);puts(buf);
-      if (inc>0)
-        match2=s+pos;
-      else
-        match1=s+pos;
-      return true;
-    }
-  }
-  return false;
-}
-#endif
 
 std::string get_selection(textArea * text,bool erase){
   int sel_line1=-1,sel_line2=-1,sel_pos1,sel_pos2;
@@ -1248,12 +1136,6 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
   }
   //dbg_printf("handle_key=%i keyflag=%i\n",key,keyflag);
   if (editable){
-#ifndef TICE
-    if (key==KEY_CTRL_MIXEDFRAC){ 
-      textarea_help_insert(text,key);
-      return -2;
-    }
-#endif
     if ( (key==KEY_CHAR_FRAC || key=='\t') && clipline<0){
       if (textline==0) return -2;
       std::string & s=v[textline].s;
