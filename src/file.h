@@ -1,9 +1,5 @@
 #ifndef __FILEPROVIDER_H
 #define __FILEPROVIDER_H
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 
 #include "menuGUI.h"
 

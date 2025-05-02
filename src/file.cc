@@ -1,3 +1,4 @@
+#include <cmath>
 #include <string>
 
 #include "k_csdk.h"
@@ -5,7 +6,6 @@
 #include "console.h"
 #include "main.h"
 #include <ti/vars.h>
-#include <sys/lcd.h>
 using namespace std;
 const int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
 

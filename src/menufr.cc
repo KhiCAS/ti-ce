@@ -4,15 +4,12 @@
 #include <giac/input_lexer.h>
 #endif
 #include "calc.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+
+#include <cstring>
 #include <ctype.h>
 
 #include "menuGUI.h"
 #include "textGUI.h"
-#include "main.h"
 #include "console.h"
 #if !defined std
 #define std ustl

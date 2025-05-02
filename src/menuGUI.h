@@ -1,11 +1,7 @@
 #ifndef __MENUGUI_H
 #define __MENUGUI_H
 
-#include "calc.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include "k_csdk.h"
 
 #define MENUITEM_NORMAL 0
 #define MENUITEM_CHECKBOX 1

@@ -1,9 +1,5 @@
 #ifndef __TEXTGUI_H
 #define __TEXTGUI_H
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include <string>
 #include <vector>
 #if !defined std

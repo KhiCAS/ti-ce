@@ -5,7 +5,6 @@
 #define VIR_LCD_PIX_W   320
 #define VIR_LCD_PIX_H   240
 #define GL_WHITE        127
-#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {

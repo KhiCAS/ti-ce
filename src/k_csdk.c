@@ -58,7 +58,6 @@ const int STATUS_AREA_PX=18;
 //cursorImage		equ 0E30800h ; 1020 bytes
 #include "k_csdk.h"
 #include <ti/getkey.h>
-//#include <keypadc.h>
 #include <ti/getcsc.h>
 #include <ti/screen.h>
 #include <ti/flags.h>

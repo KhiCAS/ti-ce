@@ -1,7 +1,7 @@
+#include <cmath>
 #include <string>
-#include <stdio.h>
+#include <cstdio>
 #include "console.h"
-//#include "menu_config.h"
 #include "menuGUI.h"
 #include "textGUI.h"
 #include "file.h"

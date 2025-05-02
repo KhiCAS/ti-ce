@@ -6,14 +6,12 @@
 #include <stdlib.h>
 #include <giac/giacPCH.h>
 #include <giac/input_parser.h>
-//#include "gmp_replacements.h"
 #include "calc.h"
 #include <sys/lcd.h>
 #include <ti/vars.h>
 #include <ti/info.h>
 
 #include "console.h"
-//#include "menu_config.h"
 #include "menuGUI.h"
 #include "textGUI.h"
 #include "file.h"
