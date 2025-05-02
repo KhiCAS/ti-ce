@@ -714,12 +714,12 @@ const char aide_khicas_string[]="Aide Khicas";
 const char shortcuts_string[]="Pour mettre a l'heure l'horloge, tapez heure,minute puis touche STO puis , par exemple 13,10=>,\n\nRaccourcis clavier (shell et editeur)\n2nd quit: quitter\nmode: setup\nechanger: undo/redo\nF1-F4: menu selon legende\nF5: menu fichier\nshift-F1-F5 et alpha-F1-F5: selon legendes\nprgm: bascule entre editeur et shell\nmatrice, var, listes: menu rapide\nShell\n\n=>+: partfrac\n=>*: factor\n=>sin/cos/tan\n=>=>: solve\nannul: efface ligne ou historique\n\nEditeur\n\ntouche <>: indentation\n2nd enter:saut ligne\nenter: teste syntaxe";
 const char apropos_string[]="Khicas 1.x, (c) 2024 B. Parisse et al. xcas.univ-grenoble-alpes.fr/.\nLicense GPL version 2.\nInterface adaptee d'Eigenmath pour Casio, G. Maia (http://gbl08ma.com), Mike Smith, Nemhardy, LePhenixNoir. Merci a Adrien Bertrand, Xavier Andreani et a toute la communaute de developpement ti83/84 pour l'aide apportee, en particulier Jacob Young, commandblockguy and Matt Waltz";
 #else
-const char aide_khicas_string[]="Khicas help";
+constexpr char aide_khicas_string[]="Khicas help";
 const char shortcuts_string[]="Clock setup: type hour,minute then sto key then , for example 13,10=>,\n\nKeyboard shortcuts\n2nd quit: quit\nmode: setup\nlink: undo/redo\nF1-F4: menu corresponding to legende\nF5: file menu\nshift-F1-F5 and alpha-F1-F5: cf. legendes\nprgm: switch between shell and editor\nmatrix, var, lists: fast menu\n\nShell\n\n=>+: partfrac\n=>*: factor\n=>sin/cos/tan\n=>=>: solve\ncancel: erase line or history\n\nEditor\n\n<> key: indentation\n2nd enter: newline\nenter: test syntax";
 const char apropos_string[]="Khicas 1.x, (c) 2024 B. Parisse et al. xcas.univ-grenoble-alpes.fr/.\nLicense GPL version 2.\nInterface adapted from Eigenmath for Casio Prizm, G. Maia (http://gbl08ma.com), Mike Smith, Nemhardy, LePhenixNoir. Thanks to Adrien Bertrand, Xavier Andreani and all the ti83/84 development community, especially Jacob Young, commandblockguy and Matt Waltz contributions";
 #endif
 
-const int CAT_COMPLETE_COUNT_FR=sizeof(completeCatfr)/sizeof(catalogFunc);
+constexpr int CAT_COMPLETE_COUNT_FR=sizeof(completeCatfr)/sizeof(catalogFunc);
 
 const catalogFunc completeCaten[] = { // list of all functions (including some not in any category)
   {" loop for", "for ", "Defined loop.", "#\nfor ", 0, CAT_CATEGORY_PROG},
@@ -990,7 +990,7 @@ const catalogFunc completeCaten[] = { // list of all functions (including some n
   {"~", "~", "Complement", "#~7", 0, CAT_CATEGORY_PROGCMD},
 };
 
-const int CAT_COMPLETE_COUNT_EN=sizeof(completeCaten)/sizeof(catalogFunc);
+constexpr int CAT_COMPLETE_COUNT_EN=sizeof(completeCaten)/sizeof(catalogFunc);
 // int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
 std::string insert_string(int index){
@@ -1073,7 +1073,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
 
 // 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, const char* title, int category,const char * cmdname) {
-  const int CAT_COMPLETE_COUNT=((lang==1)?CAT_COMPLETE_COUNT_FR:CAT_COMPLETE_COUNT_EN);
+  constexpr int CAT_COMPLETE_COUNT=((lang==1)?CAT_COMPLETE_COUNT_FR:CAT_COMPLETE_COUNT_EN);
   const catalogFunc * completeCat=(lang==1)?completeCatfr:completeCaten;
   for (;;){
 #ifdef FAKE_GIAC

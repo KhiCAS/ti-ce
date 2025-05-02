@@ -215,7 +215,7 @@ int select_item(const char ** ptr,const char * title,bool askfor1){
 }
 
 int fileBrowser(char * filename, const char * ext, const char * title){
-  const int N=32;
+  constexpr int N=32;
   const char * filenames[N]={0};
   //dbg_printf("fileBrowser ext=%s title=%s\n",ext,title);
   int res=os_file_browser(filenames,N,ext,2);
@@ -265,7 +265,7 @@ const char * select_var(){
   MenuItem smallmenuitems[v.size()+4];
   vector<ustl::string> vs(v.size()+1);
   int i,total=0;
-  const char typ[]="idzDcpiveSfEsFRmuMwgPF";
+  constexpr char typ[]="idzDcpiveSfEsFRmuMwgPF";
   for (i=0;i<v.size();++i){
     vs[i]=v[i].print(contextptr);
     if (v[i].type==giac::_IDNT){
@@ -345,7 +345,7 @@ const char * select_var(){
     "xor",
     "yield",
   };
-  const char * const python_builtins[]={
+  constexpr char * const python_builtins[]={
     "NoneType",
     "__call__",
     "__class__",

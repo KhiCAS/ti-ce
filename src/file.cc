@@ -7,7 +7,7 @@
 #include "main.h"
 #include <ti/vars.h>
 using namespace std;
-const int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
+constexpr int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
 
 string filename_script(const char * filename){
   string f(remove_extension(filename));
@@ -1243,11 +1243,11 @@ const AtomDef atomsdefs[] = {
   {118, 17,  6, NOBLE_GAS               , "Oganesson"    , "Og"  , 176, 293         , -1    },
   
 };
-  
-  const int C16=16;
-  const int C17=17;
-  const int c18=18;
-  const int c6=18;
+
+  constexpr int C16=16;
+  constexpr int C17=17;
+  constexpr int c18=18;
+  constexpr int c6=18;
 
   int rgb24to16(int c){
     int r=(c>>16)&0xff,g=(c>>8)&0xff,b=c&0xff;
@@ -1309,7 +1309,7 @@ void drawAtom(uint8_t id) {
   int periodic_table(const char * & name,const char * & symbol,char * protons,char * nucleons,char * mass,char * electroneg){
     bool partial_draw=false,redraw=true;
     int cursor_pos=0;
-    const int ATOM_NUMS=sizeof(atomsdefs)/sizeof(AtomDef);
+    constexpr int ATOM_NUMS=sizeof(atomsdefs)/sizeof(AtomDef);
     for (;;){
       if (redraw){
 	if (partial_draw) {

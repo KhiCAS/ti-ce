@@ -219,7 +219,7 @@ void fix_newlines(textArea * edptr){
     string S=edptr->elements[i].s;
     if (S.size()>120)
       edptr->minimini=1;
-    const int cut=240;
+    constexpr int cut=240;
     if (edptr->longlinescut && S.size()>cut){
       // string too long, cut it, set font to minimini
       int j;
@@ -1256,7 +1256,7 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
   }
   textElement * ptr=& v[textline];
   //dbg_printf("handle_key2=%i\n",key);
-  const int interligne=8;
+  constexpr int interligne=8;
   switch(key){
   case KEY_CTRL_DEL:
     if (clipline>=0){
