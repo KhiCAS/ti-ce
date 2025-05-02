@@ -1,4 +1,4 @@
-#if 1
+#if 0
 #undef NDEBUG
-#include <debug.h>
 #endif
+#include <debug.h>
