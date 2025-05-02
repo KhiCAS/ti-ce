@@ -18,7 +18,8 @@
     short int isfolder; // for file browsers, this will signal the item is a folder
     char color=SDK_BLACK; // color of the menu item (use TEXT_COLOR_* to define)
     // The following two settings require the menu type to be set to MENUTYPE_MULTISELECT
-    MenuItem():token(0),type(MENUITEM_NORMAL),value(MENUITEM_VALUE_NONE),isselected(0),isfolder(0),color(TEXT_COLOR_BLACK) {}
+    MenuItem(): text(nullptr), token(0), type(MENUITEM_NORMAL), value(MENUITEM_VALUE_NONE), isselected(0), isfolder(0),
+                color(TEXT_COLOR_BLACK) {}
   } ;
 
 
@@ -34,9 +35,9 @@ typedef struct
 #define MENUTYPE_FKEYS 4 // returns GetKey value of a Fkey when one is pressed
 #define MENUTYPE_NO_NUMBER 5 
 typedef struct Menu {
-  char* statusText = NULL; // text to be shown on the status bar, may be empty
-  char* title = NULL; // title to be shown on the first line if not null
-  char* subtitle = NULL;
+  char* statusText = nullptr; // text to be shown on the status bar, may be empty
+  char* title = nullptr; // title to be shown on the first line if not null
+  char* subtitle = nullptr;
   int titleColor=TEXT_COLOR_BLUE; //color of the title
   char* nodatamsg; // message to show when there are no menu items to display
   int startX=6; //X where to start drawing the menu. NOTE this is not absolute pixel coordinates but rather character coordinates
@@ -73,11 +74,11 @@ typedef struct {
 } catalogFunc;
 
 int showCatalog(char* insertText,int preselect=0,int menupos=0);
-int doMenu(Menu* menu, MenuItemIcon* icontable=NULL);
+int doMenu(Menu* menu, MenuItemIcon* icontable= nullptr);
 void reset_alpha();
 // category=0 for CATALOG, 1 for OPTN
 // returns 0 on exit, 1 on success
-int doCatalogMenu(char* insertText, const char* title, int category,const char * cmdname=0);
+int doCatalogMenu(char* insertText, const char* title, int category,const char * cmdname=nullptr);
 extern const char shortcuts_string[];
 extern const char apropos_string[];
 void init_locale();

@@ -27,7 +27,7 @@ void mp_stack_ctrl_init(){
 extern "C" int mp_token(const char * line){ return 1; }
 
 extern "C" const char * const * mp_vars(){
-  return 0;
+  return nullptr;
 }
 
 int get_free_memory(){ return 2048; }

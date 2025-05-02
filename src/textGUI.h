@@ -66,7 +66,7 @@ typedef struct textArea
   int width=LCD_WIDTH_PX;
   int lineHeight=16; // -2 if minimini is true
   std::vector<textElement> elements,undoelements;
-  char* title = NULL;
+  char* title = nullptr;
   std::string filename;
   int scrollbar=1;
   bool allowEXE=0; //whether to allow EXE to exit the screen

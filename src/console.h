@@ -130,7 +130,7 @@ enum CONSOLE_CASE{
 };
 
 struct line{
-  Char *str=0;
+  Char *str=nullptr;
   short int readonly;
   short int type;
   int start_col;

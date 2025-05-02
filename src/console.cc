@@ -28,7 +28,7 @@ int lang=1;
 #define POPUP_PRETTY_STR "Pretty print"
 
 struct line * Line;
-constexpr int maxfmenusize=16;
+constexpr const int maxfmenusize=16;
 char menu_f1[maxfmenusize]={0},menu_f2[maxfmenusize]={0},menu_f3[maxfmenusize]={0},menu_f4[maxfmenusize]={0},menu_f5[maxfmenusize]={0},menu_f6[maxfmenusize],menu_f7[maxfmenusize]={0},menu_f8[maxfmenusize]={0},menu_f9[maxfmenusize]={0},menu_f10[maxfmenusize]={0},menu_f11[maxfmenusize]={0},menu_f12[maxfmenusize]={0},menu_f13[maxfmenusize]={0},menu_f14[maxfmenusize]={0},menu_f15[maxfmenusize]={0},menu_f16[maxfmenusize]={0},menu_f17[maxfmenusize]={0},menu_f18[maxfmenusize]={0},menu_f19[maxfmenusize]={0},menu_f20[maxfmenusize]={0};
 char session_filename[MAX_FILENAME_SIZE+1]="session";
 char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6,menu_f7,menu_f8,menu_f9,menu_f10,menu_f11,menu_f12,menu_f13,menu_f14,menu_f15,menu_f16,menu_f17,menu_f18,menu_f19,menu_f20};
@@ -48,8 +48,8 @@ int xthetat;
     const vector<int> * v=(const vector<int> * )vptr;
     const vector<int> * w=(const vector<int> * )wptr;
     for (size_t i=0;i<v->size();++i){
-      int vi=(*v)[i];
-      int wi=(*w)[i];
+      const int vi=(*v)[i];
+      const int wi=(*w)[i];
       if (vi!=wi)
 	return vi<wi?-1:1;
     }
@@ -58,8 +58,8 @@ int xthetat;
 
   int asc_sort_int_(const vector<int> & v,const vector<int> & w){
     for (size_t i=0;i<v.size();++i){
-      int vi=v[i];
-      int wi=w[i];
+      const int vi=v[i];
+      const int wi=w[i];
       if (vi!=wi)
 	return vi<wi?-1:1;
     }
@@ -70,8 +70,8 @@ int xthetat;
     const vector<double> * v=(const vector<double> * )vptr;
     const vector<double> * w=(const vector<double> * )wptr;
     for (size_t i=0;i<v->size();++i){
-      double vi=(*v)[i];
-      double wi=(*w)[i];
+      const double vi=(*v)[i];
+      const double wi=(*w)[i];
       if (fabs(vi-wi)>1e-6*fabs(wi))
         return vi<wi?-1:1;
     }
@@ -83,7 +83,7 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
     return;
   ((unsigned char *) lcd_Ram)[x+y*LCD_WIDTH_PX] = c;
 }
-  
+
 
   // L might be modified by closing the polygon
   void draw_filled_polygon(vector< vector<int> > &L,int xmin,int xmax,int ymin,int ymax,int color){
@@ -95,7 +95,7 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
     else
       n--;
     // ordered list of ymin,x,index (ordered by ascending ymin)
-    vector< vector<int> > om(n,vector<int>(4)); // size==12K for n==384 
+    vector< vector<int> > om(n,vector<int>(4)); // size==12K for n==384
     for (int j=0;j<n;j++){
       int y0=L[j][1],y1=L[j+1][1];
       om[j][0]=y0<y1?y0:y1;
@@ -108,8 +108,8 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
     // vreverse(om.begin(),om.end());
     vector<double> p(n); // inverses of slopes
     for (int j=0;j<n;j++){
-      double dx=L[j+1][0]-L[j][0];
-      double dy=L[j+1][1]-L[j][1];
+      const double dx=L[j+1][0]-L[j][0];
+      const double dy=L[j+1][1]-L[j][1];
       p[j]=dy==0?(dx>0?
                   1e38:-1e38
                   ):dx/dy;
@@ -121,17 +121,17 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
     // main loop
     for (;y<ymax;){
       if (y>=ymin){ // draw pixels for this horizontal frame
-	size_t lxjs=lxj.size();
+	const size_t lxjs=lxj.size();
 	qsort(&lxj.front(),lxjs,sizeof(vector<double>),asc_sort_double);
 	bool odd=false;
 	vector<char> impair(lxjs);
 	for (size_t k=0;k<lxjs;++k){
-	  int arete=lxj[k][1]; // edge L[arete]->L[arete+1]
-	  int y1=L[arete][1],y2=L[arete+1][1];
+	  const int arete=lxj[k][1]; // edge L[arete]->L[arete+1]
+	  const int y1=L[arete][1],y2=L[arete+1][1];
 	  if (y!=y1 && y!=y2)
 	    odd=!odd;
 	  else {
-	    int ym=giacmin(y1,y2);
+	    const int ym=giacmin(y1,y2);
 	    if ( y1!=y2 && (ym==y || ym==y)){
 	      odd=!odd;
 	    }
@@ -141,7 +141,7 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
 	for (size_t k=0;k<lxjs;++k){
 	  if (impair[k]){
 	    int x1=giacmax(xmin,int(lxj[k][0]+.5));
-	    int x2=k==lxjs-1?xmax:giacmin(xmax,int(lxj[k+1][0]+.5));
+	    const int x2=k==lxjs-1?xmax:giacmin(xmax,int(lxj[k+1][0]+.5));
 	    for (;x1<=x2;++x1)
 	      raw_set_pixel(x1,y,color);
 	  }
@@ -151,7 +151,7 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
       if (y>=ymax) break;
       // update lxj
       for (j=0;j<int(lxj.size());++j){
-        int k=lxj[j][1];
+        const int k=lxj[j][1];
         if (y<=giacmax(L[k][1],L[k+1][1]))
           lxj[j][0] += p[k];
         else {
@@ -177,13 +177,13 @@ void raw_set_pixel(unsigned x,unsigned y,int c){
     //chk_freeze();
     if (v1.back()!=v1.front())
       v1.push_back(v1.front());
-    int n=v1.size()-1;
+    const int n=v1.size()-1;
     for (int i=0;i<n;++i){
-      int x1=v1[i][0],y1=v1[i][1],x2=v1[i+1][0],y2=v1[i+1][1];
+      const int x1=v1[i][0],y1=v1[i][1],x2=v1[i+1][0],y2=v1[i+1][1];
       draw_line(x1,y1,x2,y2,color);
     }
   }
-  
+
 void draw_circle(int xc,int yc,int r,int color,bool q1,bool q2,bool q3,bool q4){
   color=convertcolor(color);
   int x=0,y=r,delta=0;
@@ -223,7 +223,7 @@ void draw_circle(int xc,int yc,int r,int color,bool q1,bool q2,bool q3,bool q4){
       theta1_deg=0;
       theta2_deg=360;
     }
-    int N0=theta2_deg-theta1_deg+1;
+    const int N0=theta2_deg-theta1_deg+1;
     // reduce N if rx or ry is small
     double red=double(rx)/1024*double(ry)/768;
     if (red>1) red=1;
@@ -241,7 +241,7 @@ void draw_circle(int xc,int yc,int r,int color,bool q1,bool q2,bool q3,bool q4){
       ++i;
     }
     double theta=theta1_deg*M_PI/180;
-    double thetastep=(theta2_deg-theta1_deg)*M_PI/(180*(N-1));
+    const double thetastep=(theta2_deg-theta1_deg)*M_PI/(180*(N-1));
     for (;i<int(v.size())-1;++i){
       v[i][0]=int(x+rx*cos(theta)+.5);
       v[i][1]=int(y-ry*sin(theta)+.5); // y is inverted
@@ -249,17 +249,17 @@ void draw_circle(int xc,int yc,int r,int color,bool q1,bool q2,bool q3,bool q4){
     }
     v.back()=v.front();
     draw_filled_polygon(v,xmin,xmax,ymin,ymax,color);
-  }    
+  }
 
 // arc of ellipse, for y/x in [t1,t2] and in quadrant 1, 2, 3, 4
-// y must be replaced by -y 
+// y must be replaced by -y
 void draw_arc(int xc,int yc,int rx,int ry,int color,double t1, double t2,bool q1,bool q2,bool q3,bool q4){
   color=convertcolor(color);
   int x=0,y=rx,delta=0;
-  double ryx=double(ry)/rx;
+  const double ryx=double(ry)/rx;
   // *logptr(contextptr) << "t1,t2:" << t1 << "," << t2 << ",q1234" << q1 << "," << q2 << "," << q3 << "," << q4 << endl;
   while (x<=y){
-    int xeff=x*ryx,yeff=y*ryx;
+    const int xeff=x*ryx,yeff=y*ryx;
     if (q4){
       if (y>=-x*t2 && y<=-x*t1) raw_set_pixel(xc+x,yc+yeff,color);
       if (x>=-y*t2 && x<=-y*t1) raw_set_pixel(xc+y,yc+xeff,color);
@@ -284,7 +284,7 @@ void draw_arc(int xc,int yc,int rx,int ry,int color,double t1, double t2,bool q1
     delta += 1-2*x;
   }
 }
-  
+
 void draw_arc(int xc,int yc,int rx,int ry,int color,double theta1, double theta2){
   //chk_freeze();
   if (theta2-theta1>=2*M_PI){
@@ -293,19 +293,19 @@ void draw_arc(int xc,int yc,int rx,int ry,int color,double theta1, double theta2
   }
   // at most one vertical in [theta1,theta2]
   double t1=tan(theta1);
-  double t2=tan(theta2);
-  int n=int(floor(theta1/M_PI+.5));
+  const double t2=tan(theta2);
+  const int n=int(floor(theta1/M_PI+.5));
   // n%2==0 -pi/2<theta1<pi/2, n%2==1 pi/2<theta1<3*pi/2
-  double theta=(n+.5)*M_PI;
+  const double theta=(n+.5)*M_PI;
   // if theta1 is almost pi/2 mod pi, t1 might be wrong because of rounding
-  if (fabs(theta1-(theta-M_PI))<1e-6 && t1>0) 
+  if (fabs(theta1-(theta-M_PI))<1e-6 && t1>0)
     t1=-LARGEDOUBLE;
   //*logptr(contextptr) << "thetas:" << theta1 << "," << theta << "," << theta2 << ", n " << n << ", t:" << t1 << "," << t2 << endl;
   if (theta2>theta){
     if (theta2>=theta+M_PI){
       if (n%2==0){ // -pi/2<theta1<pi/2<3*pi/2<theta2
         draw_arc(xc,yc,rx,ry,color,t1,LARGEDOUBLE,true,false,false,false);
-        draw_arc(xc,yc,rx,ry,color,-LARGEDOUBLE,LARGEDOUBLE,false,true,true,false);	  
+        draw_arc(xc,yc,rx,ry,color,-LARGEDOUBLE,LARGEDOUBLE,false,true,true,false);
         draw_arc(xc,yc,rx,ry,color,-LARGEDOUBLE,t2,false,false,false,true);
       }
       else { // -3*pi/2<theta1<-pi/2<pi/2<theta2
@@ -326,15 +326,15 @@ void draw_arc(int xc,int yc,int rx,int ry,int color,double theta1, double theta2
     return;
   }
   if (n%2==0) { // -pi/2<theta1<theta2<pi/2
-    draw_arc(xc,yc,rx,ry,color,t1,t2,true,false,false,true);	
+    draw_arc(xc,yc,rx,ry,color,t1,t2,true,false,false,true);
   }
   else { // pi/2<theta1<theta2<3*pi/2
-    draw_arc(xc,yc,rx,ry,color,t1,t2,false,true,true,false);	
+    draw_arc(xc,yc,rx,ry,color,t1,t2,false,true,true,false);
   }
 }
-  
+
 void draw_filled_circle(int xc,int yc,int r,int color,bool left,bool right){
-  color=convertcolor(color);    
+  color=convertcolor(color);
   int x=0,y=r,delta=0;
   while (x<=y){
     for (int Y=-y;Y<=y;Y++){
@@ -363,12 +363,12 @@ void draw_rectangle(int x, int y, int width, int height, unsigned short color){
   drawRectangle(x,y,width,height,color);
 }
 
-//Uses the Bresenham line algorithm 
+//Uses the Bresenham line algorithm
 void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
   if ( (absint(x1) & 0xfffff000) ||
        (absint(x2) & 0xfffff000) ||
        (absint(y1) & 0xfffff000) ||
-       (absint(y2) & 0xfffff000) 
+       (absint(y2) & 0xfffff000)
        )
     return;
   color=convertcolor(color);
@@ -377,13 +377,13 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
   color &= 0xffff;
   if ( (x1<0 && x2<0) || (x1>=LCD_WIDTH_PX && x2>=LCD_WIDTH_PX) || (y1<clip_ymin && y2<clip_ymin) || (y1>=LCD_HEIGHT_PX && y2>=LCD_HEIGHT_PX))
     return;
-  signed char ix; 
-  signed char iy; 
-  
-  // if x1 == x2 or y1 == y2, then it does not matter what we set here 
-  int delta_x = (x2 > x1?(ix = 1, x2 - x1):(ix = -1, x1 - x2)) << 1; 
-  int delta_y = (y2 > y1?(iy = 1, y2 - y1):(iy = -1, y1 - y2)) << 1;
-  unsigned char * lcdptr=0;
+  signed char ix;
+  signed char iy;
+
+  // if x1 == x2 or y1 == y2, then it does not matter what we set here
+  const int delta_x = (x2 > x1?(ix = 1, x2 - x1):(ix = -1, x1 - x2)) << 1;
+  const int delta_y = (y2 > y1?(iy = 1, y2 - y1):(iy = -1, y1 - y2)) << 1;
+  unsigned char * lcdptr=nullptr;
   int doit=motif;
   if (w==1 && motif==0xffff){
     lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
@@ -404,7 +404,7 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
       return;
     }
     else if (y1==y2){ // horizontal segment
-      unsigned char * lcdend=lcdptr+(x2-x1);
+      const unsigned char * lcdend=lcdptr+(x2-x1);
       if (x1>x2){
         for (--lcdptr;lcdptr>=lcdend;--lcdptr)
           *lcdptr=color;
@@ -422,18 +422,18 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
     doit >>=1;
     if (!doit) doit=motif;
   }
-  if (delta_x >= delta_y) { 
+  if (delta_x >= delta_y) {
     int error = delta_y - (delta_x >> 1);        // error may go below zero
     if (lcdptr){
       //dbg_printf("Bresenham lcd delta_x>delta_y\n");
-      while (x1 != x2) { 
-        if (error >= 0) { 
-          if (error || (ix > 0)) { 
+      while (x1 != x2) {
+        if (error >= 0) {
+          if (error || (ix > 0)) {
             if (iy==1) lcdptr+=LCD_WIDTH_PX; else lcdptr-=LCD_WIDTH_PX;
             y1 += iy;
-            error -= delta_x; 
-          }                           // else do nothing 
-        }                              // else do nothing 
+            error -= delta_x;
+          }                           // else do nothing
+        }                              // else do nothing
         x1 += ix;
         lcdptr += ix;
         error += delta_y;
@@ -443,16 +443,16 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
       return;
     }
     //dbg_printf("Bresenham delta_x>delta_y\n");
-    while (x1 != x2) { 
-      if (error >= 0) { 
-        if (error || (ix > 0)) { 
+    while (x1 != x2) {
+      if (error >= 0) {
+        if (error || (ix > 0)) {
           y1 += iy;
-          error -= delta_x; 
-        }                           // else do nothing 
-      }                              // else do nothing 
-      x1 += ix; 
+          error -= delta_x;
+        }                           // else do nothing
+      }                              // else do nothing
+      x1 += ix;
       error += delta_y;
-      int y__=y1+(w+1)/2;
+      const int y__=y1+(w+1)/2;
       for (int y_=y1-w/2;y_<y__;++y_){
         if (doit&1)
           raw_set_pixel(x1, y_, color);
@@ -462,17 +462,17 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
     }
     return;
   }
-  int error = delta_x - (delta_y >> 1);      // error may go below zero 
+  int error = delta_x - (delta_y >> 1);      // error may go below zero
   if (lcdptr){
     //dbg_printf("Bresenham lcd delta_y>delta_x\n");
-    while (y1 != y2) { 
-      if (error >= 0) { 
-        if (error || (iy > 0)) { 
+    while (y1 != y2) {
+      if (error >= 0) {
+        if (error || (iy > 0)) {
           x1 += ix;
           lcdptr += ix;
-          error -= delta_y; 
-        }                           // else do nothing 
-      }                              // else do nothing 
+          error -= delta_y;
+        }                           // else do nothing
+      }                              // else do nothing
       y1 += iy;
       if (iy==1) lcdptr+=LCD_WIDTH_PX; else lcdptr-=LCD_WIDTH_PX;
       error += delta_x;
@@ -482,16 +482,16 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
     return;
   }
   //dbg_printf("Bresenham delta_y>delta_x\n");
-  while (y1 != y2) { 
-    if (error >= 0) { 
-      if (error || (iy > 0)) { 
-        x1 += ix; 
-        error -= delta_y; 
-      }                           // else do nothing 
-    }                              // else do nothing 
-    y1 += iy; 
+  while (y1 != y2) {
+    if (error >= 0) {
+      if (error || (iy > 0)) {
+        x1 += ix;
+        error -= delta_y;
+      }                           // else do nothing
+    }                              // else do nothing
+    y1 += iy;
     error += delta_x;
-    int x__=x1+(w+1)/2;
+    const int x__=x1+(w+1)/2;
     for (int x_=x1-w/2;x_<x__;++x_){
       if (doit&1)
         raw_set_pixel(x_, y1, color);
@@ -513,12 +513,12 @@ bool isalphanum(char c){
 void delete_clipboard(){}
 
 std::string * clipboard(){
-  static std::string * ptr=0;
+  static std::string * ptr=nullptr;
   if (!ptr)
     ptr=new std::string;
   return ptr;
 }
-  
+
 void copy_clipboard(const std::string & s,bool status){
   //dbg_printf("-> clipboard %s\n",s.c_str());
   *clipboard()=s;
@@ -562,8 +562,8 @@ void insert(string & s,int pos,const char * add){
 }
 
 void print_alpha_shift(int keyflag){
-  int x=85*3;
-  int y=58*3;
+  constexpr const int x=85*3;
+  constexpr const int y=58*3;
   // if (keyflag==0) Printmini(x,y,"| A<>a",MINI_REV);
   if (keyflag==1){
     Printmini(x,y," 2nd ",0);
@@ -576,15 +576,15 @@ void print_alpha_shift(int keyflag){
     Printmini(x,y,"ALOCK",0);
   if (keyflag==0x88)
     Printmini(x,y,"alock",0);
-}    
+}
 
   void printCentered(const char* text, int y) {
-    int len = strlen(text);
+    const int len = strlen(text);
     int x = LCD_WIDTH_PX/2-(len*6)/2;
     x/=3;
     Printxy(x,y,text,0);
   }
-  
+
   string printint(int i){
     char s[sizeof("-8388608")];
     ce_sprintf(s, "%d", i);
@@ -603,7 +603,7 @@ int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,i
   // s="";
   int pos=s.size(),beg=0;
   for (;;){
-    int X1=print_msg12(msg1,msg2,ypos-25);
+    const int X1=print_msg12(msg1,msg2,ypos-25);
     int textX=X1,textY=ypos;
     drawRectangle(textX,textY+24,LCD_WIDTH_PX-textX-4,18,COLOR_WHITE);
     if (pos-beg>36)
@@ -613,18 +613,18 @@ int inputline(const char * msg1,const char * msg2,std::string & s,bool numeric,i
     if (beg>pos)
       beg=pos;
     textX=X1;
-    int cursorpos=os_draw_string_medium(textX,textY,SDK_BLACK,SDK_WHITE,s.substr(beg,pos-beg).c_str(),false); // PrintMini(&textX,&textY,(Char *)s.substr(beg,pos-beg).c_str(),0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0); int cursorpos=textX;
+    const int cursorpos=os_draw_string_medium(textX,textY,SDK_BLACK,SDK_WHITE,s.substr(beg,pos-beg).c_str(),false); // PrintMini(&textX,&textY,(Char *)s.substr(beg,pos-beg).c_str(),0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0); int cursorpos=textX;
     os_draw_string_medium(cursorpos,textY,SDK_BLACK,SDK_WHITE,s.substr(pos,s.size()-pos).c_str(),false);// PrintMini(&textX,&textY,(Char*)s.substr(pos,s.size()-pos).c_str(),0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     drawRectangle(cursorpos,textY+16,3,18,COLOR_BLACK); // cursor
     Printmini(0,C58,"         |        |        |        |  A<>a  ",4);
-    int keyflag = GetSetupSetting( (unsigned int)0x14);
+    const int keyflag = GetSetupSetting( (unsigned int)0x14);
     int key;
     ck_getkey(&key);
     if (key==KEY_CTRL_F3){
       key=chartab();
       if (key<0)
 	continue;
-    }    
+    }
     //if (key==KEY_CTRL_F5){ handle_f5(); continue;    }
     if (key==KEY_CTRL_EXE){
       reset_kbd();
@@ -699,7 +699,7 @@ int confirm(const char * msg1,const char * msg2,bool acexit){
     // set_xcas_status();
   }
   return key;
-}  
+}
 
 bool confirm_overwrite(){
   return do_confirm(lang?"Vraiment effacer?":"Really clear?");
@@ -717,17 +717,17 @@ int run_session(int start=0){
     if (Line[i].type==LINE_TYPE_INPUT)
       v.push_back((const char *)Line[i].str);
     free(Line[i].str);
-    Line[i].str=0;
+    Line[i].str=nullptr;
     Line[i].readonly = 0;
     Line[i].type = LINE_TYPE_INPUT;
     Line[i].start_col = 0;
     Line[i].disp_len = 0;
   }
-    Line[Last_Line].str=0;
+    Line[Last_Line].str=nullptr;
     Last_Line=start;
     if (start<Start_Line)
       Start_Line=start;
-    int savestartline=Start_Line;
+    const int savestartline=Start_Line;
     Start_Line=Last_Line>LINE_DISP_MAX?Last_Line-LINE_DISP_MAX:0;
     Cursor.x=0;
     Cursor.y=start-Start_Line;
@@ -744,10 +744,10 @@ int run_session(int start=0){
     // Line[j].type=LINE_TYPE_INPUT;
     run(v[i].c_str(),6); /* show logo and graph but not eqw */
     // j=Last_Line;
-    Console_NewLine(LINE_TYPE_OUTPUT, 1);    
+    Console_NewLine(LINE_TYPE_OUTPUT, 1);
     // Line[j].type=LINE_TYPE_OUTPUT;
   }
-  int cl=Current_Line;
+  const int cl=Current_Line;
 #define c8 8
   Cursor.y += (Start_Line-savestartline);
   if (Cursor.y<0) Cursor.y=0;
@@ -786,7 +786,7 @@ void menu_setup(){
   smallmenuitems[3].text = (char*) (lang?"A propos":"About");
   smallmenuitems[4].text = (char*) "Quit";
   while(1) {
-    int sres = doMenu(&smallmenu);
+    const int sres = doMenu(&smallmenu);
     if (sres==MENU_RETURN_EXIT)
       break;
     if (sres == MENU_RETURN_SELECTION) {
@@ -817,23 +817,23 @@ void menu_setup(){
         text.minimini=false;
 	doTextArea(&text);
 	continue;
-      } 
-    }	
-  }      
+      }
+    }
+  }
 }
 
 
 /*
 
   The following functions will be used to specify the location before deleting a string of n characters altogether. Among them, a wide character (2 bytes) will be counted as a character.
-	
+
   For example, we have the following string str:
-	
+
   Location  |  0  |  1  |  2  |  3  |  4  |  5  | 6 |
   Character | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 0 |
 
   After the call Console_DelStr (str, 3, 2), position 1 and 2 characters will be deleted, then the characters will be in advance.
-	
+
   Results are as follows:
 
   Location  |  0  |  1  |  2  |  3  | 4 |  5  | 6 |
@@ -845,17 +845,17 @@ void menu_setup(){
 
 int Console_DelStr(Char *str, int end_pos, int n)
 {
-  int str_len, actual_end_pos, start_pos, actual_start_pos, del_len, i;
+  int actual_end_pos, start_pos, actual_start_pos;
 
-  str_len = strlen((const char *)str);
+  int str_len = strlen((const char*)str);
   if ((start_pos = end_pos - n) < 0) return CONSOLE_ARG_ERR;
 
   if ((actual_end_pos = Console_GetActualPos(str, end_pos)) == CONSOLE_ARG_ERR) return CONSOLE_ARG_ERR;
   if ((actual_start_pos = Console_GetActualPos(str, start_pos)) == CONSOLE_ARG_ERR) return CONSOLE_ARG_ERR;
 
-  del_len = actual_end_pos - actual_start_pos;
+  int del_len = actual_end_pos - actual_start_pos;
 
-  for (i = actual_start_pos; i < str_len; i++)
+  for (int i = actual_start_pos; i < str_len; i++)
     {
       str[i] = str[i + del_len];
     }
@@ -865,7 +865,7 @@ int Console_DelStr(Char *str, int end_pos, int n)
 
 /*
   ÒÔÏÂº¯ÊýÓÃÓÚÔÚÖ¸¶¨Î»ÖÃ²åÈëÖ¸¶¨µÄ×Ö·û´®¡£
-	
+
   £¨×¢Òâ£ºÕâÀïµÄÎ»ÖÃÖ¸µÄÊÇ´òÓ¡Ê±µÄÎ»ÖÃ£¬¶ø²»ÊÇÊµ¼ÊµÄÎ»ÖÃ¡££©
 
   The following functions are used to specify the location of the insertion in the specified string.
@@ -874,12 +874,12 @@ int Console_DelStr(Char *str, int end_pos, int n)
 
 int Console_InsStr(Char *dest, const Char *src, int disp_pos)
 {
-  int i, ins_len, str_len, actual_pos;
+  int i;
 
-  ins_len = strlen((const char *)src);
-  str_len = strlen((const char *)dest);
+  int ins_len = strlen((const char*)src);
+  int str_len = strlen((const char*)dest);
 
-  actual_pos = Console_GetActualPos(dest, disp_pos);
+  int actual_pos = Console_GetActualPos(dest, disp_pos);
 
   if (ins_len + str_len >= EDIT_LINE_MAX) return CONSOLE_MEM_ERR;
   if (actual_pos > str_len) return CONSOLE_ARG_ERR;
@@ -901,9 +901,9 @@ int Console_InsStr(Char *dest, const Char *src, int disp_pos)
 
 /*
   ÒÔÏÂº¯ÊýÓÃÓÚÈ·¶¨¶ÔÓ¦ÓÚ×Ö·û´®´òÓ¡Î»ÖÃµÄÕæÊµÎ»ÖÃ¡£
-	
+
   ÀýÈç£¬ÔÚÒÔÏÂÕâÒ»°üº¬¿í×Ö·ûµÄ×Ö·û´®strÖÐ£¬´òÓ¡Ê±µÄÎ»ÖÃÈçÏÂ£º
-	
+
   Î»ÖÃ | 00 | 01 | 02 | 03 | 04 | 05 | 06 |
   ×Ö·û | Ò» | ¶þ | Èý | ËÄ | Îå | Áù | \0 |
 
@@ -959,9 +959,9 @@ int Console_GetActualPos(const Char *str, int disp_pos)
 
 int Console_GetDispLen(const Char *str)
 {
-  int i, len;
+  int len;
 
-  for (i = len = 0; str[i]!='\0'; len++)
+  for (int i = len = 0; str[i]!='\0'; len++)
     {
       if (is_wchar(str[i]))
 	{
@@ -988,12 +988,12 @@ int Console_MoveCursor(int direction){
       if ( Cursor.y>0 || Start_Line>0) {
 	  //If the current line is not read-only, then Edit_Line copy to the current line.
 	  if (!Line[Current_Line].readonly){
-            if ((Line[Current_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == NULL) return CONSOLE_MEM_ERR;
+            if ((Line[Current_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == nullptr) return CONSOLE_MEM_ERR;
             strcpy((char *)Line[Current_Line].str, (const char *)Edit_Line);
             Line[Current_Line].disp_len = Console_GetDispLen(Line[Current_Line].str);
             Line[Current_Line].type = LINE_TYPE_INPUT;
           }
-          
+
 	  //If the cursor does not move to the top of, directly move the cursor upward.
 	  if (Cursor.y > 0){
             Cursor.y--;
@@ -1020,22 +1020,22 @@ int Console_MoveCursor(int direction){
       }
       break;
     case CURSOR_ALPHA_UP:{
-      int pos1=Start_Line+Cursor.y;
+      const int pos1=Start_Line+Cursor.y;
       Console_MoveCursor(CURSOR_UP);
-      int pos2=Start_Line+Cursor.y;
+      const int pos2=Start_Line+Cursor.y;
       if (pos1<Last_Line && pos2<Last_Line && pos1!=pos2){
-	line curline=Line[pos1];
+	const line curline=Line[pos1];
 	Line[pos1]=Line[pos2];
 	Line[pos2]=curline;
       }
       break;
     }
     case CURSOR_ALPHA_DOWN: {
-      int pos1=Start_Line+Cursor.y;
+      const int pos1=Start_Line+Cursor.y;
       Console_MoveCursor(CURSOR_DOWN);
-      int pos2=Start_Line+Cursor.y;
+      const int pos2=Start_Line+Cursor.y;
       if (pos1<Last_Line && pos2<Last_Line && pos1!=pos2){
-	line curline=Line[pos1];
+	const line curline=Line[pos1];
 	Line[pos1]=Line[pos2];
 	Line[pos2]=curline;
       }
@@ -1050,7 +1050,7 @@ int Console_MoveCursor(int direction){
 	  //If the current line is not read-only, then Edit_Line copy to the current line.
 	  if (!Line[Current_Line].readonly)
 	    {
-	      if ((Line[Current_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == NULL) return CONSOLE_MEM_ERR;
+	      if ((Line[Current_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == nullptr) return CONSOLE_MEM_ERR;
 	      strcpy((char *)Line[Current_Line].str, (const char *)Edit_Line);
 	      Line[Current_Line].disp_len = Console_GetDispLen(Line[Current_Line].str);
 	      Line[Current_Line].type = LINE_TYPE_INPUT;
@@ -1133,7 +1133,7 @@ int Console_MoveCursor(int direction){
 	    Cursor.x++;
 	  else
 	    Line[Current_Line].start_col++;
-	  break;	  
+	  break;
 	}
 	if (Cursor.x < Line[Current_Line].disp_len - Line[Current_Line].start_col){
 	  Cursor.x++;
@@ -1155,7 +1155,7 @@ int Console_MoveCursor(int direction){
 /*
   ÒÔÏÂº¯ÊýÓÃÓÚÊäÈë¡£
   ×Ö·û´®½«ÊäÈëµ½¹â±ê´¦£¬¹â±ê½«×Ô¶¯ÒÆ¶¯¡£
-	
+
   The following function is used for input.
   String input to the cursor, the cursor will automatically move.
 */
@@ -1163,15 +1163,14 @@ int Console_MoveCursor(int direction){
 int Console_Input(const Char *str)
 {
   console_changed=1;
-  int old_len,i,return_val;
 
   if (!Line[Current_Line].readonly)
     {
-      old_len = Line[Current_Line].disp_len;
-      return_val = Console_InsStr(Edit_Line, str, Current_Col);
+      int old_len = Line[Current_Line].disp_len;
+      int return_val = Console_InsStr(Edit_Line, str, Current_Col);
       if (return_val != CONSOLE_SUCCEEDED) return return_val;
       if ((Line[Current_Line].disp_len = Console_GetDispLen(Edit_Line)) == CONSOLE_ARG_ERR) return CONSOLE_ARG_ERR;
-      for (i = 0; i < Line[Current_Line].disp_len - old_len; i++)
+      for (int i = 0; i < Line[Current_Line].disp_len - old_len; i++)
 	{
 	  Console_MoveCursor(CURSOR_RIGHT);
 	}
@@ -1191,18 +1190,17 @@ int Console_Input(const Char *str)
 int Console_Output(const Char *str)
 {
   console_changed=1;
-  int return_val, old_len, i;
 
   if (!Line[Current_Line].readonly)
     {
-      old_len = Line[Current_Line].disp_len;
+      int old_len = Line[Current_Line].disp_len;
 
-      return_val = Console_InsStr(Edit_Line, str, Current_Col);
+      int return_val = Console_InsStr(Edit_Line, str, Current_Col);
       if (return_val != CONSOLE_SUCCEEDED) return return_val;
       if ((Line[Current_Line].disp_len = Console_GetDispLen(Edit_Line)) == CONSOLE_ARG_ERR) return CONSOLE_ARG_ERR;
       Line[Current_Line].type = LINE_TYPE_OUTPUT;
 
-      for (i = 0; i < Line[Current_Line].disp_len - old_len; i++)
+      for (int i = 0; i < Line[Current_Line].disp_len - old_len; i++)
 	{
 	  Console_MoveCursor(CURSOR_RIGHT);
 	}
@@ -1217,7 +1215,7 @@ int Console_Output(const Char *str)
 void dConsolePut(const char * S){
   if (!dconsole_mode)
     return;
-  int l=strlen(S);
+  const int l=strlen(S);
   char *s=(char *) malloc(l+1);
   strcpy(s,S);
   for (int i=0;i<l-1;++i){
@@ -1278,7 +1276,6 @@ void Console_Clear_EditLine()
 int Console_NewLine(int pre_line_type, int pre_line_readonly)
 {
   console_changed=1;
-  int i;
 
   if (strlen((const char *)Edit_Line)||Line[Current_Line].type==LINE_TYPE_OUTPUT)
     {
@@ -1286,7 +1283,7 @@ int Console_NewLine(int pre_line_type, int pre_line_readonly)
       //If this is the last line we can store, delete the first line.
       if (Last_Line == LINE_MAX - 1)
 	{
-	  for (i = 0; i < Last_Line; i++)
+	  for (int i = 0; i < Last_Line; i++)
 	    {
 	      Line[i].disp_len = Line[i + 1].disp_len;
 	      Line[i].readonly = Line[i + 1].readonly;
@@ -1301,13 +1298,6 @@ int Console_NewLine(int pre_line_type, int pre_line_readonly)
 
       if (Line[Last_Line].type == LINE_TYPE_OUTPUT && strlen((const char *)Edit_Line) == 0) Console_Output((const Char *)"Done");
 
-#ifdef TEX
-      if (TeX_isTeX((char*)Edit_Line)) Line[Last_Line].tex_flag = 1;
-      if (Line[Last_Line].type == LINE_TYPE_OUTPUT && Line[Last_Line].tex_flag) TeX_sizeComplex ((char*)Edit_Line, &(Line[Last_Line].tex_width), &(Line[Last_Line].tex_height), NULL);
-      else
-	Line[Last_Line].tex_flag = 0;
-#endif
-		
       //½«Edit_LineµÄÄÚÈÝ¿½±´¸ø×îºóÒ»ÐÐ¡£
       //Edit_Line copy the contents to the last line.
 
@@ -1323,7 +1313,7 @@ int Console_NewLine(int pre_line_type, int pre_line_readonly)
 	strcpy((char *)Line[Last_Line].str, (const char *)Edit_Line);
       }
 #else
-      if ((Line[Last_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == NULL) return CONSOLE_MEM_ERR;
+      if ((Line[Last_Line].str = (Char *)malloc(strlen((const char *)Edit_Line) + 1)) == nullptr) return CONSOLE_MEM_ERR;
       strcpy((char *)Line[Last_Line].str, (const char *)Edit_Line);
 #endif
 
@@ -1368,7 +1358,7 @@ void Console_Insert_Line(){
     Line[i+1]=Line[i];
   }
   ++Last_Line;
-  int i=Current_Line;
+  const int i=Current_Line;
   line & l=Line[i];
   l.str=(Char *)malloc(2);
   strcpy((char *)l.str,"0");
@@ -1400,7 +1390,7 @@ int Console_Backspace()
     Line[i].type = LINE_TYPE_INPUT;
     Line[i].start_col = 0;
     Line[i].disp_len = 0;
-    Line[i].str=0;
+    Line[i].str=nullptr;
     --Last_Line;
     if (Start_Line>0)
       --Start_Line;
@@ -1424,8 +1414,7 @@ int Console_Backspace()
     Console_Disp(1);
     return CONSOLE_SUCCEEDED;
   }
-  int return_val;
-  return_val = Console_DelStr(Edit_Line, Current_Col, 1);
+  int return_val = Console_DelStr(Edit_Line, Current_Col, 1);
   if (return_val != CONSOLE_SUCCEEDED) return return_val;
   Line[Current_Line].disp_len = Console_GetDispLen(Edit_Line);
   return_val=Console_MoveCursor(CURSOR_LEFT);
@@ -1449,7 +1438,7 @@ void chk_clearscreen(){
   if (confirm(lang?"Effacer l'historique?":"Clear history?",lang?"F1: annuler,   F5: effacer":"F1: cancel,   F5: erase",true)==KEY_CTRL_F5){
     Console_Init();
     Console_Clear_EditLine();
-  }    
+  }
   Console_Disp(1);
 }
 
@@ -1474,15 +1463,15 @@ void reload_edptr(const char * filename,textArea *edptr){
     edptr->line=0;
     edptr->pos=0;
   }
-}  
+}
 
 int Console_Eval(const char * buf){
-  int start=Current_Line;
+  const int start=Current_Line;
   free(Line[start].str);
   Line[start].str=(Char *)malloc(strlen(buf)+1);
   strcpy((char *)Line[start].str,buf);
   run_session(start);
-  int move_line = Last_Line - start;
+  const int move_line = Last_Line - start;
   for (int i = 0; i < move_line; i++)
     Console_MoveCursor(CURSOR_UP);
   return CONSOLE_SUCCEEDED;
@@ -1501,7 +1490,7 @@ bool inputdouble(const char * msg1,double & d){
     int l=strlen(cmdline);
     char buf[l+128];
     strcpy(buf,cmdline);
-    bool openpar=l && buf[l-1]=='(';
+    const bool openpar=l && buf[l-1]=='(';
     if (openpar){
       buf[l-1]=0;
       --l;
@@ -1514,12 +1503,12 @@ bool inputdouble(const char * msg1,double & d){
     // cmdname in buf+l
     const char * cmdname=buf+l,*cmdnameorig=cmdname;
     l=strlen(cmdname);
-    int res=doCatalogMenu(buf,(char *)"Index",0,cmdname);
+    const int res=doCatalogMenu(buf,(char *)"Index",0,cmdname);
     if (!res)
       return "";
     return cmdname+l;
   }
- 
+
   static string print_INT_(int i) {
     char c[sizeof("-8388608")];
     ce_sprintf(c, "%d", i);
@@ -1536,11 +1525,11 @@ bool inputdouble(const char * msg1,double & d){
     drawRectangle(0,18,LCD_WIDTH_PX,LCD_HEIGHT_PX-18,_WHITE);
     // os_draw_string(0,0,_BLACK,_WHITE,lang==1?"Selectionner caractere":"Select char");
     Printxy(0,0, (lang==1?"Selection caractere (zoom)":"Select char (zoom)"),TEXT_MODE_NORMAL);
-    int dy=16;
+    constexpr const int dy=16;
     for (int r=0;r<6;++r){
       for (int c=0;c<16;++c){
-        int currc=32+16*r+c;
-        char buf[8]={(char)(currc==127?'X':currc),32,0};
+        const int currc=32+16*r+c;
+        const char buf[8]={(char)(currc==127?'X':currc),32,0};
         Printxy(1+14*c,dy+16*r,buf,0);
       }
     }
@@ -1548,8 +1537,8 @@ bool inputdouble(const char * msg1,double & d){
     for (;;){
       col &= 0xf;
       if (row<0) row=5; else if (row>5) row=0;
-      int currc=32+16*row+col;
-      char buf[8]={(char)(currc==127?'X':currc),32,0};
+      const int currc=32+16*row+col;
+      const char buf[8]={(char)(currc==127?'X':currc),32,0};
       Printxy(1+14*col,dy+16*row,buf,1); // draw char selected
       string s("Current ");
       s += char(currc);
@@ -1563,7 +1552,7 @@ bool inputdouble(const char * msg1,double & d){
       int key; ck_getkey(&key);
       Printxy(1+14*col,dy+16*row,buf,0); // undo draw char selected
       if (key==KEY_CTRL_EXIT){
-	drawRectangle(0,18,LCD_WIDTH_PX,LCD_HEIGHT_PX-18,_WHITE);	
+	drawRectangle(0,18,LCD_WIDTH_PX,LCD_HEIGHT_PX-18,_WHITE);
 	return -1;
       }
       if (key==KEY_CTRL_EXE){
@@ -1584,15 +1573,15 @@ bool inputdouble(const char * msg1,double & d){
 extern "C" const char * const * mp_vars();
 extern "C" int gc_ramfree();
 int trialpha(const void *p1,const void * p2){
-  int i=strcmp(* (char * const *) p1, * (char * const *) p2);
+  const int i=strcmp(* (char * const *) p1, * (char * const *) p2);
   return i;
 }
 
 const char * trig(){
-  // int w=5*18,h=8; 
-  int w=5*38,h=10,x=LCD_WIDTH_PX-w,y=LCD_HEIGHT_PX-STATUS_AREA_PX-h; 
+  // int w=5*18,h=8;
+  const int w=5*38,h=10,x=LCD_WIDTH_PX-w,y=LCD_HEIGHT_PX-STATUS_AREA_PX-h;
   unsigned char buf[w*h];
-  unsigned char * saveptr=buf;  
+  unsigned char * saveptr=buf;
   for (int j=0;j<h;++j){
     unsigned char * lcdramptr=((unsigned char *)lcd_Ram)+(j+y+STATUS_AREA_PX)*LCD_WIDTH_PX+x;
     for (int i=0;i<w;++i,++lcdramptr,++saveptr){
@@ -1613,7 +1602,7 @@ const char * trig(){
     if (k>=0 && k<=6)
       break;
   }
-  saveptr=buf;  
+  saveptr=buf;
   for (int j=0;j<h;++j){
     unsigned char * lcdramptr=((unsigned char *)lcd_Ram)+(j+y+STATUS_AREA_PX)*LCD_WIDTH_PX+x;
     for (int i=0;i<w;++i,++lcdramptr,++saveptr){
@@ -1625,8 +1614,8 @@ const char * trig(){
 }
 
   const char * keytostring(int key,int keyflag,bool py){
-    constexpr int textsize=512;
-    bool alph=keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
+    constexpr const int textsize=512;
+    const bool alph=keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     static char text[textsize];
     switch (key){
     case KEY_CHAR_PLUS:
@@ -1649,7 +1638,7 @@ const char * trig(){
       return py?"**-1":"^-1";
     case KEY_CTRL_XTT:
       return xthetat?"t":"x";
-      //return "x"; 
+      //return "x";
     case KEY_CHAR_LN:
       return "log(";
     case KEY_CHAR_LOG:
@@ -1661,7 +1650,7 @@ const char * trig(){
     case KEY_CHAR_EXP:
       return "e";
     case KEY_CHAR_SIN:
-#ifdef FRANCAIS 
+#ifdef FRANCAIS
       return trig();
 #else
       return "sin(";
@@ -1689,10 +1678,10 @@ const char * trig(){
     case KEY_CHAR_ANS:
       return "ans()";
     case KEY_CTRL_F3: {
-      static string * sptr=0;
+      static string * sptr=nullptr;
       if (!sptr)
 	sptr=new string(" ");
-      int c=chartab();
+      const int c=chartab();
       if (c<0) return "";
       (*sptr)[0] = (c<32 || c==127)?0:char(c);
       return *sptr; // ":=";
@@ -1736,11 +1725,11 @@ const char * trig(){
       return "";
     }
     case KEY_CTRL_CATALOG:
-      if(showCatalog(text,1)) 
+      if(showCatalog(text,1))
 	return text;
       return "";
     }
-    return 0;
+    return nullptr;
   }
 
   bool console_help_insert(bool warn=true){
@@ -1750,7 +1739,7 @@ const char * trig(){
     strcpy(buf,(char *)Edit_Line);
     buf[Line[Current_Line].start_col+Cursor.x]=0;
     int back;
-    string s=help_insert(buf,back,warn);
+    const string s=help_insert(buf,back,warn);
     if (s.empty())
       return false;
     for (int i=0;i<back;++i)
@@ -1761,7 +1750,7 @@ const char * trig(){
   }
 
 string adjust(const char * s,int L=12){
-  int l=strlen(s);
+  const int l=strlen(s);
   string res(s);
   if (l>L)
     res=res.substr(0,L);
@@ -1854,10 +1843,10 @@ void console_disp_status(int keyflag){
   if (keyflag==1) menu=shiftmenu;
   if (keyflag & 0xc) menu=alphamenu;
   Printmini(0,C58,menu.c_str(),MINI_REV);
-  // status, clock, 
+  // status, clock,
   set_xcas_status();
   Bdisp_PutDisp_DD();
-}  
+}
 
 void text_disp_menu(int keyflag){
   Console_FMenu_Init();
@@ -1874,7 +1863,7 @@ string run_periodic_table(){
   const char * name,*symbol;
   char protons[32],nucleons[32],mass[32],electroneg[32];
   string s;
-  int res=periodic_table(name,symbol,protons,nucleons,mass,electroneg);
+  const int res=periodic_table(name,symbol,protons,nucleons,mass,electroneg);
   if (!res)
     return s;
   if (res & 1)
@@ -2023,7 +2012,7 @@ int Console_GetKey(){
 	  Cursor.x=x;
 	  return Console_Input((const Char *)buf);
 #endif
-	}	  
+	}
       }
       Console_Disp(1);
       continue;
@@ -2047,7 +2036,7 @@ int Console_GetKey(){
       smallmenu.numitems=16;
 #endif
       MenuItem smallmenuitems[smallmenu.numitems];
-      
+
       smallmenu.items=smallmenuitems;
       smallmenu.height=12;
       smallmenu.scrollbar=1;
@@ -2064,10 +2053,10 @@ int Console_GetKey(){
       smallmenuitems[8].text = (char*)(lang?"Effacer historique":"Clear history");
       smallmenuitems[9].text = (char*)(lang?"Effacer script":"Clear script");
 #ifdef WITH_EQW
-      smallmenuitems[10].text = (char*)(lang?"Editer expression [X,T...]":"Expression edit"); 
+      smallmenuitems[10].text = (char*)(lang?"Editer expression [X,T...]":"Expression edit");
       smallmenuitems[11].text = (char*)(lang?"Editer matrice [matr]":"Matrix edit");
 #else
-      smallmenuitems[10].text = (char*)"Expression Y0-Y9 [X,T...]"; 
+      smallmenuitems[10].text = (char*)"Expression Y0-Y9 [X,T...]";
       smallmenuitems[11].text = (char*)"Matrices [A]-[I] [matr]";
 #endif
       smallmenuitems[12].text = (char*)"Config [mode]";
@@ -2084,7 +2073,7 @@ int Console_GetKey(){
       while(1) {
         int sres = doMenu(&smallmenu);
         if(sres == MENU_RETURN_SELECTION) {
-          const char * ptr=0;
+          const char * ptr=nullptr;
           if (smallmenu.selection==1){
             if (strcmp(session_filename,"session")==0)
               smallmenu.selection=2;
@@ -2111,7 +2100,7 @@ int Console_GetKey(){
                 restore_session(filename);
                 strcpy(session_filename,remove_path(remove_extension(filename)).c_str());
                 // reload_edptr(session_filename,edptr);
-              }     
+              }
             }
             break;
           }
@@ -2134,7 +2123,7 @@ int Console_GetKey(){
                 strcpy(session_filename,s.c_str());
                 reload_edptr(session_filename,edptr);
               }
-            }  
+            }
             break;
           }
           if (smallmenu.selection==5) {
@@ -2245,7 +2234,7 @@ int Console_GetKey(){
             text.minimini=false;
             doTextArea(&text);
             continue;
-          } 
+          }
         }
         break;
       } // end while(1)
@@ -2261,13 +2250,13 @@ int Console_GetKey(){
 #endif
     }
     if ( (key >= KEY_CTRL_F1 && key <= KEY_CTRL_F6) ||
-	 (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F20) 
+	 (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F20)
 	 ){
       return Console_FMenu(key);
     }
     if (
         // (key >= 'A' && key <= 'Z') || (key >= 'a' && key <= 'z')
-        0 
+        0
         ){
       //if (Case == LOWER_CASE) key += 'a' - 'A';
       tmp_str[0] = key;
@@ -2392,12 +2381,12 @@ int Console_GetKey(){
       Console_Disp(1);
       continue;
     }
-    
+
     if (key == KEY_CTRL_EXE){
       if (Current_Line == Last_Line)
         return Console_NewLine(LINE_TYPE_INPUT, 1);
       tmp = Line[Current_Line].str;
-      
+
       int x=editline_cursor;
       move_line = Last_Line - Current_Line;
       for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
@@ -2406,7 +2395,7 @@ int Console_GetKey(){
         Line[Last_Line].start_col=Cursor.x-COL_DISP_MAX;
       return Console_Input(tmp);
     }
-    
+
     if (key == KEY_CTRL_DEL){
       int ret=Console_Backspace();
       //if (ret!=CONSOLE_SUCCEEDED) return ret;
@@ -2433,10 +2422,10 @@ int Console_GetKey(){
   }
 }
 
-Char* original_cfg=0;
+Char* original_cfg=nullptr;
 
 int Console_FMenu(int key){
-  const char * s=console_menu(key,original_cfg,0),*ptr=0;
+  const char * s=console_menu(key,original_cfg,0),*ptr=nullptr;
   if (!s){
     //cout << "console " << unsigned(s) << endl;
     return CONSOLE_NO_EVENT;
@@ -2457,12 +2446,11 @@ const char * console_menu(int key,Char* cfg_,int active_app){
   if (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20){ key += 6+KEY_CTRL_F1-KEY_CTRL_F7; }
   // if (1){ char buf1[32],buf2[32]; sprint_double(buf1,key),sprint_double(buf2,KEY_CTRL_F1); confirm(buf1,buf2); }
   int i, matched = 0;
-  const char * ret=0;
-  constexpr int maxentry_size=64;
+  constexpr const int maxentry_size=64;
   static char console_buf[maxentry_size];
   char temp[maxentry_size],menu1[maxentry_size],menu2[maxentry_size],menu3[maxentry_size],menu4[maxentry_size],menu5[maxentry_size],menu6[maxentry_size],menu7[maxentry_size],menu8[maxentry_size],menu9[maxentry_size];
   char * tabmenu[]={menu1,menu2,menu3,menu4,menu5,menu6,menu7,menu8,menu9};
-  struct FMenu entry = {0,tabmenu,0};
+  struct FMenu entry = {nullptr,tabmenu,0};
   // char* cfg = (char *)memory_load((char *)"\\\\fls0\\FMENU.cfg");
 
   while (*cfg) {
@@ -2488,14 +2476,15 @@ const char * console_menu(int key,Char* cfg_,int active_app){
     cfg++;
   }
   if(entry.count > 0) {
+    const char * ret=nullptr;
     ret = Console_Draw_FMenu(key, &entry,cfg,active_app);
     // cout << "console0 " << (unsigned) ret << endl;
     if (!ret) return ret;
     if (strcmp(ret,"char table")==0){
-      int key=chartab();
+      const int key=chartab();
       if (key<0)
-        return 0;
-      char buf[]={(char)key,0};
+        return nullptr;
+      const char buf[]={(char)key,0};
       strcpy(console_buf,buf);
     }
 #ifdef WITH_PERIODIC
@@ -2503,9 +2492,9 @@ const char * console_menu(int key,Char* cfg_,int active_app){
       const char * name,*symbol;
       char protons[32],nucleons[32],mass[32],electroneg[32];
       char * ptr=console_buf;
-      int res=periodic_table(name,symbol,protons,nucleons,mass,electroneg);
+      const int res=periodic_table(name,symbol,protons,nucleons,mass,electroneg);
       if (!res)
-        return 0;
+        return nullptr;
       if (res & 1)
         ptr=strcpy(ptr,name)+strlen(ptr);
       if (res & 2){
@@ -2539,12 +2528,12 @@ const char * console_menu(int key,Char* cfg_,int active_app){
       strcpy(console_buf,ret);
     return console_buf;
   }
-  return 0;
+  return nullptr;
 }
 
 char *Console_Make_Entry(const Char* str)
 {
-  char* entry = NULL;
+  char* entry = nullptr;
   entry = (char*)calloc((strlen((const char *)str)+1), sizeof(Char*));
   if(entry) memcpy(entry, (const char *)str, strlen((const char *)str)+1);
 
@@ -2555,31 +2544,30 @@ char *Console_Make_Entry(const Char* str)
 //Draws and runs the asked for menu.
 const char * Console_Draw_FMenu(int key, struct FMenu* menu,Char * cfg,int active_app)
 {
-  int i, nb_entries = 0, selector = 0, position_number, position_x, ret, longest = 0;
+  int i, nb_entries = 0, selector = 0, ret, longest = 0;
   unsigned int input_key;
   char quick[] = "*: ";
-  int quick_len = 2;
-  char **entries;
+  constexpr const int quick_len = 2;
   DISPBOX box,box3;
-  position_number = (key - KEY_CTRL_F1) % 5;
-  
+  int position_number = (key - KEY_CTRL_F1) % 5;
+
   if (position_number<0 || position_number>5)
     position_number=4;
-    
-  entries  = menu->str;
+
+  char ** entries = menu->str;
   nb_entries = menu->count;
   //dbg_printf("fmenu key=%i position_number=%i menu=%s\n",key,position_number,menu->str);
-    
+
   for(i=0; i<nb_entries; i++)
     if(strlen(entries[i]) > longest) longest = strlen(entries[i]);
 
   // screen resolution Graph90 384x(216-24), Graph35 128x64
   // factor 3x3
-  position_x = 21*position_number;
+  int position_x = 21 * position_number;
   if(position_x + longest*4 + quick_len*4 > 115) position_x = 115 - longest*4 - quick_len*4;
   if (position_x<=2)
     position_x=2;
-    
+
   box.left = position_x;
   box.right = position_x + longest*3 + quick_len*3  + 6;
   box.bottom = 69;
@@ -2588,12 +2576,12 @@ const char * Console_Draw_FMenu(int key, struct FMenu* menu,Char * cfg,int activ
   box3.right=3*position_x + longest*8 + quick_len*9  + 12;//3*box.right;
   box3.bottom=3*box.bottom+STATUS_AREA_PX;
   box3.top=3*box.top+STATUS_AREA_PX;
-  
+
   drawRectangle(box3.left,box3.top,box3.right-box3.left,box3.bottom-box3.top,COLOR_WHITE);
   draw_line(box3.left, box3.top, box3.right, box3.top,COLOR_BLACK);
   draw_line(box3.left, box3.bottom, box3.left, box3.top,COLOR_BLACK);
   draw_line(box3.right, box3.bottom, box3.right, box3.top,COLOR_BLACK);
-#ifdef CURSOR    
+#ifdef CURSOR
   Cursor_SetFlashOff();
 #endif
   for (;;){
@@ -2604,16 +2592,16 @@ const char * Console_Draw_FMenu(int key, struct FMenu* menu,Char * cfg,int activ
     }
     PrintMini(3+position_x+quick_len*4,box.bottom-7*(selector+1)+2, entries[selector], 4);
     ck_getkey((int *)&input_key);
-    if (input_key == KEY_CTRL_EXIT || input_key==KEY_CTRL_AC) return 0;
-    if (input_key == KEY_CTRL_UP && selector < nb_entries-1) selector++;	
+    if (input_key == KEY_CTRL_EXIT || input_key==KEY_CTRL_AC) return nullptr;
+    if (input_key == KEY_CTRL_UP && selector < nb_entries-1) selector++;
     if (input_key == KEY_CTRL_DOWN && selector > 0) selector--;
-      
+
     if (input_key == KEY_CTRL_EXE) return entries[selector];
-      
+
     if (input_key >= KEY_CHAR_1 && input_key < KEY_CHAR_1 + nb_entries) return entries[input_key-KEY_CHAR_1];
-      
+
     input_key=translate_fkey(input_key);
-      
+
     if ( active_app==0 &&
 	 ((input_key >= KEY_CTRL_F1 && input_key <= KEY_CTRL_F6) ||
 	  (input_key >= KEY_CTRL_F7 && input_key <= KEY_CTRL_F12) )
@@ -2624,7 +2612,7 @@ const char * Console_Draw_FMenu(int key, struct FMenu* menu,Char * cfg,int activ
     }
   } // end while input_key!=EXE/EXIT
 
-  return 0; // never reached
+  return nullptr; // never reached
 }
 
 
@@ -2635,10 +2623,10 @@ int Console_Init()
   if (!Line){
     Line=new line[LINE_MAX];
     for (i = 0; i < LINE_MAX; i++){
-      Line[i].str=0;
+      Line[i].str=nullptr;
     }
   }
-	
+
   Start_Line = 0;
   Last_Line = 0;
 
@@ -2646,7 +2634,7 @@ int Console_Init()
     {
       if(Line[i].str){
 	free(Line[i].str);
-	Line[i].str=0;
+	Line[i].str=nullptr;
       }
       Line[i].readonly = 0;
       Line[i].type = LINE_TYPE_INPUT;
@@ -2654,7 +2642,7 @@ int Console_Init()
       Line[i].disp_len = 0;
     }
 
-  if ((Edit_Line = (Char *)malloc(EDIT_LINE_MAX + 1)) == NULL) return CONSOLE_MEM_ERR;
+  if ((Edit_Line = (Char *)malloc(EDIT_LINE_MAX + 1)) == nullptr) return CONSOLE_MEM_ERR;
   Edit_Line[0]=0;
   Line[0].str = Edit_Line;
 
@@ -2676,22 +2664,22 @@ int Console_Init()
 #ifdef WITH_PLOT
 
 #ifdef FRANCAIS
-  constexpr char conf_standard[] = "F1 algebre\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2  calcul\n'\ndiff(\nintegrate(\nlimit(\ntabvar(\nseries(\nsolve(\ndesolve(\n=\nF3   graphes  \nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF5 menu\nreserved\nF6  arithm. \nirem(\n mod \nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reels\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomes\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   alg. lin.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
+  constexpr const char conf_standard[] = "F1 algebre\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2  calcul\n'\ndiff(\nintegrate(\nlimit(\ntabvar(\nseries(\nsolve(\ndesolve(\n=\nF3   graphes  \nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF5 menu\nreserved\nF6  arithm. \nirem(\n mod \nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reels\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomes\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   alg. lin.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
 #else
-  constexpr char conf_standard[] = "F1 algebra\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2 calculus\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF3  plot  \nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF5 menu\nreserved\nF6  arithm. \n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reals\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomials\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   lin. alg.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
+  constexpr const char conf_standard[] = "F1 algebra\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2 calculus\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF3  plot  \nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF5 menu\nreserved\nF6  arithm. \n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reals\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomials\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   lin. alg.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
 #endif
 
 #else // WITH_PLOT
 
 #ifdef FRANCAIS
-  constexpr char conf_standard[] = "F1 save,quit\nreserved\nF2 algebre\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF4 calcul\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF5 menu\nreserved\nF6  arithm. \nirem(\n mod \nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reels\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomes\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   alg. lin.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
+  constexpr const char conf_standard[] = "F1 save,quit\nreserved\nF2 algebre\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF4 calcul\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF5 menu\nreserved\nF6  arithm. \nirem(\n mod \nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reels\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomes\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   alg. lin.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
 #else
-  constexpr char conf_standard[] = "F1 save,quit\nreserved\nF2 algebra\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF4 calculus\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF5 menu\nreserved\nF6  arithm. \n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reals\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomials\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   lin. alg.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
+  constexpr const char conf_standard[] = "F1 save,quit\nreserved\nF2 algebra\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF4 calculus\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\n=\nF5 menu\nreserved\nF6  arithm. \n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF7   reals\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF8 complexes\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF9   polynomials\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF:   lin. alg.\nmatrix(\ndet(\nmatpow(\nranm(\nrref(\ntran(\negvl(\negv(\nF;  misc\n_\nperiodic_table\n!\nrand()\nrandint(\nbinomial(\n and \n or \nF>   draw\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nget_pixel(\nclearscreen();\nF?   colors\nred\ngreen\nblue\nmagenta\ncyan\nyellow\nwhite\nfilled\nF<   lists\nmakelist(\nrange(\nseq(\nlen(\nappend(\nranv(\nsort(\napply(\n\nF=   program\n:\n&\n#\nhex(\nbin(\nf(x):=\ndebug(\npython(\nF@ mat\n[A]\n[B]\n[C]\n[D]\n[E]\n[F]\n[G]\n[H]";
 #endif
 
 #endif
 
-// constexpr char conf_standard[] = "F1 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF2 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF3 char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 none\nF7 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF8 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF9 cmath\n.real\n.imag\nphase(\nfrom cmath import *;i=1j\nrandint(\nrandom()\nchoice(\nfrom random import *\nF: plot\naxis(\nplot(\ntext(\narrow(\nscatter(\nboxplot(\nshow()\nfrom matplotl import *\nF; draw\nclear_screen();\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_arc(\ndraw_circle(\ndraw_string(\nfrom graphic import *\nF< logo\nforward(\nbackward(\nleft(\nright(\npencolor(\ncircle(\nreset()\nfrom turtle import *\nF= numpy\narray(\nreshape(\narange(\nlinspace(\nsolve(\neig(\ninv(\nfrom numpy import *;i=1j\nF> linalg\nmatrix(\nadd(\nsub(\nmul(\ninv(\nrref(\ntranspose(\nfrom linalg import *\nF? char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF@ fill\ndraw_filled_rectangle\ndraw_filled_circle(\ndraw_filled_polygon(\ndraw_filled_arc\nfrom graphic import *\nFA color\nred\nblue\nmagenta\ncyan\ngreen\nyellow\nwhite\nblack\nFB prog\nprint(\ninput(\nhex(\nbin(\ngetkey()\nsleep()\nmonotonic()\nfrom ion import *\nFC list\nlist(\nrange(\nlen(\nappend(\nzip(\nsorted(\nmap(\nreversed(\n";
+// constexpr const char conf_standard[] = "F1 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF2 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF3 char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 none\nF7 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF8 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF9 cmath\n.real\n.imag\nphase(\nfrom cmath import *;i=1j\nrandint(\nrandom()\nchoice(\nfrom random import *\nF: plot\naxis(\nplot(\ntext(\narrow(\nscatter(\nboxplot(\nshow()\nfrom matplotl import *\nF; draw\nclear_screen();\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_arc(\ndraw_circle(\ndraw_string(\nfrom graphic import *\nF< logo\nforward(\nbackward(\nleft(\nright(\npencolor(\ncircle(\nreset()\nfrom turtle import *\nF= numpy\narray(\nreshape(\narange(\nlinspace(\nsolve(\neig(\ninv(\nfrom numpy import *;i=1j\nF> linalg\nmatrix(\nadd(\nsub(\nmul(\ninv(\nrref(\ntranspose(\nfrom linalg import *\nF? char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF@ fill\ndraw_filled_rectangle\ndraw_filled_circle(\ndraw_filled_polygon(\ndraw_filled_arc\nfrom graphic import *\nFA color\nred\nblue\nmagenta\ncyan\ngreen\nyellow\nwhite\nblack\nFB prog\nprint(\ninput(\nhex(\nbin(\ngetkey()\nsleep()\nmonotonic()\nfrom ion import *\nFC list\nlist(\nrange(\nlen(\nappend(\nzip(\nsorted(\nmap(\nreversed(\n";
 
 
 // Loads the FMenus' data into memory, from a cfg file
@@ -2728,7 +2716,7 @@ int print_x=0,print_y=0,vfontsize=15,hfontsize=8;
 void locate(int x,int y){
 #ifdef CURSOR
   return locate_OS(x,y);
-#else 
+#else
   print_x=(x-1)*hfontsize;
   print_y=(y-1)*vfontsize;
 #endif
@@ -2741,7 +2729,7 @@ void Cursor_SetPosition(int x,int y){
 void print(int &X,int&Y,const char * buf,int color,bool revert,bool fake,bool minimini){
   if(minimini)
     X=os_draw_string_small(X,Y,color,revert?COLOR_SELECTED:COLOR_WHITE,buf,fake);
-  else 
+  else
     X=os_draw_string_medium(X,Y+1,color,revert?COLOR_SELECTED:COLOR_WHITE,buf,fake);
 }
 
@@ -2750,7 +2738,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
   Print_OS((Char *)s,TEXT_MODE_INVERT,0);
 #else
   print(print_x,print_y,(const char *)s,color,true/* revert*/,false,false);
-#endif  
+#endif
 }
 
   bool tooltip(int x,int y,int pos,const char * editline){
@@ -2760,7 +2748,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
     int l=strlen(cmdline);
     char buf[l+1];
     strcpy(buf,cmdline);
-    bool openpar=l && buf[l-1]=='(';
+    const bool openpar=l && buf[l-1]=='(';
     if (openpar){
       buf[l-1]=0;
       --l;
@@ -2771,10 +2759,10 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
     }
     // cmdname in buf+l
     const char * cmdname=buf+l,*cmdnameorig=cmdname;
-    int l1=strlen(cmdname);
+    const int l1=strlen(cmdname);
     if (l1<2)
       return false;
-    const char * howto=0,*syntax=0,*related=0,*examples=0;
+    const char *examples=nullptr;
     if (l1>0
 #if 1 //def BW
         && 0
@@ -2782,6 +2770,8 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
         && has_static_help(cmdname,lang | 0x100,howto,syntax,related,examples)
 #endif
         && examples){
+      const char * howto=nullptr;
+      const char *related=nullptr;
       // display tooltip
       if (x<0)
 	x=os_draw_string(0,y,_BLACK,1234,editline,true); // fake print -> x position // replaced cmdline by editline so that tooltip is at end
@@ -2803,7 +2793,8 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
       }
       string toolt;
       if (related && strlen(related)){
-	toolt += cmdname;
+        const char *syntax=nullptr;
+        toolt += cmdname;
 	toolt += '(';
 	if (syntax && strlen(syntax))
 	  toolt += syntax;
@@ -2823,7 +2814,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
   }
 
   int print_color(int print_x,int print_y,const char *s,int color,bool invert,bool minimini){
-    int python=4;
+    constexpr const int python=4;
     const char * src=s;
     // char * singleword=(char *) malloc(256); if (!singleword) return print_x;
     char singleword[256];
@@ -2850,7 +2841,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
 	  }
 	  if (*src=='"')
 	    ++src;
-	  int i=src-oldsrc;
+	  const int i=src-oldsrc;
 	  strncpy(singleword,oldsrc,i);
 	  singleword[i]=0;
           //dbg_printf("print_color loop1a %s single=%s\n",src,singleword);
@@ -2900,7 +2891,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
 	  while (isalphanum(*ptr) || *ptr=='_')
 	    ++ptr;
 	}
-	char ch=*ptr;
+	const char ch=*ptr;
 	*ptr=0;
         //dbg_printf("print_color loop5 couleur=%i\n",couleur);
         print(print_x,print_y,singleword,couleur,invert,/*fake*/false,minimini);
@@ -2918,7 +2909,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
     }
     //dbg_printf("print_color return\n");
     return print_x;
-  }    
+  }
 
   void print_color(const char *s,int color,bool invert,bool minimini){
     print_x=print_color(print_x,print_y,s,color,invert,minimini);
@@ -2940,10 +2931,9 @@ void Print(const Char * s,int color,bool colorsyntax){
 
 void console_displine(int i,int redraw_mode){
   int print_y=i*vfontsize;
-  bool minimini=false;
   //dbg_printf("ConsoleDisp loop i=%i\n",i);
-  line & curline=Line[i+Start_Line];
-  bool colorsyntax=curline.type == LINE_TYPE_INPUT;
+  const line & curline=Line[i+Start_Line];
+  const bool colorsyntax=curline.type == LINE_TYPE_INPUT;
   if (i == Cursor.y){
     //dbg_printf("ConsoleDisp loop i=Cursor.y %i\n",i);
     // cursor line
@@ -2954,7 +2944,7 @@ void console_displine(int i,int redraw_mode){
       if (curline.readonly){
         PrintRev(curline.str + curline.start_col);
       }
-      else 
+      else
         Print(curline.str+curline.start_col+(Cursor.x>COL_DISP_MAX-1?1:0),TEXT_COLOR_BLACK,colorsyntax);
     }
     else {
@@ -2965,11 +2955,11 @@ void console_displine(int i,int redraw_mode){
 #endif
         PrintRev(curline.str);
       }
-      else 
+      else
         Print(curline.str,TEXT_COLOR_BLACK,colorsyntax);
     }
     //dbg_printf("ConsoleDisp loop1 i=Cursor.y %i\n",i);
-      
+
     if (curline.disp_len - curline.start_col > COL_DISP_MAX-1){
       // draw arrow indicating there is more
       print_x=LCD_WIDTH_PX-hfontsize;
@@ -2983,13 +2973,13 @@ void console_displine(int i,int redraw_mode){
       }
     }
     //dbg_printf("ConsoleDisp loop2 i=Cursor.y %i\n",i);
-      
+
     if (curline.start_col > 0){
-      locate(1, i + 1);	
+      locate(1, i + 1);
       if (curline.readonly){
 #ifdef CURSOR
         Cursor_SetFlashOff();
-#endif		  
+#endif
         PrintRev((Char *)"<",COLOR_MAGENTA);
       }
       else {
@@ -2997,19 +2987,19 @@ void console_displine(int i,int redraw_mode){
       }
     }
     //dbg_printf("ConsoleDisp loop3 i=Cursor.y %i\n",i);
-      
+
     if (!curline.readonly){
-      int fakestart=curline.start_col+(Cursor.x > COL_DISP_MAX-1?1:0);
+      const int fakestart=curline.start_col+(Cursor.x > COL_DISP_MAX-1?1:0);
       int fakex,fakey=Cursor.y*vfontsize;
       string fakes;
       // parenthese match
       const char * str=(const char *) curline.str;
       int pos=Cursor.x+fakestart,pos2;
-      int l=strlen(str);
+      const int l=strlen(str);
       char ch=0;
       if (pos<l)
         ch=str[pos];
-      int matchdirection=0,paren=0,crochet=0,accolade=0;
+      int matchdirection=0;
       if (ch=='(' || ch=='[' || ch=='{')
         matchdirection=1;
       if (ch=='}' || ch==']' || ch==')')
@@ -3023,6 +3013,10 @@ void console_displine(int i,int redraw_mode){
           matchdirection=-1;
       }
       if (matchdirection){
+        int paren=0;
+        int crochet=0;
+        int accolade=0;
+        constexpr const bool minimini=false;
         char buf[2]={0,0};
         bool ok=true;
         for (pos2=pos;ok && (pos2>=0 && pos2<l);pos2+=matchdirection){
@@ -3076,7 +3070,7 @@ void console_displine(int i,int redraw_mode){
     else
       if ((redraw_mode & 1)==0)
         drawRectangle(0,i*vfontsize+STATUS_AREA_PX,LCD_WIDTH_PX,vfontsize,_WHITE);
-    bool bigoutput = curline.type==LINE_TYPE_OUTPUT && curline.disp_len>=COL_DISP_MAX-3;
+    const bool bigoutput = curline.type==LINE_TYPE_OUTPUT && curline.disp_len>=COL_DISP_MAX-3;
     locate(bigoutput?3:1,i+1);
     if (curline.type==LINE_TYPE_INPUT || bigoutput){
       //dbg_printf("ConsoleDisp loop1 i!=Cursor.y %i\n",i);
@@ -3111,10 +3105,10 @@ void console_displine(int i,int redraw_mode){
       print_x=0;
 #endif
       Print((Char *)">",COLOR_BLUE,colorsyntax);
-    }      
+    }
     //dbg_printf("ConsoleDisp loop4 i!=Cursor.y %i\n",i);
   } // end non cursor line
-}  
+}
 
 // redraw_mode bit0=1 means redraw all
 int Console_Disp(int redraw_mode){
@@ -3134,10 +3128,10 @@ int Console_Disp(int redraw_mode){
 void Console_FMenu_Init()
 {
   int i, number=0, key, handle;
-  Char* tmp_realloc = NULL;
+  Char* tmp_realloc = nullptr;
   Char temp[20] = {'\0'};
   original_cfg = (Char *)conf_standard;
-  Char* cfg=original_cfg;
+  const Char* cfg=original_cfg;
   update_fmenu(cfg);
 }
 
@@ -3145,91 +3139,6 @@ void Console_FMenu_Init()
 void dConsoleRedraw(){
   Console_Disp(1);
 }
-
-/*
-  Draw a popup at the center of the screen containing the str expression drawn in pretty print.
-*/
-#if defined POPUP_PRETTY && defined TEX
-void Console_Draw_TeX_Popup(Char* str, int width, int height)
-{
-  DISPBOX popup;
-  DISPBOX temp;
-  Char arrows[4*3] = {0xE6, 0x9A, '\0', 0xE6, 0x9B, '\0', 0xE6, 0x9C, '\0', 0xE6, 0x9D, '\0'};
-  int margin = 2, border = 1;
-  int scroll_lateral = 0, scroll_lateral_flag = 0, scroll_vertical = 0, scroll_vertical_flag = 0;
-  int key;
-
-  if(width > 115) {
-    popup.left = 5;
-    popup.right = 122;
-
-    scroll_lateral_flag = 1;
-  }
-  else {
-    popup.left = 64 - width/2 - margin - border;
-    popup.right = 128 - popup.left;
-  }
-
-  if(height > 50) {
-    popup.top = 5;
-    popup.bottom = 57;
-
-    scroll_vertical_flag = 1;
-  }
-  else {
-    popup.top = 32 - height/2 - margin - border;
-    popup.bottom = 64 - popup.top;
-  }
-
-  /*temp.left = 0; temp.top = 0; temp.right = 128; temp.bottom = 64;
-    Bdisp_ReadArea_VRAM (&temp, vram_copy);*/
-	
-  while(key != KEY_CTRL_EXIT) {
-    Bdisp_AreaClr_VRAM(&popup);
-    Bdisp_AreaReverseVRAM(popup.left, popup.top, popup.right, popup.bottom);
-
-    Bdisp_AreaReverseVRAM(popup.left + border, popup.top + border, popup.right - border, popup.bottom - border);
-
-    TeX_drawComplex((char*)str, popup.left+border+margin + scroll_lateral, popup.top+border+margin + scroll_vertical); 
-
-    if(scroll_lateral_flag ||scroll_vertical_flag) {
-      temp.left = 0; temp.top = 0; temp.right = popup.left-1; temp.bottom = popup.bottom;
-      Bdisp_AreaClr_VRAM(&temp);
-      temp.left = 0; temp.top = popup.bottom+1; temp.right = 127; temp.bottom = 63;
-      Bdisp_AreaClr_VRAM(&temp);
-      temp.left = popup.left-1; temp.top = 0; temp.right = 127; temp.bottom = popup.top-1;
-      Bdisp_AreaClr_VRAM(&temp);
-      temp.left = popup.right+1; temp.top = popup.top-1; temp.right = 127; temp.bottom = 63;
-      Bdisp_AreaClr_VRAM(&temp);
-
-      if(scroll_lateral < 0) Printmini(1, 30, arrows, 0);
-      if(scroll_lateral > -(width - 115)) Printmini(123, 30, arrows + 3, 0);
-      if(scroll_vertical < 0) Printmini(61, 0, arrows + 6, 0);
-      if(scroll_vertical > -(height - 47)) Printmini(61, 58, arrows + 9, 0);
-
-      Bdisp_DrawLineVRAM(popup.left, popup.top, popup.left, popup.bottom);
-      Bdisp_DrawLineVRAM(popup.left, popup.top, popup.right, popup.top);
-      Bdisp_DrawLineVRAM(popup.left, popup.bottom, popup.right, popup.bottom);
-      Bdisp_DrawLineVRAM(popup.right, popup.top, popup.right, popup.bottom);
-    }
-
-    ck_getkey(&key);
-
-    if(scroll_lateral_flag) {
-      if(key == KEY_CTRL_LEFT && scroll_lateral < 0) scroll_lateral += 5;
-      if(key == KEY_CTRL_RIGHT && scroll_lateral > -(width - 115)) scroll_lateral -= 5;
-
-      if(scroll_lateral > 0) scroll_lateral = 0;
-    } 
-    if(scroll_vertical_flag) {
-      if(key == KEY_CTRL_UP && scroll_vertical < 0) scroll_vertical += 3;
-      if(key == KEY_CTRL_DOWN && scroll_vertical > -(height - 47)) scroll_vertical -= 3;
-
-      if(scroll_vertical > 0) scroll_vertical = 0;
-    }
-  }
-}
-#endif
 
 /*
   ÒÔÏÂº¯ÊýÓÃÓÚÊäÈëÐÐ£¬³É¹¦ºó½«·µ»Ø¸ÃÐÐµÄ×Ö·û´®¡£
@@ -3243,7 +3152,7 @@ const Char *Console_GetLine()
     {
       return_val = Console_GetKey();
       Console_Disp(1);
-      if (return_val == CONSOLE_MEM_ERR) return NULL;
+      if (return_val == CONSOLE_MEM_ERR) return nullptr;
       if (return_val == -2) return "kill";
     } while (return_val != CONSOLE_NEW_LINE_SET);
 

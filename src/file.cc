@@ -7,7 +7,7 @@
 #include "main.h"
 #include <ti/vars.h>
 using namespace std;
-constexpr int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
+constexpr const int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
 
 string filename_script(const char * filename){
   string f(remove_extension(filename));
@@ -35,14 +35,14 @@ int load_script(const char * filename,std::string & s){
 
 size_t Bfile_ReadFile_OS4(const char * & hf_){
   const unsigned char * hf=(const unsigned char *)hf_;
-  size_t n=(((((hf[0]<<8)+hf[1])<<8)+hf[2])<<8)+hf[3];
+  const size_t n=(((((hf[0]<<8)+hf[1])<<8)+hf[2])<<8)+hf[3];
   hf_ += 4;
   return n;
 }
 
 size_t Bfile_ReadFile_OS2(const char * & hf_){
   const unsigned char * hf=(const unsigned char *)hf_;
-  size_t n=(hf[0]<<8)+hf[1];
+  const size_t n=(hf[0]<<8)+hf[1];
   hf_ += 2;
   return n;
 }
@@ -81,7 +81,7 @@ bool load_console_state_smem(const char * filename){
       }
       if (!*source)
         break;
-      unsigned char a=source[0]-xwaspy_shift,b=source[1]-xwaspy_shift,c=source[2]-xwaspy_shift,d=source[3]-xwaspy_shift;
+      const unsigned char a=source[0]-xwaspy_shift,b=source[1]-xwaspy_shift,c=source[2]-xwaspy_shift,d=source[3]-xwaspy_shift;
       str += char((a<<2)|(b>>4));
       str += char((b<<4)|(c>>2));
       str += char((c<<6)|d);
@@ -105,7 +105,7 @@ bool load_console_state_smem(const char * filename){
     char bufscript[L+1];
     Bfile_ReadFile_OS(hf,bufscript,L);
     bufscript[L]=0;
-    if (edptr==0)
+    if (edptr==nullptr)
       edptr=new textArea;
     if (edptr){
       edptr->elements.clear();
@@ -128,16 +128,14 @@ bool load_console_state_smem(const char * filename){
   Console_Init();
   Console_Clear_EditLine();
   for (;;){
-    unsigned short int l,curs;
-    unsigned char type,readonly;
-    l=Bfile_ReadFile_OS2(hf);
+    unsigned short int l = Bfile_ReadFile_OS2(hf);
     //dbg_printf("read level size=%i\n",l);
     if ( l==0){
       break;
     }
-    curs=Bfile_ReadFile_OS2(hf);
-    type = *hf; ++hf;
-    readonly=*hf; ++hf;
+    unsigned short int curs = Bfile_ReadFile_OS2(hf);
+    unsigned char type = *hf; ++hf;
+    unsigned char readonly = *hf; ++hf;
     char buf[l+1];
     Bfile_ReadFile_OS(hf,buf,l);
     buf[l]=0;
@@ -180,13 +178,13 @@ void Bfile_WriteFile_OS2(char * & buf,unsigned short n){
 void save_console_state_smem(const char * filename,bool xwaspy){
   console_changed=0;
   //dbg_printf("save_console_state %s\n",filename);
-  string state(khicas_state());
-  int statesize=state.size();
+  const string state(khicas_state());
+  const int statesize=state.size();
   //dbg_printf("save_console_state %s %i\n",filename,statesize);
   string script;
   if (edptr)
     script=merge_area(edptr->elements);
-  int scriptsize=script.size();
+  const int scriptsize=script.size();
   // save format: line_size (2), start_col(2), line_type (1), readonly (1), line
   int size=2*sizeof(int)+statesize+scriptsize;
   int start_row=0;//Last_Line-max_lines_saved; 
@@ -205,10 +203,10 @@ void save_console_state_smem(const char * filename,bool xwaspy){
   // save console state
   // save console state
   for (int i=start_row;i<=Last_Line;++i){
-    line & cur=Line[i];
-    unsigned short l=strlen((const char *)cur.str);
+    const line & cur=Line[i];
+    const unsigned short l=strlen((const char *)cur.str);
     Bfile_WriteFile_OS2(hFile, l);
-    unsigned short s=cur.start_col;
+    const unsigned short s=cur.start_col;
     Bfile_WriteFile_OS2(hFile, s);
     unsigned char c=cur.type;
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
@@ -224,7 +222,7 @@ void save_console_state_smem(const char * filename,bool xwaspy){
     }
     Bfile_WriteFile_OS(hFile, buf, l);
   }
-  char BUF[2]={0,0};
+  constexpr const char BUF[2]={0,0};
   // char BUF[3]={0,0,0}; // might be more secure...
   Bfile_WriteFile_OS(hFile, BUF, sizeof(BUF));
   int len=hFile-savebuf;
@@ -275,16 +273,16 @@ void save_console_state_smem(const char * filename,bool xwaspy){
 int get_filename(char * filename,const char * extension){
   lock_alpha();
   if (extension){
-    int l=strlen(extension);
+    const int l=strlen(extension);
     if (l && extension[l-1]=='y')
       handle_f5();
   }
   string str;
-  int res=inputline((lang==1)?"EXIT ou chaine vide: annulation":"EXIT or empty string: cancel",(lang==1)?"Nom de fichier:":"Filename:",str,false);
+  const int res=inputline((lang==1)?"EXIT ou chaine vide: annulation":"EXIT or empty string: cancel",(lang==1)?"Nom de fichier:":"Filename:",str,false);
   if (res==KEY_CTRL_EXIT || str.empty())
     return 0;
   strcpy(filename,str.c_str());
-  int s=strlen(filename);
+  const int s=strlen(filename);
   if (strcmp(filename+s-3,extension))
     strcpy(filename+s,extension);
   // if file already exists, warn, otherwise create
@@ -549,12 +547,12 @@ string detokenize(const unsigned char * ptr,int len){
 string get_tivar(const char * varname){
   if (!varname)
     return "";
-  const unsigned char * ptr=0;
+  const unsigned char * ptr=nullptr;
   int len=0;
   if (varname[0]=='['){
     // matrix
   } else {
-    equ_t * eqptr=os_GetEquationData(varname,0);
+    const equ_t * eqptr=os_GetEquationData(varname,nullptr);
     //dbg_printf("get_tivar varname[0]=%x [1]=%x [2]=%x ptr=%x\n",varname[0],varname[1],varname[2],(unsigned) eqptr);
     if (!eqptr)
       return "";
@@ -867,12 +865,12 @@ int in_tokenize(const char * s,unsigned char * t){
 
 void tokenize(const char * s,vector<unsigned char> & v){
   v.clear();
-  int l=strlen(s);
+  const int l=strlen(s);
   if (l>4096)
     return;
   unsigned char buf[l+l/2]; // take additional room for / translated to 2 bytes
   unsigned char * ptr=buf+2;
-  int tsize=in_tokenize(s,ptr);
+  const int tsize=in_tokenize(s,ptr);
   buf[0]=tsize%256;
   buf[1]=tsize/256;
   vector<unsigned char> V(buf,buf+tsize+2);
@@ -883,7 +881,8 @@ struct fracfloat {
   float n,d;
   fracfloat(float n_,float d_):n(n_),d(d_){}
   fracfloat(float n_):n(n_),d(1){}
-  void inv(){ float tmp=n; n=d; d=tmp; }
+  void inv(){
+ const float tmp=n; n=d; d=tmp; }
 };
 
 fracfloat & operator += (fracfloat & f,float x){
@@ -927,8 +926,8 @@ bool dfc2f(real_t x,double eps,int & n,int & d){
     if (v.empty()){
       real_t N=os_FloatToReal(res.n),D=os_FloatToReal(res.d);
       D=os_RealInv(&D);
-      real_t F=os_RealMul(&N,&D),E=os_RealSub(&F,&x);
-      float e=os_RealToFloat(&E);
+      const real_t F=os_RealMul(&N,&D),E=os_RealSub(&F,&x);
+      const float e=os_RealToFloat(&E);
       //dbg_printf("dfc2f N=%f D=%f F=%f E=%f err=%f\n",os_RealToFloat(&N),os_RealToFloat(&D),os_RealToFloat(&F),os_RealToFloat(&E),e);
       if (fabs(e)<eps)
         break;
@@ -944,16 +943,16 @@ bool dfc2f(real_t x,double eps,int & n,int & d){
 bool dfc2s(real_t x,double eps,char * buf){
   unsigned char * ptr = (unsigned char *) &x;
   //dbg_printf("size=%i %x %x %x %x %x %x %x %x %x\n",sizeof(x),ptr[0],ptr[1],ptr[2],ptr[3],ptr[4],ptr[5],ptr[6],ptr[7],ptr[8]);
-  bool neg=ptr[0]&0x80;
+  const bool neg=ptr[0]&0x80;
   ptr[0] &= 0x7f; // make it positive
-  int type=ptr[0];
+  const int type=ptr[0];
   if (type==0x1c){ // internal format thanks to Adrien Bertrand
-    int subtype=(ptr[1]&0xf0)/16;
-    int deno=(ptr[1]&0xf)*100+((ptr[2]&0xf0)/16)*10+(ptr[2]&0xf);
-    int a=((ptr[3]&0xf0)/16)*100+(ptr[3]&0xf)*10+(ptr[4]&0xf0)/16;
-    int b=(ptr[4]&0xf)*100+((ptr[5]&0xf0)/16)*10+(ptr[5]&0xf);
-    int c=((ptr[6]&0xf0)/16)*100+(ptr[6]&0xf)*10+((ptr[7]&0xf0)/16);
-    int d=(ptr[7]&0xf)*100+((ptr[8]&0xf0)/16)*10+(ptr[8]&0xf);
+    const int subtype=(ptr[1]&0xf0)/16;
+    const int deno=(ptr[1]&0xf)*100+((ptr[2]&0xf0)/16)*10+(ptr[2]&0xf);
+    const int a=((ptr[3]&0xf0)/16)*100+(ptr[3]&0xf)*10+(ptr[4]&0xf0)/16;
+    const int b=(ptr[4]&0xf)*100+((ptr[5]&0xf0)/16)*10+(ptr[5]&0xf);
+    const int c=((ptr[6]&0xf0)/16)*100+(ptr[6]&0xf)*10+((ptr[7]&0xf0)/16);
+    const int d=(ptr[7]&0xf)*100+((ptr[8]&0xf0)/16)*10+(ptr[8]&0xf);
     if (c==0 || d==0){
       char fmt[]=" %i*sqrt(%i)/%i";
       if (subtype/2)
@@ -1008,7 +1007,7 @@ bool dfc2s(real_t x,double eps,char * buf){
     //dbg_printf("sqrt %s\n",buf);
     return true;
   }
-  bool divbypi= (type==0x20 || type==0x21);
+  const bool divbypi= (type==0x20 || type==0x21);
   if (divbypi)
     ptr[0]=0;
   //double xf=os_RealToFloat(&x); dbg_printf("dfc2s %f\n",xf);
@@ -1052,8 +1051,8 @@ string get_timatrix(int i){
     for (int j=0;j<c;){
       if (os_GetMatrixElement(name,i+1,j+1,&aij))
         return "";
-      float f=os_RealToFloat(&aij);
-      int fi=f;
+      const float f=os_RealToFloat(&aij);
+      const int fi=f;
       //dbg_printf("get matrixelem err=%i i=%i j=%i f=%f fi=%i\n",err,i,j,f,fi);
       char buf[256];
       if (f==fi)
@@ -1244,13 +1243,13 @@ const AtomDef atomsdefs[] = {
   
 };
 
-  constexpr int C16=16;
-  constexpr int C17=17;
-  constexpr int c18=18;
-  constexpr int c6=18;
+  constexpr const int C16=16;
+  constexpr const int C17=17;
+  constexpr const int c18=18;
+  constexpr const int c6=18;
 
   int rgb24to16(int c){
-    int r=(c>>16)&0xff,g=(c>>8)&0xff,b=c&0xff;
+    const int r=(c>>16)&0xff,g=(c>>8)&0xff,b=c&0xff;
     return (((r*32)/256)<<11) | (((g*64)/256)<<5) | (b*32/256);
   }
 
@@ -1300,7 +1299,7 @@ void drawAtom(uint8_t id) {
     default:
       break;
   }
-  int delta = atomsdefs[id].y>=7?0:2;
+  const int delta = atomsdefs[id].y>=7?0:2;
   drawRectangle(6+atomsdefs[id].x*C17, c6+2-delta+atomsdefs[id].y*C17, c18, c18, fill);
   stroke_rectangle(6+atomsdefs[id].x*C17, c6+2-delta+atomsdefs[id].y*C17, c18, c18, rgb24to16(0x525552));
   os_draw_string_small(6+2+atomsdefs[id].x*C17, -18+c6+4-delta+atomsdefs[id].y* C17, _BLACK, fill, atomsdefs[id].symbol);
@@ -1309,7 +1308,7 @@ void drawAtom(uint8_t id) {
   int periodic_table(const char * & name,const char * & symbol,char * protons,char * nucleons,char * mass,char * electroneg){
     bool partial_draw=false,redraw=true;
     int cursor_pos=0;
-    constexpr int ATOM_NUMS=sizeof(atomsdefs)/sizeof(AtomDef);
+    constexpr const int ATOM_NUMS=sizeof(atomsdefs)/sizeof(AtomDef);
     for (;;){
       if (redraw){
 	if (partial_draw) {
@@ -1324,7 +1323,7 @@ void drawAtom(uint8_t id) {
           }
         }
         // show cursor position
-        int delta = atomsdefs[cursor_pos].y>=7?0:2;
+        const int delta = atomsdefs[cursor_pos].y>=7?0:2;
         stroke_rectangle(6+atomsdefs[cursor_pos].x*C17, c6+2-delta+atomsdefs[cursor_pos].y*C17, c18, c18, 0);
         stroke_rectangle(6+1+atomsdefs[cursor_pos].x*C17, c6+3-delta+atomsdefs[cursor_pos].y*C17, C16, C16, 0x000000);
   
@@ -1332,9 +1331,9 @@ void drawAtom(uint8_t id) {
 	drawRectangle(48, 141, 9,  2, rgb24to16(0x525552));
 	drawRectangle(48, 158, 9,  2, rgb24to16(0x525552));
 
-	int prot=atomsdefs[cursor_pos].num;
+	const int prot=atomsdefs[cursor_pos].num;
 	sprintf(protons,"%i",prot);
-	int nuc=atomsdefs[cursor_pos].neutrons+atomsdefs[cursor_pos].num;
+	const int nuc=atomsdefs[cursor_pos].neutrons+atomsdefs[cursor_pos].num;
 	sprintf(nucleons,"%i",nuc);
 	
 	symbol=atomsdefs[cursor_pos].symbol;
@@ -1382,8 +1381,8 @@ void drawAtom(uint8_t id) {
       }
       if (key==KEY_CTRL_UP){
         redraw=true;
-	uint8_t curr_x = atomsdefs[cursor_pos].x;
-	uint8_t curr_y = atomsdefs[cursor_pos].y;
+	const uint8_t curr_x = atomsdefs[cursor_pos].x;
+	const uint8_t curr_y = atomsdefs[cursor_pos].y;
 	if (curr_y > 0 && curr_y <= 9) {
 	  for(uint8_t i = 0; i < ATOM_NUMS; i++) {
 	    if (atomsdefs[i].x == curr_x && atomsdefs[i].y == curr_y - 1) {
@@ -1394,8 +1393,8 @@ void drawAtom(uint8_t id) {
       }
       if (key==KEY_CTRL_DOWN){
         redraw=true;
-	uint8_t curr_x = atomsdefs[cursor_pos].x;
-	uint8_t curr_y = atomsdefs[cursor_pos].y;
+	const uint8_t curr_x = atomsdefs[cursor_pos].x;
+	const uint8_t curr_y = atomsdefs[cursor_pos].y;
 	if (curr_y >= 0 && curr_y < 9) {
 	  for (uint8_t i = 0; i < ATOM_NUMS; i++) {
 	    if (atomsdefs[i].x == curr_x && atomsdefs[i].y == curr_y + 1) {

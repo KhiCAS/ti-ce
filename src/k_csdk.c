@@ -365,7 +365,7 @@ int os_set_angle_unit(int mode){
 }
 
 int os_get_angle_unit(){
-  int i=os_TestFlag(TRIG,DEGREES);
+  const int i=os_TestFlag(TRIG,DEGREES);
   return i?0:1;
 }
 
@@ -398,7 +398,7 @@ void warn_archived(const char * filename){
 }
 
 int erase_file(const char * filename){
-  int i=file_exists(filename);
+  const int i=file_exists(filename);
 #ifndef WITH_QUAD
   dbg_printf("erase file=%s i=%i\n",filename,i);
 #endif
@@ -437,7 +437,7 @@ const char * read_file(const char * filename){
   var_t * ptr_=os_GetAppVarData(var,&archived);
   if (!ptr_)
     return 0;
-  char * ptrc=ptr_->data;
+  const char * ptrc=ptr_->data;
   int s=ptr_->size;
   //dbg_printf("read_file name=%s size=%i %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x\n",var,s,ptrc[0],ptrc[1],ptrc[2],ptrc[3],ptrc[4],ptrc[5],ptrc[6],ptrc[7],ptrc[8],ptrc[9],ptrc[10],ptrc[11],ptrc[12],ptrc[13],ptrc[14],ptrc[15],ptrc[16],ptrc[17],ptrc[18],ptrc[19],ptrc[20],ptrc[21],ptrc[22],ptrc[23]);
   if (s>7){
@@ -446,8 +446,7 @@ const char * read_file(const char * filename){
     char subtype[8]={0};
     strncpy(subtype,ptrc,4); ptrc+=4;
     if (strncmp(subtype,"PYCD",4)==0 || strncmp(subtype,"PYSC",4)==0 || strncmp(subtype,"XCAS",4)==0 || strncmp(subtype,"TABL",4)==0){
-      unsigned char dx;
-      dx=*ptrc; ++ptrc;
+      unsigned char dx = *ptrc; ++ptrc;
       //dbg_printf("read subtype=%s dx=%i ptrc=%s\n",subtype,(int)dx,ptrc);
       if (dx>0){
         // skip desktop filename
@@ -533,7 +532,7 @@ int write_file(const char * filename,const char * s,int len){
   //dbg_printf("write_file var=%s fname=%s ext=%s\n",var,filename,ext);
 #ifdef STANDALONE
   // first erase filename
-  int i=file_exists(var);
+  const int i=file_exists(var);
   //dbg_printf("write_file exist=%i\n",i);
   if (i==2){
     warn_archived(filename);
@@ -612,11 +611,11 @@ int os_file_browser(const char ** filenames,int maxrecords,const char * extensio
   void * ptr=os_GetSymTablePtr();
   int cur=0;
   for (int count=0;cur<maxrecords && ptr;count++){
-    uint24_t type, l,j;
+    uint24_t type, l;
     char s[16]={0};
     char * dataptr=0;
     char * ext=0;
-    uint8_t * ptr2 = (uint8_t*)ptr - 1;
+    const uint8_t * ptr2 = (uint8_t*)ptr - 1;
     ptr=os_NextSymEntry(ptr, &type, &l, s,&dataptr);
     //    if (isalpha(s[0])) dbg_printf("os_file_browser name=%s l=%i type=%i dataptr=%x [count=%i cur=%i ptr=%x ptr2=%x]\n",s,l,type,dataptr,count,cur,ptr,ptr2);
     if (l>=FILENAME_MAXSIZE || !dataptr || !isalpha(s[0]) || type!=21
@@ -644,7 +643,7 @@ int os_file_browser(const char ** filenames,int maxrecords,const char * extensio
       else { // extension from filename _xw or _py or _...
         //dbg_printf("os_file_browser2 %i %i %x\n",type,l,dataptr);
         //dbg_printf("filename2 %i %s\n",count,s);
-        for (j=l-1;j>0;--j){
+        for (uint24_t j = l - 1;j>0;--j){
           if (s[j]=='_'){
             ext=s+j+1;
             break;
@@ -683,15 +682,15 @@ void sync_screen(){
 }
 int c_rgb565to888(int c){
   c &= 0xffff;
-  int r=(c>>11)&0x1f,g=(c>>5)&0x3f,b=c&0x1f;
+  const int r=(c>>11)&0x1f,g=(c>>5)&0x3f,b=c&0x1f;
   return (r<<19)|(g<<10)|(b<<3);
 }
 
 int convertcolor(int c){
   // convert 16 bits to default palette
   c &= 0xffff;
-  int r=(c>>11)&0x1f,g=(c>>5)&0x3f,b=c&0x1f;
-  int R = ((r>>3)<<5) | ((g>>3)<<2) | (b>>3);
+  const int r=(c>>11)&0x1f,g=(c>>5)&0x3f,b=c&0x1f;
+  const int R = ((r>>3)<<5) | ((g>>3)<<2) | (b>>3);
   //dbg_printf("convertcolor rgb565=%x r=%i/32 g=%i/64 b=%i/32 to rgb232=%i palette[]=%x\n",c,r,g,b,R,lcd_Palette[R]);
   return R;
 }
@@ -700,7 +699,7 @@ int convertbackcolor(int c){
   c &= 0x7f;
   int r=(c>>5)&0x3,g=(c>>2)&0x7,b=c&0x3;
   r <<= 3; g <<= 3; b <<= 3;
-  int R = (r<<11) | (g<<5) | b;
+  const int R = (r<<11) | (g<<5) | b;
   //dbg_printf("convert %i r=%i g=%i b=%i to %i\n",c,r,g,b,R);
   return R;
   
@@ -845,7 +844,7 @@ int os_draw_string(int x,int y,int c,int bg,const char * s,int fake){
 const int statuscolor=2016;
 void statuslinemsg(const char * msg,int warncolor){
   os_fill_rect(0,0,154,16,SDK_BLACK);
-  int l=strlen(msg);
+  const int l=strlen(msg);
   if (l<=22)
     os_draw_string_medium(0,-STATUS_AREA_PX,warncolor?warncolor:statuscolor,SDK_BLACK,msg,false);
   else {
@@ -858,7 +857,8 @@ void statuslinemsg(const char * msg,int warncolor){
 }
 
 void set_time(int h,int m){
-  int s=rtc_Seconds,d=rtc_Days,month,year;
+  uint8_t s=rtc_Seconds,d=rtc_Days,month;
+  uint16_t year;
   boot_GetDate(&d,&month,&year);
   //dbg_printf("set_time s=%i m=%i h=%i d=%i\n",s,m,h,d);
   boot_SetTime(s,m,h);
@@ -872,7 +872,7 @@ void get_time(int *h,int *m){
 }
 
 void display_time(){
-  int h=rtc_Hours,m=rtc_Minutes;
+  const int h=rtc_Hours,m=rtc_Minutes;
   char msg[10];
   msg[0]=' ';
   msg[1]='0'+(h/10);
@@ -918,7 +918,7 @@ void statusflags(){
   os_fill_rect(x0,STATUS_AREA_PX-5,w,2,COLOR_RED);
   os_fill_rect(x0,0,2,STATUS_AREA_PX-4,COLOR_RED);
   os_fill_rect(x0+w,0,2,STATUS_AREA_PX-4,COLOR_RED);
-  uint8_t i=boot_GetBatteryStatus(); int color=statuscolor;
+  const uint8_t i=boot_GetBatteryStatus(); int color=statuscolor;
   //i=0; // emu check colors
   switch (i){
   case 4:

@@ -52,12 +52,12 @@ void vGL_putChar(unsigned int x0, unsigned int y0, char ch, unsigned char fg, un
     return;
   }
   const unsigned char * pCh = charptrbase + (ch - ' ') * font_h;
-  int shift=my_min(font_w,VIR_LCD_PIX_W-x0); // shift>0
+  const int shift=my_min(font_w,VIR_LCD_PIX_W-x0); // shift>0
   unsigned char * ptry=ti8bpp_screen+x0+(y0<<8)+(y0<<6);
   int tmp=VIR_LCD_PIX_H-y0;
   if (font_h<tmp)
     tmp=font_h;
-  unsigned char * ptryend=ptry+(tmp<<8)+(tmp<<6);
+  const unsigned char * ptryend=ptry+(tmp<<8)+(tmp<<6);
   for (;ptry<ptryend;ptry+=VIR_LCD_PIX_W,++pCh){
     unsigned char * ptr=ptry;
     unsigned char * ptrend = ptr+shift;
@@ -101,13 +101,13 @@ void vGL_putChar(unsigned int x0, unsigned int y0, char ch, unsigned char fg, un
 }
 
 void vGL_putString(int x0, int y0, const char *s, unsigned char fg, unsigned char bg, int fontSize) {
-  //dbg_printf("putstring x=%i y=%i s=%s fontSize=%i fg=%i bg=%i\n",x0,y0,s,fontSize,fg,bg); 
-  int font_w;
-  int font_h;
-  int len = strlen(s);
-  int x = 0, y = 0;
+  //dbg_printf("putstring x=%i y=%i s=%s fontSize=%i fg=%i bg=%i\n",x0,y0,s,fontSize,fg,bg);
   unsigned char * charptrbase=VGA_Ascii_7x14;
   if (fontSize <= 16) {
+    int x = 0;
+    int y = 0;
+    int font_h;
+    int font_w;
     switch (fontSize) {
     case 8:
       font_w = 5;
@@ -175,7 +175,7 @@ void vGL_setArea(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
     }
   }  
 #else
-  unsigned color3=(color<<16)|(color<<8)|color;
+  const unsigned color3=(color<<16)|(color<<8)|color;
   for (int y = y0; y < y1; y++){
     unsigned char * ptr=ti8bpp_screen+x0+y*VIR_LCD_PIX_W,*ptrend=ptr+x1-x0;
     ptrend-=2;
@@ -375,8 +375,8 @@ void vGL_Initialize() {
   for (int r=0;r<4;r++){
     for (int g=0;g<8;g++){
       for (int b=0;b<4;b++){
-        int R=r*255/3, G=g*255/7, B=b*255/3;
-        int RGB=sdk_rgb(R,G,B);
+        const int R=r*255/3, G=g*255/7, B=b*255/3;
+        const int RGB=sdk_rgb(R,G,B);
         lcd_Palette[(r<<5)|(g<<2)|b]=RGB;//gfx_RGBTo1555(R,G,B);
         //dbg_printf("lcd_Palette[%i] R=%i/255 G=%i/255 B=%i/255 RGB565=%x\n",(r<<5)|(g<<2)|b,R,G,B,RGB);
       }

@@ -29,9 +29,9 @@ using namespace std;
 bool freeze=false,freezeturtle=false;
 size_t pythonjs_stack_size=20*1024,pythonjs_heap_size=max_heap_size*3*1024/4;
 int xcas_python_eval=0;
-char * pythonjs_static_heap=0;
-char * python_heap=0;
-giac::context * contextptr=0;
+char * pythonjs_static_heap=nullptr;
+char * python_heap=nullptr;
+giac::context * contextptr=nullptr;
 extern "C" int mp_token(const char * line);
 extern "C" {
   extern int execution_in_progress_py;
@@ -53,7 +53,7 @@ void python_free(){
     if ( ((size_t) python_heap)>1)
       free(python_heap);
   }
-  python_heap=0;
+  python_heap=nullptr;
 }
 
 int python_init(int stack_size,int heap_size){
@@ -84,7 +84,7 @@ int micropy_ck_eval(const char *line){
   }
   ctrl_c_py=0;
   execution_in_progress_py = 1;
-  int res= micropy_eval(line);
+  const int res= micropy_eval(line);
   execution_in_progress_py = 0;
   if (ctrl_c_py & 1){
     confirm(lang?"Interrompu":"Interrupted","F1/F5: ok",""); // insure ON has been removed from keyboard buffer
@@ -103,7 +103,7 @@ const char * input_matrix(const giac::gen &g,giac::gen & ge,const giac::context 
 }    
   
 const char * input_matrix(bool list){
-  static ustl::string * sptr=0;
+  static ustl::string * sptr=nullptr;
   if (!sptr)
     sptr=new ustl::string;
   *sptr="";
@@ -145,7 +145,7 @@ const char * input_matrix(bool list){
       if (ge==g || confirm_overwrite()){
 	*sptr="";
 	if (inputline((lang?"Nombre de lignes":"Line number"),"",*sptr,true)){
-	  int l=strtol(sptr->c_str(),0,10);
+	  int l=strtol(sptr->c_str(),nullptr,10);
 	  if (l>0 && l<256){
 	    int c;
 	    if (list)
@@ -154,7 +154,7 @@ const char * input_matrix(bool list){
 	      ustl::string tmp(*sptr+(lang?" lignes.":" lines."));
 	      *sptr="";
 	      inputline(tmp.c_str(),lang?"Colonnes:":"Columns:",*sptr,true);
-	      c=strtol(sptr->c_str(),0,10);
+	      c=strtol(sptr->c_str(),nullptr,10);
 	    }
 	    if (c==0){
 	      ge=giac::vecteur(l);
@@ -179,7 +179,7 @@ const char * input_matrix(bool list){
     }	
   } // isalpha
   reset_kbd();
-  return 0;
+  return nullptr;
 }
 #else
 const char * input_matrix(bool list){
@@ -207,7 +207,7 @@ int select_item(const char ** ptr,const char * title,bool askfor1){
   smallmenu.scrollout=1;
   smallmenu.title = (char*) title;
   //MsgBoxPush(5);
-  int sres = doMenu(&smallmenu);
+  const int sres = doMenu(&smallmenu);
   //MsgBoxPop();
   if (sres!=MENU_RETURN_SELECTION && sres!=KEY_CTRL_EXE)
     return -1;
@@ -215,8 +215,8 @@ int select_item(const char ** ptr,const char * title,bool askfor1){
 }
 
 int fileBrowser(char * filename, const char * ext, const char * title){
-  constexpr int N=32;
-  const char * filenames[N]={0};
+  constexpr const int N=32;
+  const char * filenames[N]={nullptr};
   //dbg_printf("fileBrowser ext=%s title=%s\n",ext,title);
   int res=os_file_browser(filenames,N,ext,2);
   if (res<=0 || res>=N)
@@ -265,7 +265,7 @@ const char * select_var(){
   MenuItem smallmenuitems[v.size()+4];
   vector<ustl::string> vs(v.size()+1);
   int i,total=0;
-  constexpr char typ[]="idzDcpiveSfEsFRmuMwgPF";
+  constexpr const char typ[]="idzDcpiveSfEsFRmuMwgPF";
   for (i=0;i<v.size();++i){
     vs[i]=v[i].print(contextptr);
     if (v[i].type==giac::_IDNT){
@@ -319,7 +319,7 @@ const char * select_var(){
 
 //const char * keywords[]={"do","faire","for","if","return","while"}; // added to lexer_tab_int.h
 
-  const char * python_keywords[] = {   // List of known giac keywords...
+  constexpr const char * const python_keywords[] = {   // List of known giac keywords...
     "False",
     "None",
     "True",
@@ -345,7 +345,7 @@ const char * select_var(){
     "xor",
     "yield",
   };
-  constexpr char * const python_builtins[]={
+  constexpr const char * const python_builtins[]={
     "NoneType",
     "__call__",
     "__class__",
@@ -429,11 +429,11 @@ const char * select_var(){
   };
 
   int dichotomic_search(const char * const * tab,unsigned tab_size,const char * s){
-    int beg=0,end=tab_size,cur,test;
+    int beg=0,end=tab_size;
     // string index is always >= begin and < end
     for (;;){
-      cur=(beg+end)/2;
-      test=strcmp(s,tab[cur]);
+      int cur = (beg + end) / 2;
+      int test = strcmp(s, tab[cur]);
       if (!test)
 	return cur;
       if (cur==beg)
@@ -468,7 +468,7 @@ void do_eval(giac::gen & g){
   statuslinemsg(!lang?"cancel: stop calcul.":"annul: stoppe calcul",COLOR_RED);
   g=giac::eval(g,giac::eval_level(contextptr),contextptr);
   if (giac::interrupted){
-    print_msg12(lang?"Interrompu":"Interrupted",0);
+    print_msg12(lang?"Interrompu":"Interrupted",nullptr);
     getkey(0);
     freeze=false;
   }
@@ -562,7 +562,7 @@ int check_parse(const std::vector<textElement> & v,int python){
 
 int find_color(const char * s){
   if (!s) return 0;
-  char ch=s[0];
+  const char ch=s[0];
   if (ch=='"')
     return 38052;
   if (!isalpha(s[0]))
@@ -584,7 +584,7 @@ int find_color(const char * s){
   return 0;
 #else  
   giac::gen g;
-  int token=giac::find_or_make_symbol(buf,g,0,false,contextptr);
+  const int token=giac::find_or_make_symbol(buf,g,nullptr,false,contextptr);
   //dbg_printf("find_color %s %i %s\n",buf,token,g.print(contextptr).c_str());
   if (token==T_UNARY_OP || token==T_UNARY_OP_38 || token==T_LOGO)
     return 24844; // 38052;
@@ -622,7 +622,7 @@ int select_script_and_run() {
 
 void erase_script(){
   char filename[MAX_FILENAME_SIZE+1];
-  int res=fileBrowser(filename, (char*)"*.py", (char *)"Scripts");
+  const int res=fileBrowser(filename, (char*)"*.py", (char *)"Scripts");
   if (res && do_confirm(lang?"Vraiment effacer":"Really erase?")){
     erase_file(filename);
   }
@@ -648,7 +648,7 @@ string extract_name(const char * s){
 void edit_script(const char * fname){
   // clear_abort();
   char fname_[MAX_FILENAME_SIZE+1];
-  char * filename=0;
+  const char * filename=nullptr;
   int res=1;
   if (fname)
     filename=(char *)fname; // safe, it will not be modified
@@ -660,7 +660,7 @@ void edit_script(const char * fname){
     string s;
     load_script(filename,s);
     if (s.empty()){
-      int k=KEY_CTRL_F5; // confirm("Program","F1: Tortue, F5: Python",true);
+      constexpr const int k=KEY_CTRL_F5; // confirm("Program","F1: Tortue, F5: Python",true);
       if (k==-1)
         return;
       if (k==KEY_CTRL_F1)
@@ -673,7 +673,7 @@ void edit_script(const char * fname){
       }
     }
     // split s at newlines
-    if (edptr==0)
+    if (edptr==nullptr)
       edptr=new textArea;
     if (!edptr) return;
     edptr->elements.clear();
@@ -700,8 +700,8 @@ string khicas_state(){
 #ifdef FAKE_GIAC
   return "";
 #else
-  giac::gen g(giac::_VARS(-1,contextptr)); 
-  int b=xcas_python_eval==1?4:python_compat(contextptr);
+  const giac::gen g(giac::_VARS(-1,contextptr));
+  const int b=xcas_python_eval==1?4:python_compat(contextptr);
   python_compat(0,contextptr);
   char buf[2048]="";
   //dbg_printf("VARS=%s\n",g.print(contextptr).c_str());
@@ -733,7 +733,7 @@ string khicas_state(){
 void save_khicas_symbols_smem(const char * filename) {
   // save variables in xcas mode,
   // because at load time the parser will be in xcas mode
-  string s(khicas_state());
+  const string s(khicas_state());
   save_script(filename,s);
 }
 
@@ -758,7 +758,7 @@ string remove_extension(const string & st){
 
 void save(const char * fname){
   //clear_abort();
-  string filename(remove_path(remove_extension(fname)));
+  const string filename(remove_path(remove_extension(fname)));
   save_console_state_smem((filename+".xw").c_str()); 
   if (edptr)
     check_leave(edptr);
@@ -796,7 +796,7 @@ int restore_session(const char * fname){
   os_draw_string_medium_(0,4*C18,lang?"Utiliser les 5 touches sous l'ecran pour":"Press one of the 5 keys below the screen");
   os_draw_string_medium_(0,5*C18,lang?"ouvrir un menu, cf. la legende au-dessus":"will open a fast menu according to the legend");
   os_draw_string_medium_(0,6*C18,lang?"Touche sto: sauvegarde la session":"Press sto to save the session");
-  string filename(remove_path(remove_extension(fname)));
+  const string filename(remove_path(remove_extension(fname)));
   if (load_console_state_smem((filename+".xw").c_str()))
     return 1;
   else {
@@ -806,26 +806,6 @@ int restore_session(const char * fname){
     return 0;
   }
 }
-
-#ifdef TEX
-#include "TeX.h"
-int tex_flag=1;
-extern "C"{
-  int* get_tex_flag_address(){
-    return &tex_flag;
-  }
-}
-
-void TeX_init(void){
-  Txt_Init(FONT_SYSTEM);
-}
-
-void TeX_quit(void){
-  Txt_Quit();
-}
-#endif
-
-
 
 bool textedit(char * s){
   if (!s)
@@ -844,7 +824,7 @@ bool textedit(char * s){
   ta.filename="temp.py";
   ta.y=0;
   ta.allowEXE=true;
-  bool str=s[0]=='"' && s[ss-1]=='"';
+  const bool str=s[0]=='"' && s[ss-1]=='"';
   if (str){
     s[ss-1]=0;
     add(&ta,s+1);
@@ -853,7 +833,7 @@ bool textedit(char * s){
     add(&ta,s);
   ta.line=0;
   ta.pos=ta.elements[ta.line].s.size();
-  int res=doTextArea(&ta);
+  const int res=doTextArea(&ta);
   if (res==TEXTAREA_RETURN_EXIT)
     return false;
   string S(merge_area(ta.elements));
@@ -874,9 +854,9 @@ bool textedit(char * s){
 }
 
 bool stringtodouble(const string & s1,double & d){
-  char * ptr=0;
+  char * ptr=nullptr;
   d=strtod(s1.c_str(),&ptr);
-  return ptr!=0;
+  return ptr!=nullptr;
 }
 
 // keep only 6 digits 
@@ -887,16 +867,16 @@ void ti_sprint_float(char * ch,float d){
     return ;
   }
   ch[0]=0;
-  bool pos=d>=0;
+  const bool pos=d>=0;
   if (!pos)
     d=-d;
   float m=frexp(d,&i);
   // d=m*2^i
   // 2^i is near 1000^j
-  bool negexp=i<0;
+  const bool negexp=i<0;
   if (negexp)
     i=-i;
-  int j=i/10;
+  const int j=i/10;
   float pow1000=1;
   int exp10=0;
   for (int k=j;k>0;k--){
@@ -922,14 +902,14 @@ void ti_sprint_float(char * ch,float d){
 }
 
 void ti_sprint_double(char * ch,double d){
-  int i=d;
+  const int i=d;
   if (i==d){
     sprintf(ch,"%i.0",i);
     return;
   }
-  real_t tmp_real = os_FloatToReal(d);
+  const real_t tmp_real = os_FloatToReal(d);
   os_RealToStr(ch, &tmp_real, 11, 1, -1);
-  int s=strlen(ch);
+  const int s=strlen(ch);
   for (int i=0;i<s;++i){
     if (ch[i]==0x1b)
       ch[i]='e';
@@ -1090,7 +1070,7 @@ void load_khicas_vars(const char * BUF){
     contextptr=new giac::context;
   dconsole_mode=0;
   xcas_mode(contextptr)=python_compat(contextptr)=0;
-  bool bi=try_parse_i(contextptr);
+  const bool bi=try_parse_i(contextptr);
   try_parse_i(false,contextptr);
   giac::gen g(BUF,contextptr);
   try_parse_i(bi,contextptr);
@@ -1163,7 +1143,7 @@ void runExternalProgramAndExit(const char* prgmName)
 
 int main1(){
   ustl::vector<giac::gen> ustlv;
-  unsigned * ustlptr=(unsigned *)&ustlv;
+  const unsigned * ustlptr=(unsigned *)&ustlv;
   giac::ustl_vecteur_prolog=*ustlptr;
   //dbg_printf("ustlv len=%i %x %x %x %x\n",sizeof(ustlv),ustlptr[0],ustlptr[1],ustlptr[2],ustlptr[3]);
 #ifdef FAKE_GIAC
@@ -1238,7 +1218,7 @@ int main1(){
   while (1) { 
     //dbg_printf("main1 loop\n");
     const Char *expr;
-    if ( (expr=Console_GetLine())==NULL )
+    if ( (expr=Console_GetLine())== nullptr)
       stop("memory error");
     else if (strcmp(expr, "asm") == 0) {
       runExternalProgramAndExit("ASMHOOK");
@@ -1343,8 +1323,8 @@ void console_output(const char * s,int l){
 const char * console_input(const char * msg1,const char * msg2,bool numeric,int ypos){
   string str;
   if (!inputline(msg1,msg2,str,numeric,ypos))
-    return 0;
-  char * ptr=strdup(str.c_str());
+    return nullptr;
+  const char * ptr=strdup(str.c_str());
   return ptr;
 }
 

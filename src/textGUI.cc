@@ -1,10 +1,9 @@
-#include <string>
 #include "calc.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <ctype.h>
+#include <string>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include "menuGUI.h"
 #include "textGUI.h"
 #include "console.h"
@@ -17,7 +16,7 @@
 using namespace std;
 
 //typedef scrollbar TScrollbar;
-textArea * edptr=0;
+textArea * edptr=nullptr;
 void displaylogo();
 #define C24 24 // 24 on 90
 #define C22 22
@@ -27,7 +26,7 @@ void displaylogo();
 #define C7 21
 
 void swapint(int &a,int &b){
-  int t=a;
+  const int t=a;
   a=b;
   b=t;
 }
@@ -40,13 +39,13 @@ int get_line_number(const char * msg1,const char * msg2);
 void clearLine(int x, int y,bool minimini) {
   // clear text line. x and y are text cursor coordinates
   // this is meant to achieve the same effect as using Printxy with a line full of spaces (except it doesn't waste strings).
-  int X=(minimini?4:6)*(x-1);
-  int width=LCD_WIDTH_PX-X;
+  const int X=(minimini?4:6)*(x-1);
+  const int width=LCD_WIDTH_PX-X;
   drawRectangle(X, (y-1)*C24, width, C24, _WHITE);
 }
 
 void drawScreenTitle(char* title) {
-  if(title != NULL)
+  if(title != nullptr)
     Printxy(0, 0, title, 1);
 }
 
@@ -83,12 +82,12 @@ char *strcasestr_duplicate(const char *s, const char *find)
 
   if ((c = *find++) != 0) {
     c = tolower((Char)c);
-    size_t len = strlen(find);
+    const size_t len = strlen(find);
     do {
       char sc;
       do {
         if ((sc = *s++) == 0)
-          return (NULL);
+          return (nullptr);
       } while ((char)tolower((Char)sc) != c);
     } while (strncasecmp(s, find, len) != 0);
     s--;
@@ -144,8 +143,8 @@ int EndsIWith(const char *str, const char *suffix)
 {
   if (!str || !suffix)
     return 0;
-  size_t lenstr = strlen(str);
-  size_t lensuffix = strlen(suffix);
+  const size_t lenstr = strlen(str);
+  const size_t lensuffix = strlen(suffix);
   if (lensuffix >  lenstr)
     return 0;
   //return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
@@ -156,8 +155,8 @@ int EndsIWith(const char *str, const char *suffix)
 // based on http://dsss.be/w/c:memmem
 // added case-insensitive functionality
 void* memmem(char* haystack, int hlen, char* needle, int nlen, int matchCase) {
-  if (nlen > hlen) return 0;
-  int i,j=0;
+  if (nlen > hlen) return nullptr;
+  int j=0;
   switch(nlen) { // we have a few specialized compares for certain needle sizes
   case 0: // no needle? just give the haystack
     return haystack;
@@ -165,12 +164,12 @@ void* memmem(char* haystack, int hlen, char* needle, int nlen, int matchCase) {
     if(matchCase) return memchr(haystack, needle[0], hlen);
     else {
       void* lc = memchr(haystack, tolower(needle[0]), hlen);
-      if(lc!=NULL) return lc;
+      if(lc!= nullptr) return lc;
       else return memchr(haystack, toupper(needle[0]), hlen);
     }
   default: // generic compare for any other needle size
     // walk i through the haystack, matching j as long as needle[j] matches haystack[i]
-    for (i=0; i<hlen-nlen+1; i++) {
+    for (int i = 0; i<hlen-nlen+1; i++) {
       if (matchCase ? haystack[i]==needle[j] : tolower(haystack[i])==tolower(needle[j])) {
         if (j==nlen-1) { // end of needle and it all matched?  win.
           return haystack+i-j;
@@ -183,13 +182,13 @@ void* memmem(char* haystack, int hlen, char* needle, int nlen, int matchCase) {
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 // convert a normal text string into a multibyte one where letters become their mini variants (F5 screen of the OS's character select dialog)
 // dest must be at least double the size of orig.
 void stringToMini(char* dest, char* orig) {
-  int len = strlen(orig);
+  const int len = strlen(orig);
   int dlen = 0;
   for (int i = 0; i < len; i++) {
     if((orig[i] >= 65 && orig[i] <= 90) || (orig[i] >= 97 && orig[i] <= 122)) { // A-Z a-z
@@ -219,7 +218,7 @@ void fix_newlines(textArea * edptr){
     string S=edptr->elements[i].s;
     if (S.size()>120)
       edptr->minimini=1;
-    constexpr int cut=240;
+    constexpr const int cut=240;
     if (edptr->longlinescut && S.size()>cut){
       // string too long, cut it, set font to minimini
       int j;
@@ -379,11 +378,11 @@ void insert(textArea * text,const char * adds,bool indent){
   if (!n)
     return;
   set_undo(text);
-  int l=text->line;
+  const int l=text->line;
   if (l<0 || l>=text->elements.size())
     return; // invalid line number
   std::string & s=text->elements[l].s;
-  int ss=int(s.size());
+  const int ss=int(s.size());
   int & pos=text->pos;
   if (pos>ss)
     pos=ss;
@@ -403,7 +402,7 @@ void insert(textArea * text,const char * adds,bool indent){
     return;
   }
   std::string S(adds+i+1);
-  int decal=ss-pos;
+  const int decal=ss-pos;
   S += s.substr(pos,decal);
   // cout << S << " " << ins << endl;
   s=ins;
@@ -530,7 +529,7 @@ bool match(textArea * text,int pos,int & line1,int & pos1,int & line2,int & pos2
   const std::string * s=&v[linepos].s;
   int ss=s->size();
   if (pos<0 || pos>=ss) return false;
-  char ch=(*s)[pos];
+  const char ch=(*s)[pos];
   int open1=0,open2=0,open3=0,inc=0;
   if (ch=='(' || ch=='['
       || ch=='{'
@@ -598,7 +597,7 @@ bool match(textArea * text,int pos,int & line1,int & pos1,int & line2,int & pos2
 
 std::string get_selection(textArea * text,bool erase){
   int sel_line1=-1,sel_line2=-1,sel_pos1,sel_pos2;
-  int clipline=text->clipline,clippos=text->clippos,textline=text->line,textpos=text->pos;
+  const int clipline=text->clipline,clippos=text->clippos,textline=text->line,textpos=text->pos;
   //dbg_printf("select clip=%i,%i text=%i,%i\n",clipline,clippos,textline,textpos);
   if (clipline>=0){
     if (clipline<textline || (clipline==textline && clippos<textpos)){
@@ -627,7 +626,7 @@ std::string get_selection(textArea * text,bool erase){
     return s;
   }
   s=s.substr(sel_pos1,s.size()-sel_pos1)+'\n';
-  int sel_line1_=sel_line1;
+  const int sel_line1_=sel_line1;
   for (sel_line1++;sel_line1<sel_line2;sel_line1++){
     s += text->elements[sel_line1].s;
     s += '\n';
@@ -659,7 +658,7 @@ bool change_mode(textArea * text,int flag){
 
 void match_print(char * singleword,int delta,int X,int Y,bool match,bool minimini){
   // char buflog[128];sprintf(buflog,"%i %i %s               ",delta,(int)match,singleword);puts(buflog);
-  char ch=singleword[delta];
+  const char ch=singleword[delta];
   singleword[delta]=0;
   print(X,Y,singleword,0,false,/* fake*/true,minimini);
   singleword[delta]=ch;
@@ -680,7 +679,7 @@ void match_print(char * singleword,int delta,int X,int Y,bool match,bool minimin
 // isFirstDraw==2 redraw current line only (assumes rest of screen still ok)
 void textarea_disp(textArea * text,int & isFirstDraw,int & totalTextY,int & scroll,int & textY,bool minimini){
   bool editable=text->editable;
-  int showtitle = !editable && (text->title != NULL);
+  int showtitle = !editable && (text->title != nullptr);
   std::vector<textElement> & v=text->elements;
   if (v.empty()) v.push_back(textElement());
   //if (!isFirstDraw) drawRectangle(text->x, 24, text->width, 18, COLOR_WHITE);
@@ -816,16 +815,16 @@ void textarea_disp(textArea * text,int & isFirstDraw,int & totalTextY,int & scro
       }
       chksel=(sel_line1<=cur && cur<=sel_line2);
     }
-    const char * match1=0; // matching parenthesis (or brackets?)
-    const char * match2=0;
+    const char * match1=nullptr; // matching parenthesis (or brackets?)
+    const char * match2=nullptr;
     if (cur==line1)
       match1=v[cur].s.c_str()+pos1;
     else
-      match1=0;
+      match1=nullptr;
     if (cur==line2)
       match2=v[cur].s.c_str()+pos2;
     else
-      match2=0;
+      match2=nullptr;
     // if (cur==textline && !match(v[cur].s.c_str(),textpos,match1,match2) && !match1 && !match2) match(v[cur].s.c_str(),textpos-1,match1,match2);
     // char buf[128];sprintf(buf,"%i %i %i        ",cur,(int)match1,(int)match2);puts(buf);
     const char * srcpos=src+textpos;
@@ -1073,7 +1072,7 @@ bool move_to_word(textArea * text,const std::string & s,const std::string & repl
   if (pos>=text->elements[line].s.size())
     pos=0;
   for (;line<text->elements.size();++line){
-    int p=text->elements[line].s.find(s,pos);
+    const int p=text->elements[line].s.find(s,pos);
     if (p>=0 && p<text->elements[line].s.size()){
       text->line=line;
       text->clipline=line;
@@ -1085,7 +1084,7 @@ bool move_to_word(textArea * text,const std::string & s,const std::string & repl
     pos=0;
   }
   for (line=0;line<text->line;++line){
-    int p=text->elements[line].s.find(s,0);
+    const int p=text->elements[line].s.find(s,0);
     if (p>=0 && p<text->elements[line].s.size()){
       text->line=line;
       text->clipline=line;
@@ -1099,10 +1098,10 @@ bool move_to_word(textArea * text,const std::string & s,const std::string & repl
 }
 
 void textarea_help_insert(textArea * text,int exec){
-  string curs=text->elements[text->line].s.substr(0,text->pos);
+  const string curs=text->elements[text->line].s.substr(0,text->pos);
   if (!curs.empty()){
     int b;
-    string adds=help_insert(curs.c_str(),b,exec);
+    const string adds=help_insert(curs.c_str(),b,exec);
     if (!adds.empty()){
       if (b>0){
         string & s=text->elements[text->line].s;
@@ -1123,7 +1122,7 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
   //dbg_printf("key=%i\n",key);
   std::vector<textElement> & v=text->elements;
   bool editable=text->editable;
-  int showtitle = !editable && (text->title != NULL);
+  int showtitle = !editable && (text->title != nullptr);
   int scrollableHeight = LCD_HEIGHT_PX-C24*(showtitle ? 2 : 1)-text->y;
   int & clipline=text->clipline;
   int & clippos=text->clippos;
@@ -1171,7 +1170,7 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
     }
     if (clipline<0){
       //dbg_printf("handle_key1=%i\n",key);
-      const char * adds=0;
+      const char * adds=nullptr;
       if ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F4) ||
            key==KEY_CTRL_F6 ||
            (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F15)
@@ -1256,7 +1255,7 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
   }
   textElement * ptr=& v[textline];
   //dbg_printf("handle_key2=%i\n",key);
-  constexpr int interligne=8;
+  constexpr const int interligne=8;
   switch(key){
   case KEY_CTRL_DEL:
     if (clipline>=0){
@@ -1602,7 +1601,7 @@ int doTextArea(textArea* text) {
     // save rectangle under cursor and show cursor
     volatile unsigned char *ti8bpp_screen;
     unsigned char buf[2*16];
-    int taille=text->minimini?8:16;
+    const int taille=text->minimini?8:16;
     if (text->cursorx>=0 && text->cursory>=0 && text->cursorx<LCD_WIDTH_PX-2 && text->cursory<LCD_HEIGHT_PX-taille){
       ti8bpp_screen=(unsigned char *) lcd_Ram;
       ti8bpp_screen += text->cursorx+text->cursory*LCD_WIDTH_PX,*ti8bpp_screen;
@@ -1613,12 +1612,12 @@ int doTextArea(textArea* text) {
       }
     }
     drawRectangle(text->cursorx,text->cursory,2,taille,COLOR_BLACK);
-    unsigned kf=GetSetupSetting( (unsigned int)0x14);
+    const unsigned kf=GetSetupSetting( (unsigned int)0x14);
     unsigned int key;
     //char keylog[32];sprint_int(keylog,key); puts(keylog);
     ck_getkey((int*)&key);
     while (key==KEY_CTRL_SHIFT || key==KEY_CTRL_ALPHA){
-      int keyflag = (Char)Setup_GetEntry(0x14);
+      const int keyflag = (Char)Setup_GetEntry(0x14);
       bool alph=keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
       console_disp_status(keyflag);
       ck_getkey((int*)&key);
@@ -1671,11 +1670,11 @@ int doTextArea(textArea* text) {
       key=KEY_CTRL_F4;
     if (!text->editable && ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F4) || key==KEY_CTRL_F6 ||  key==KEY_CTRL_F7 || key==KEY_CTRL_F8 || (key>=KEY_CTRL_F11 && key<=KEY_CTRL_F13) ) )
       return key;
-    int ans=handle_key(text,key,kf,isFirstDraw,scroll,textY,totalTextY,search,replace);
+    const int ans=handle_key(text,key,kf,isFirstDraw,scroll,textY,totalTextY,search,replace);
     if (ans>=0)
       return ans;
     if (ans==-1){
-      int err=check_parse(v,text->python);
+      const int err=check_parse(v,text->python);
       if (err) // move cursor to the error line
         text->line=err-1;
     }
@@ -1691,6 +1690,6 @@ int get_line_number(const char * msg1,const char * msg2){
   int res=inputline(msg1,msg2,s,false);
   if (res==KEY_CTRL_EXIT)
     return 0;
-  res=strtol(s.c_str(),0,10);
+  res=strtol(s.c_str(),nullptr,10);
   return res;
 }
