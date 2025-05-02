@@ -28,7 +28,7 @@ void fix_f(int & key){
 int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what user did. selection is on menu->selection. menu->selection starts at 1!
   int itemsStartY=menu->startY; // char Y where to start drawing the menu items. Having a title increases this by one
   int itemsHeight=menu->height;
-  const int showtitle = menu->title != nullptr;
+  const bool showtitle = (menu->title != nullptr);
   int fontwidth=8;
   if (showtitle) {
     itemsStartY++;
@@ -1245,7 +1245,7 @@ int doCatalogMenu(char* insertText, const char* title, int category,const char *
 	}
 	if (isopt){
 	  int token=menuitems[menu.selection-1].token;
-	  *insertText=0;
+    *insertText = '\0';
 	  strcat(insertText,menuitems[menu.selection-1].text);
 	  return 1;
 	}

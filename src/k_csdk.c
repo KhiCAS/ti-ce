@@ -857,9 +857,11 @@ void statuslinemsg(const char * msg,int warncolor){
 }
 
 void set_time(int h,int m){
-  uint8_t s=rtc_Seconds,d=rtc_Days,month;
+  uint8_t month;
   uint16_t year;
-  boot_GetDate(&d,&month,&year);
+  uint8_t s = rtc_Seconds;
+  uint16_t d = rtc_Days;
+  boot_GetDate(&d, &month, &year);
   //dbg_printf("set_time s=%i m=%i h=%i d=%i\n",s,m,h,d);
   boot_SetTime(s,m,h);
   boot_SetDate(d,month,year);

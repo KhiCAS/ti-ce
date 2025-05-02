@@ -222,13 +222,7 @@ void vGL_End(){
   //boot_ClearVRAM();
   lcd_Control = 0b100100101101; // TI-OS default
   // _boot_InitializeHardware
-  asm("assume	adl = 1\n\t"
-      "call $000384\n\t"
-      :  /* output */
-      :  /* input */
-      : /* clobbered registers */
-    );
-  // 
+  ((void(*)(void))0x000384)();
 }
 
 inline uint16_t sdk_rgb(int a,int b,int c){

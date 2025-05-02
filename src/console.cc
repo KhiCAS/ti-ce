@@ -2534,9 +2534,9 @@ const char * console_menu(int key,Char* cfg_,int active_app){
 char *Console_Make_Entry(const Char* str)
 {
   char* entry = nullptr;
-  entry = (char*)calloc((strlen((const char *)str)+1), sizeof(Char*));
-  if(entry) memcpy(entry, (const char *)str, strlen((const char *)str)+1);
-
+  const size_t entry_count = strlen((const char*)str) + 1;
+  entry = (char*)calloc(entry_count, sizeof(char));
+  if (entry) memcpy(entry, (const char *)str, entry_count);
   return entry;
 }
 
