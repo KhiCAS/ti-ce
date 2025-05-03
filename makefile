@@ -28,7 +28,6 @@ else
 endif
 
 NAME = DEMO
-ICON = icon.png
 COMPRESSED = NO
 ARCHIVED = NO
 
