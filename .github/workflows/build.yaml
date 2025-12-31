@@ -63,7 +63,7 @@ jobs:
 
       - name: Update nightly release
         if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        uses: softprops/action-gh-release@5122b4edc95f85501a71628a57dc180a03ec7588 # latest as of 2025-12-22
         with:
           tag_name: nightly
           prerelease: true
