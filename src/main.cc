@@ -1103,8 +1103,9 @@ void stop(const char * s)
 {
   python_free();
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
-    "ld  sp, ($D19888)\n\t"
+  asm(
+    ".assume\tadl = 1\n\t"
+    "ld\tsp, ($D19888)\n\t"
     : /* output */
     : /* input */
     : /* clobbered registers */
@@ -1129,8 +1130,9 @@ void runExternalProgramAndExit(const char* prgmName)
 {
   python_free();
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
-    "ld  sp, ($D19888)\n\t"
+  asm(
+    ".assume\tadl = 1\n\t"
+    "ld\tsp, ($D19888)\n\t"
     : /* output */
     : /* input */
     : /* clobbered registers */
@@ -1269,13 +1271,14 @@ int main(){
   if (pcmain<appstart || pcmain>=0x3b0000)
     return 1;
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
-      "ld  ($D19888), sp\n\t"
-      "ld  sp, $D2a800\n\t"
-      :        /* output */
-      :  /* input */
-      : /* clobbered registers */
-    );
+  asm(
+    ".assume\tadl = 1\n\t"
+    "ld\t($D19888), sp\n\t"
+    "ld\tsp, $D2A800\n\t"
+    : /* output */
+    : /* input */
+    : /* clobbered registers */
+  );
 #endif
   sdk_init();
   mp_stack_ctrl_init();
@@ -1302,12 +1305,13 @@ int main(){
   python_free();
   sdk_end();
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
-      "ld  sp, ($D19888)\n\t"
-      :        /* output */
-      :  /* input */
-      : /* clobbered registers */
-    );
+  asm(
+    ".assume\tadl = 1\n\t"
+    "ld\tsp, ($D19888)\n\t"
+    : /* output */
+    : /* input */
+    : /* clobbered registers */
+  );
 #endif
   return 0;
 }
