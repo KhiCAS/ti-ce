@@ -6,6 +6,7 @@
 #include "textGUI.h"
 #include "file.h"
 #include "main.h"
+#include <cstring>
 #ifndef GIAC_FAKE
 namespace xcas {
   bool eqws(char * s,bool eval);
@@ -1127,7 +1128,7 @@ int Console_MoveCursor(int direction){
       }
     case CURSOR_SHIFT_RIGHT:
       if (!Line[Current_Line].readonly)
-	Cursor.x=min(Line[Current_Line].disp_len,COL_DISP_MAX);
+        Cursor.x = std::min<int>(Line[Current_Line].disp_len,COL_DISP_MAX);
       if (Line[Current_Line].disp_len > COL_DISP_MAX)
 	Line[Current_Line].start_col = Line[Current_Line].disp_len - COL_DISP_MAX;
       break;
@@ -1620,7 +1621,7 @@ const char * trig(){
       *lcdramptr=*saveptr;
     }
   }
-  char * tab[]={"","sin(","cos(","tan(","asin(","acos(","atan("};
+  const char * tab[] = {"","sin(","cos(","tan(","asin(","acos(","atan("};
   return tab[k];
 }
 
@@ -1695,7 +1696,7 @@ const char * trig(){
       const int c=chartab();
       if (c<0) return "";
       (*sptr)[0] = (c<32 || c==127)?0:char(c);
-      return *sptr; // ":=";
+      return sptr->c_str(); // ":=";
     }
     case KEY_CHAR_COMMA:
       // if (keyflag==1) return "solve(";
@@ -1976,7 +1977,7 @@ int Console_GetKey(){
     }
 #ifdef WITH_EQW
     if (key==KEY_EQW_TEMPLATE && Current_Line==Last_Line){
-      char buf[max(GEN_PRINT_BUFSIZE,strlen(Edit_Line)+1)];
+      char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen(Edit_Line)+1)];
       strcpy(buf,(const char *)Edit_Line);
       if (buf[0]==0){
         buf[0]='0';
@@ -1994,7 +1995,7 @@ int Console_GetKey(){
       int l=Current_Line;
       bool graph=strcmp((const char *)Line[l].str,"Graphic object")==0;
       if (graph && l>0) --l;
-      char buf[max(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str)+1)];
+      char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str)+1)];
       strcpy(buf,(const char *)Line[l].str);
 #ifdef WITH_EQW
       if ( (alph || key==KEY_CTRL_RIGHT) ?textedit(buf):xcas::eqws(buf,graph /* eval */))
@@ -2225,7 +2226,7 @@ int Console_GetKey(){
           }
 #ifdef WITH_PERIODIC
           if (smallmenu.selection == 16)
-            return Console_Input(run_periodic_table());
+            return Console_Input(run_periodic_table().c_str());
 #ifdef WITH_SHEET
           if (smallmenu.selection == 17){
             sheet();
@@ -2489,7 +2490,7 @@ const char * console_menu(int key,Char* cfg_,int active_app){
   if(entry.count > 0) {
     const char * ret=nullptr;
     ret = Console_Draw_FMenu(key, &entry,cfg,active_app);
-    // cout << "console0 " << (unsigned) ret << endl;
+    // cout << "console0 " << (uintptr_t) ret << endl;
     if (!ret) return ret;
     if (strcmp(ret,"char table")==0){
       const int key=chartab();

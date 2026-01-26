@@ -88,12 +88,15 @@ static unsigned int freeslot6[ALLOC6 / INT24_WIDTH] = {
 };
 
 #define LCD_SIZE_8BPP (LCD_WIDTH * LCD_HEIGHT)
-const char2_t* tab2 = lcd_Ram + LCD_SIZE_8BPP;
-const char3_t* tab3 = lcd_Ram + LCD_SIZE_8BPP + ALLOC2 * sizeof(char2_t);
-const char6_t* tab6 = lcd_Ram + LCD_SIZE_8BPP + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t);
+#define ALLOC_START ((unsigned char*)lcd_Ram + LCD_SIZE_8BPP)
+#define ALLOC_END ((unsigned char*)lcd_Ram + LCD_SIZE)
 
-static uintptr_t heap_ptr = (uintptr_t)(lcd_Ram + LCD_SIZE_8BPP + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t) + ALLOC6 * sizeof(char6_t));
-static uintptr_t heap_ptrend = (uintptr_t)(lcd_Ram + LCD_SIZE);
+const char2_t* tab2 = (char2_t*)(ALLOC_START);
+const char3_t* tab3 = (char3_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t));
+const char6_t* tab6 = (char6_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t));
+
+static uintptr_t heap_ptr = (uintptr_t)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t) + ALLOC6 * sizeof(char6_t));
+static uintptr_t heap_ptrend = (uintptr_t)ALLOC_END;
 
 static block_t _alloc_base, _alloc2_base;
 // these are 0 initialized, pointing to a chained list of freed pointers

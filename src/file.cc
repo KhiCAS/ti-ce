@@ -6,6 +6,7 @@
 #include "console.h"
 #include "main.h"
 #include <ti/vars.h>
+#include <cstring>
 using namespace std;
 constexpr const int xwaspy_shift=33; // must be between 32 and 63, reflect in xcas.js and History.cc
 
