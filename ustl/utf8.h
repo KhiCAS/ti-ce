@@ -182,7 +182,7 @@ utf8out_iterator<Iterator,WChar>& utf8out_iterator<Iterator,WChar>::operator= (W
     if (nBytes > 1) {
 	// Write the bits 6 bits at a time, except for the first one,
 	// which may be less than 6 bits.
-	register wchar_t shift = nBytes * 6;
+	wchar_t shift = nBytes * 6;
 	*m_i++ = ((v >> (shift -= 6)) & 0x3F) | (0xFF << (8 - nBytes));
 	while (shift)
 	    *m_i++ = ((v >> (shift -= 6)) & 0x3F) | 0x80;

@@ -201,7 +201,9 @@ typedef unsigned mode_t ;
 //#define calloc(nmemb, size) malloc(size*nmemb)
 //#define strtoll strtol
 //#define strerror(n) "error"
+#ifndef EINTR
 #define EINTR            4      /* Interrupted system call */
+#endif /* EINTR */
 #define	F_GETFL		3		/* get file status flags */
 #define	F_SETFL		4		/* set file status flags */
 #define O_ACCMODE           0003

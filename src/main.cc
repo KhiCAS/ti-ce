@@ -103,9 +103,9 @@ const char * input_matrix(const giac::gen &g,giac::gen & ge,const giac::context 
 }    
   
 const char * input_matrix(bool list){
-  static ustl::string * sptr=nullptr;
+  static std::string * sptr=nullptr;
   if (!sptr)
-    sptr=new ustl::string;
+    sptr=new std::string;
   *sptr="";
   giac::gen v(giac::_VARS(0,contextptr));
   giac::vecteur w;
@@ -125,7 +125,7 @@ const char * input_matrix(bool list){
       }
     }
   }
-  ustl::string msg;
+  std::string msg;
   if (w.empty())
     msg=lang?"Creer nouveau":"Create new";
   else
@@ -151,7 +151,7 @@ const char * input_matrix(bool list){
 	    if (list)
 	      c=0;
 	    else {
-	      ustl::string tmp(*sptr+(lang?" lignes.":" lines."));
+	      std::string tmp(*sptr+(lang?" lignes.":" lines."));
 	      *sptr="";
 	      inputline(tmp.c_str(),lang?"Colonnes:":"Columns:",*sptr,true);
 	      c=strtol(sptr->c_str(),nullptr,10);
@@ -263,7 +263,7 @@ const char * select_var(){
     return "";
   giac::vecteur & v=*g._VECTptr;
   MenuItem smallmenuitems[v.size()+4];
-  vector<ustl::string> vs(v.size()+1);
+  vector<std::string> vs(v.size()+1);
   int i,total=0;
   constexpr const char typ[]="idzDcpiveSfEsFRmuMwgPF";
   for (i=0;i<v.size();++i){
@@ -499,11 +499,11 @@ int check_parse(const std::vector<textElement> & v,int python){
   giac::gen g(s,contextptr);
   int lineerr=giac::first_error_line(contextptr);
   if (lineerr){
-    ustl::string tok=giac::error_token_name(contextptr);
+    std::string tok=giac::error_token_name(contextptr);
     int pos=-1;
     if (lineerr>=1 && lineerr<=v.size()){
       pos=v[lineerr-1].s.find(tok);
-      const ustl::string & err=v[lineerr-1].s;
+      const std::string & err=v[lineerr-1].s;
       if (pos>=err.size())
 	pos=-1;
       if (python){
@@ -513,7 +513,7 @@ int check_parse(const std::vector<textElement> & v,int python){
 	  if (err[i]!=' ')
 	    break;
 	}
-	ustl::string firsterr;
+	std::string firsterr;
 	for (j=i;j<err.size();++j){
 	  if (!isalpha(err[j]))
 	    break;
@@ -1126,7 +1126,7 @@ extern "C" unsigned char __heapbot[];
 extern "C" unsigned char __heaptop[];
 
 int main1(){
-  ustl::vector<giac::gen> ustlv;
+  std::vector<giac::gen> ustlv;
   const unsigned * ustlptr=(unsigned *)&ustlv;
   giac::ustl_vecteur_prolog=*ustlptr;
   //dbg_printf("ustlv len=%i %x %x %x %x\n",sizeof(ustlv),ustlptr[0],ustlptr[1],ustlptr[2],ustlptr[3]);
@@ -1238,14 +1238,14 @@ int main1(){
   return 1;
 }
 
-unsigned stack_ptr=0;
+uintptr_t stack_ptr=0;
 
 int main(){
-  unsigned appstart=(0x3b0000-3);
-  appstart -= *(unsigned *) appstart;
-  unsigned pcmain=(unsigned) main;
+  uintptr_t appstart=(0x3b0000-3);
+  appstart -= *(uintptr_t *) appstart;
+  uintptr_t pcmain = (uintptr_t) main;
 #ifndef WITH_QUAD
-  dbg_printf("appstart=%x pcmain=%x\n",appstart,pcmain);
+  dbg_printf("appstart=%p pcmain=%p\n",appstart,pcmain);
 #endif
   if (pcmain<appstart || pcmain>=0x3b0000)
     return 1;

@@ -79,7 +79,7 @@ const int STATUS_AREA_PX=18;
 #define FILE_MAXSIZE 16384
 char os_filenames[FILENAME_MAXRECORDS][FILENAME_MAXSIZE];
 
-inline int sdk_rgb(int a,int b,int c){
+static inline int sdk_rgb(int a, int b, int c) {
   return (((a*32)/256)<<11) | (((b*64)/256)<<5) | ((c*32)/256);
 }
 
@@ -437,7 +437,7 @@ const char * read_file(const char * filename){
   var_t * ptr_=os_GetAppVarData(var,&archived);
   if (!ptr_)
     return 0;
-  const char * ptrc=ptr_->data;
+  const char * ptrc = (const char*)ptr_->data;
   int s=ptr_->size;
   //dbg_printf("read_file name=%s size=%i %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x\n",var,s,ptrc[0],ptrc[1],ptrc[2],ptrc[3],ptrc[4],ptrc[5],ptrc[6],ptrc[7],ptrc[8],ptrc[9],ptrc[10],ptrc[11],ptrc[12],ptrc[13],ptrc[14],ptrc[15],ptrc[16],ptrc[17],ptrc[18],ptrc[19],ptrc[20],ptrc[21],ptrc[22],ptrc[23]);
   if (s>7){
@@ -560,7 +560,7 @@ int write_file(const char * filename,const char * s,int len){
     return false;
   }
   //dbg_printf("write_file var=%s file=%s size=%i effsize=%i\n",var,filename,len,effsize);
-  char * ptrc=ptr_->data;
+  char * ptrc = (char*)ptr_->data;
   if (ispy || isxw || istab){
     strncpy(ptrc,istab?"TABL":(isxw?"XCAS":"PYCD"),4); ptrc+=4;
     if (with_filename){
@@ -575,6 +575,7 @@ int write_file(const char * filename,const char * s,int len){
   }
   memcpy(ptrc,s,len);
   //dbg_printf("strlen=%i len=%i ptrc[len-1]=%x\n",strlen(s),len,ptrc[len-1]);
+  return true;
 #else
   //dbg_printf("tiwrite %s\n",filename);
   int h=ti_Open(var,"w");
@@ -598,7 +599,7 @@ int write_file(const char * filename,const char * s,int len){
 #endif
 }
 
-inline bool isalpha(char c){
+static inline bool isalpha(char c) {
   return (c>='a' && c<='z') || (c>='A' && c<='Z');
 }
 
@@ -613,18 +614,16 @@ int os_file_browser(const char ** filenames,int maxrecords,const char * extensio
   for (int count=0;cur<maxrecords && ptr;count++){
     uint24_t type, l;
     char s[16]={0};
-    char * dataptr=0;
-    char * ext=0;
+    char * dataptr = NULL;
+    char * ext = NULL;
     const uint8_t * ptr2 = (uint8_t*)ptr - 1;
-    ptr=os_NextSymEntry(ptr, &type, &l, s,&dataptr);
+    ptr = os_NextSymEntry(ptr, &type, &l, s, (void**)&dataptr);
     //    if (isalpha(s[0])) dbg_printf("os_file_browser name=%s l=%i type=%i dataptr=%x [count=%i cur=%i ptr=%x ptr2=%x]\n",s,l,type,dataptr,count,cur,ptr,ptr2);
-    if (l>=FILENAME_MAXSIZE || !dataptr || !isalpha(s[0]) || type!=21
-        | *ptr2
-        )
+    if (l >= FILENAME_MAXSIZE || !dataptr || !isalpha(s[0]) || type != 21 || *ptr2)
       continue;
-    s[l]=0;
+    s[l] = '\0';
     var_t * ptr_=os_GetAppVarData(s,0);
-    dataptr=ptr_->data-2;
+    dataptr = (char*)(ptr_->data - 2);
     //dbg_printf("filebrowser varname=%s type=%i data=%x %x %x %x | %x %x %x %x | %x %x %x %x | %x %x %x %x\n",s,type,dataptr[0]&0xff,dataptr[1]&0xff,dataptr[2]&0xff,dataptr[3]&0xff,dataptr[4]&0xff,dataptr[5]&0xff,dataptr[6]&0xff,dataptr[7]&0xff,dataptr[8]&0xff,dataptr[9]&0xff,dataptr[10]&0xff,dataptr[11]&0xff,dataptr[12]&0xff,dataptr[13]&0xff,dataptr[14]&0xff,dataptr[15]&0xff);
     // if type==21 dataptr[1]*256+dataptr[0]==size, then data
     // xcas session begins with 4 bytes size, on the 83 should be 00 00 xx xx
@@ -859,12 +858,12 @@ void statuslinemsg(const char * msg,int warncolor){
 void set_time(int h,int m){
   uint8_t month;
   uint16_t year;
+  uint8_t day_of_month;
   uint8_t s = rtc_Seconds;
-  uint16_t d = rtc_Days;
-  boot_GetDate(&d, &month, &year);
+  boot_GetDate(&day_of_month, &month, &year);
   //dbg_printf("set_time s=%i m=%i h=%i d=%i\n",s,m,h,d);
   boot_SetTime(s,m,h);
-  boot_SetDate(d,month,year);
+  boot_SetDate(day_of_month, month, year);
   //rtc_Set(s,m,h,d);
 }
 
