@@ -30,9 +30,54 @@ int lang=1;
 
 struct line * Line;
 constexpr const int maxfmenusize=16;
-char menu_f1[maxfmenusize]={0},menu_f2[maxfmenusize]={0},menu_f3[maxfmenusize]={0},menu_f4[maxfmenusize]={0},menu_f5[maxfmenusize]={0},menu_f6[maxfmenusize],menu_f7[maxfmenusize]={0},menu_f8[maxfmenusize]={0},menu_f9[maxfmenusize]={0},menu_f10[maxfmenusize]={0},menu_f11[maxfmenusize]={0},menu_f12[maxfmenusize]={0},menu_f13[maxfmenusize]={0},menu_f14[maxfmenusize]={0},menu_f15[maxfmenusize]={0},menu_f16[maxfmenusize]={0},menu_f17[maxfmenusize]={0},menu_f18[maxfmenusize]={0},menu_f19[maxfmenusize]={0},menu_f20[maxfmenusize]={0};
+
+char menu_f1[maxfmenusize]={0};
+char menu_f2[maxfmenusize]={0};
+char menu_f3[maxfmenusize]={0};
+char menu_f4[maxfmenusize]={0};
+char menu_f5[maxfmenusize]={0};
+char menu_f6[maxfmenusize]={0};
+// these menus are unused
+static char menu_f7[maxfmenusize]={0};
+static char menu_f8[maxfmenusize]={0};
+static char menu_f9[maxfmenusize]={0};
+static char menu_f10[maxfmenusize]={0};
+static char menu_f11[maxfmenusize]={0};
+static char menu_f12[maxfmenusize]={0};
+static char menu_f13[maxfmenusize]={0};
+static char menu_f14[maxfmenusize]={0};
+static char menu_f15[maxfmenusize]={0};
+static char menu_f16[maxfmenusize]={0};
+static char menu_f17[maxfmenusize]={0};
+static char menu_f18[maxfmenusize]={0};
+static char menu_f19[maxfmenusize]={0};
+static char menu_f20[maxfmenusize]={0};
+
+static char * const FMenu_entries_name[]={
+  menu_f1,
+  menu_f2,
+  menu_f3,
+  menu_f4,
+  menu_f5,
+  menu_f6,
+  menu_f7,
+  menu_f8,
+  menu_f9,
+  menu_f10,
+  menu_f11,
+  menu_f12,
+  menu_f13,
+  menu_f14,
+  menu_f15,
+  menu_f16,
+  menu_f17,
+  menu_f18,
+  menu_f19,
+  menu_f20,
+};
+
 char session_filename[MAX_FILENAME_SIZE+1]="session";
-char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6,menu_f7,menu_f8,menu_f9,menu_f10,menu_f11,menu_f12,menu_f13,menu_f14,menu_f15,menu_f16,menu_f17,menu_f18,menu_f19,menu_f20};
+
 struct location Cursor;
 static Char *Edit_Line;
 int Start_Line, Last_Line,editline_cursor;
@@ -2722,7 +2767,7 @@ void update_fmenu(const Char * cfg){
 #ifndef FX
 
 #ifndef CURSOR
-int print_x=0,print_y=0,vfontsize=15,hfontsize=8;
+static int print_x=0,print_y=0,vfontsize=15,hfontsize=8;
 #endif
 
 void locate(int x,int y){

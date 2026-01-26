@@ -38,7 +38,16 @@ std::vector<logo_turtle> & turtle_stack(){
 }
 
 void displaylogo(){}
-int execution_in_progress_py,ctrl_c_py,parser_errorline;
+
+extern int execution_in_progress_py;
+int execution_in_progress_py;
+
+// this variable is volatile in main.cc, so thats why it is also volatile here
+extern volatile int ctrl_c_py;
+volatile int ctrl_c_py;
+
+int parser_errorline;
+
 logo_turtle & turtle(){
   static logo_turtle l;
   return l;
