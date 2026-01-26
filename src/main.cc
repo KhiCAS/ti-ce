@@ -28,9 +28,10 @@ using namespace std;
 
 bool freeze=false,freezeturtle=false;
 size_t pythonjs_stack_size=20*1024,pythonjs_heap_size=max_heap_size*3*1024/4;
-int xcas_python_eval=0;
+static int xcas_python_eval=0;
 char * pythonjs_static_heap=nullptr;
 char * python_heap=nullptr;
+extern giac::context * contextptr;
 giac::context * contextptr=nullptr;
 extern "C" int mp_token(const char * line);
 extern "C" {
@@ -1238,7 +1239,7 @@ int main1(){
   return 1;
 }
 
-uintptr_t stack_ptr=0;
+// uintptr_t stack_ptr=0;
 
 int main(){
   uintptr_t appstart=(0x3b0000-3);

@@ -1,4 +1,10 @@
 // implementation of the minimal C SDK for KhiCAS
+extern int (*shutdown)(); // function called after 2 hours of idle
+extern short int shutdown_state;
+extern short exam_mode,nspire_exam_mode;
+extern unsigned exam_start;
+extern int exam_duration;
+
 int (*shutdown)()=0;
 
 short shutdown_state=0;
@@ -6,7 +12,7 @@ short exam_mode=0,nspire_exam_mode=0;
 unsigned exam_start=0; // RTC start
 int exam_duration=0;
 // <0: indicative duration, ==0 time displayed during exam, >0 end exam_mode after
-const int exam_bg1=0x4321,exam_bg2=0x1234;
+static const int exam_bg1=0x4321,exam_bg2=0x1234;
 int exam_bg(){
   return exam_mode?(exam_duration>0?exam_bg1:exam_bg2):0x50719;
 }
@@ -16,8 +22,9 @@ void SetQuitHandler( void (*f)(void)){}
 #define LONG_MAX ((long)(~0UL>>1))
 #define LONG_MIN (~LONG_MAX)
 
+extern int clip_ymin;
 int clip_ymin=0;
-const int STATUS_AREA_PX=18;
+static const int STATUS_AREA_PX=18;
 // debug: dbg_printf() Add #include <debug.h> to a source file, and use make debug instead of make to build a debug program. You may need to run make clean beforehand in order to ensure all source files are rebuilt.
 // ASM syscalls: https://wikiti.brandonw.net/index.php?title=Category:84PCE:Syscalls:By_Name
 // doc: https://ce-programming.github.io/toolchain/index.html
@@ -77,7 +84,7 @@ const int STATUS_AREA_PX=18;
 #define FILENAME_MAXRECORDS 32
 #define FILENAME_MAXSIZE 9
 #define FILE_MAXSIZE 16384
-char os_filenames[FILENAME_MAXRECORDS][FILENAME_MAXSIZE];
+static char os_filenames[FILENAME_MAXRECORDS][FILENAME_MAXSIZE];
 
 static inline int sdk_rgb(int a, int b, int c) {
   return (((a*32)/256)<<11) | (((b*64)/256)<<5) | ((c*32)/256);
@@ -116,7 +123,7 @@ void clear_screen(void){
 #endif
 }
 
-int alpha=0,alphalock=0,prevalpha=0,shift=0;
+static int alpha=0,alphalock=0,prevalpha=0,shift=0;
 int handle_f5(){
   if (alphalock)
     alphalock=3-alphalock;
@@ -840,7 +847,7 @@ int os_draw_string(int x,int y,int c,int bg,const char * s,int fake){
 }
 #endif
 
-const int statuscolor=2016;
+static const int statuscolor=2016;
 void statuslinemsg(const char * msg,int warncolor){
   os_fill_rect(0,0,154,16,SDK_BLACK);
   const int l=strlen(msg);
