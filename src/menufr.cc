@@ -151,8 +151,9 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
       } else
         Printxy(C6*menu->startX+1, C10*menu->startY+1, menu->title, TEXT_MODE_NORMAL);
       if (menu->subtitle != nullptr){
-        const int textX=(MB_ElementCount(menu->title)+menu->startX-1)*fontwidth+C10, textY=C6;
-        Printmini(textX+1, textY+1, menu->subtitle, 0);
+        const int subtitleX = (MB_ElementCount(menu->title)+menu->startX-1)*fontwidth+C10;
+        const int subtitleY = C6;
+        Printmini(subtitleX + 1, subtitleY + 1, menu->subtitle, 0);
       }
       const int x=fontwidth*(menu->startX+menu->width-6);
       Printxy(x, textY+C10+1, "____", 0);
