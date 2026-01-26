@@ -1031,16 +1031,16 @@ bool dfc2s(real_t x,double eps,char * buf){
 // real_t os_Int24ToReal(int24_t arg)
 // float os_RealToFloat(const real_t *arg)
 // real_t os_FloatToReal(float arg)
-string get_timatrix(int i){
+string get_timatrix(int matrix_index){
   //dbg_printf("get matrix %i\n",i);
   string res;
-  if (i<0 || i>9)
+  if (matrix_index < 0 || matrix_index > 9)
     return res;
   const char * tab[]={
     OS_VAR_MAT_A,OS_VAR_MAT_B,OS_VAR_MAT_C,OS_VAR_MAT_D,OS_VAR_MAT_E,
     OS_VAR_MAT_F,OS_VAR_MAT_G,OS_VAR_MAT_H,OS_VAR_MAT_I,OS_VAR_MAT_J,
   };
-  const char * name=tab[i];
+  const char * name = tab[matrix_index];
   int r=0,c=0,err=os_GetMatrixDims(name,&r,&c);
   //dbg_printf("get matrix err=%i r=%i c=%i\n",err,r,c);
   if (err || r==0 || c==0)

@@ -1499,26 +1499,26 @@ void chk_clearscreen(){
   Console_Disp(1);
 }
 
-void reload_edptr(const char * filename,textArea *edptr){
-  if (edptr){
-    std::string s(merge_area(edptr->elements));
+void reload_edptr(const char * filename,textArea *r_edptr){
+  if (r_edptr){
+    std::string s(merge_area(r_edptr->elements));
     copy_clipboard(s);
     s="\n";
-    edptr->elements.clear();
-    edptr->clipline=-1;
-    edptr->filename=remove_path(remove_extension(filename))+".py";
-    load_script(edptr->filename.c_str(),s);
+    r_edptr->elements.clear();
+    r_edptr->clipline=-1;
+    r_edptr->filename=remove_path(remove_extension(filename))+".py";
+    load_script(r_edptr->filename.c_str(),s);
     if (s.empty())
       s="\n";
-    // cout << "script " << edptr->filename << endl;
-    edptr->editable=true;
-    edptr->changed=false;
-    edptr->python=true;
-    edptr->elements.clear();
-    edptr->y=0;
-    add(edptr,s);
-    edptr->line=0;
-    edptr->pos=0;
+    // cout << "script " << r_edptr->filename << endl;
+    r_edptr->editable=true;
+    r_edptr->changed=false;
+    r_edptr->python=true;
+    r_edptr->elements.clear();
+    r_edptr->y=0;
+    add(r_edptr,s);
+    r_edptr->line=0;
+    r_edptr->pos=0;
   }
 }
 
@@ -1955,7 +1955,7 @@ string run_periodic_table(){
 #endif
 
 int Console_GetKey(){
-  unsigned int key, i, move_line, move_col;
+  unsigned int key, move_line, move_col;
   Char tmp_str[3];
   Char *tmp;
   int oldkeyflag=-1;
@@ -2008,15 +2008,15 @@ int Console_GetKey(){
     if (key==KEY_CTRL_PASTE)
       return Console_Input((const Char*) paste_clipboard());
     if (key==KEY_CTRL_VARS){
-      const char * ptr=keytostring(key,0,0);
-      if (ptr)
-	return Console_Input((const Char *)ptr);
+      const char * key_string = keytostring(key,0,0);
+      if (key_string)
+        return Console_Input((const Char *)key_string);
     }
     if (key == KEY_CTRL_F4){
-      int key=chartab();
-      if (key>0){
-	char buf[]={(char)key,0};
-	return Console_Input((const Char *)buf);
+      int chartab_key = chartab();
+      if (chartab_key > 0) {
+        char buf[] = {(char)chartab_key, '\0'};
+        return Console_Input((const Char *)buf);
       }
       return CONSOLE_SUCCEEDED;
     }
@@ -2217,9 +2217,9 @@ int Console_GetKey(){
           }
           if (smallmenu.selection==12){
 #ifdef WITH_EQW
-            const char * ptr=input_matrix(false);
-            if (ptr)
-              return Console_Input(ptr);
+            const char * matrix_ptr=input_matrix(false);
+            if (matrix_ptr)
+              return Console_Input(matrix_ptr);
             else
               break;
 #else
@@ -2410,15 +2410,15 @@ int Console_GetKey(){
         }
       }
       else {
-	move_line = Last_Line - Current_Line;
-	for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
+        move_line = Last_Line - Current_Line;
+        for (int i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
       }
       return CONSOLE_SUCCEEDED;
     }
     if (key == KEY_CTRL_AC){
       if (Line[Current_Line].readonly){
         move_line = Last_Line - Current_Line;
-        for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
+        for (int i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
         return CONSOLE_SUCCEEDED;
       }
       if (Edit_Line[0]=='\0'){
@@ -2446,7 +2446,7 @@ int Console_GetKey(){
 
       int x=editline_cursor;
       move_line = Last_Line - Current_Line;
-      for (i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
+      for (int i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
       Cursor.x=x;
       if (Cursor.x>COL_DISP_MAX)
         Line[Last_Line].start_col=Cursor.x-COL_DISP_MAX;
@@ -2538,10 +2538,10 @@ const char * console_menu(int key,Char* cfg_,int active_app){
     // cout << "console0 " << (uintptr_t) ret << endl;
     if (!ret) return ret;
     if (strcmp(ret,"char table")==0){
-      const int key=chartab();
-      if (key<0)
+      const int chartab_key = chartab();
+      if (chartab_key < 0)
         return nullptr;
-      const char buf[]={(char)key,0};
+      const char buf[] = {(char)chartab_key, '\0'};
       strcpy(console_buf,buf);
     }
 #ifdef WITH_PERIODIC
@@ -2767,15 +2767,15 @@ void update_fmenu(const Char * cfg){
 #ifndef FX
 
 #ifndef CURSOR
-static int print_x=0,print_y=0,vfontsize=15,hfontsize=8;
+static int cur_print_x=0,cur_print_y=0,vfontsize=15,hfontsize=8;
 #endif
 
 void locate(int x,int y){
 #ifdef CURSOR
   return locate_OS(x,y);
 #else
-  print_x=(x-1)*hfontsize;
-  print_y=(y-1)*vfontsize;
+  cur_print_x=(x-1)*hfontsize;
+  cur_print_y=(y-1)*vfontsize;
 #endif
 }
 
@@ -2794,7 +2794,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
 #ifdef CURSOR
   Print_OS((Char *)s,TEXT_MODE_INVERT,0);
 #else
-  print(print_x,print_y,(const char *)s,color,true/* revert*/,false,false);
+  print(cur_print_x,cur_print_y,(const char *)s,color,true/* revert*/,false,false);
 #endif
 }
 
@@ -2969,7 +2969,7 @@ void PrintRev(const Char * s,int color=TEXT_COLOR_BLACK){
   }
 
   void print_color(const char *s,int color,bool invert,bool minimini){
-    print_x=print_color(print_x,print_y,s,color,invert,minimini);
+    cur_print_x=print_color(cur_print_x,cur_print_y,s,color,invert,minimini);
   }
 
 void Print(const Char * s,int color,bool colorsyntax){
@@ -2977,11 +2977,13 @@ void Print(const Char * s,int color,bool colorsyntax){
   Print_OS((Char *)s,TEXT_MODE_NORMAL,0);
 #else
   if (//1 ||
-      !colorsyntax ||
-      (strlen((const char *)s)==1 && (s[0]=='>' || s[0]=='<')))
-      print(print_x,print_y,(const char *)s,color,false,false,false);
-    else
-      print_color((const char *)s,color,false,false);
+    !colorsyntax ||
+    (strlen((const char *)s)==1 && (s[0]=='>' || s[0]=='<'))
+  ) {
+    print(cur_print_x,cur_print_y,(const char *)s,color,false,false,false);
+  } else {
+    print_color((const char *)s,color,false,false);
+  }
 #endif
 }
 
@@ -3019,7 +3021,7 @@ void console_displine(int i,int redraw_mode){
 
     if (curline.disp_len - curline.start_col > COL_DISP_MAX-1){
       // draw arrow indicating there is more
-      print_x=LCD_WIDTH_PX-hfontsize;
+      cur_print_x=LCD_WIDTH_PX-hfontsize;
       if (curline.readonly){
         if(curline.disp_len - curline.start_col != COL_DISP_MAX) {
           PrintRev((Char *)">",COLOR_MAGENTA);
@@ -3138,9 +3140,9 @@ void console_displine(int i,int redraw_mode){
       locate(COL_DISP_MAX - Line[i + Start_Line].disp_len + 1, i + 1);
 #else
       //dbg_printf("ConsoleDisp loopa i!=Cursor.y %i\n",i);
-      print(print_x,print_y,(const char *)curline.str,TEXT_COLOR_BLACK,false,true/*fake*/,false);
+      print(cur_print_x,print_y,(const char *)curline.str,TEXT_COLOR_BLACK,false,true/*fake*/,false);
       //dbg_printf("ConsoleDisp loopb i!=Cursor.y %i\n",i);
-      print_x=LCD_WIDTH_PX-print_x;
+      cur_print_x=LCD_WIDTH_PX-cur_print_x;
 #endif
       //dbg_printf("ConsoleDisp loopc i!=Cursor.y %i\n",i);
       Print(curline.str,TEXT_COLOR_BLACK,colorsyntax);
@@ -3150,7 +3152,7 @@ void console_displine(int i,int redraw_mode){
 #ifdef CURSOR
       locate(COL_DISP_MAX, i + 1);
 #else
-      print_x=LCD_WIDTH_PX-hfontsize;
+      cur_print_x=LCD_WIDTH_PX-hfontsize;
 #endif
       Print((Char *)">",COLOR_BLUE,colorsyntax);
     }
@@ -3159,7 +3161,7 @@ void console_displine(int i,int redraw_mode){
 #ifdef CURSOR
       locate(1, i + 1);
 #else
-      print_x=0;
+      cur_print_x=0;
 #endif
       Print((Char *)">",COLOR_BLUE,colorsyntax);
     }

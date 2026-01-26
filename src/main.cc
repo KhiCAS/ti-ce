@@ -693,7 +693,7 @@ void edit_script(const char * fname){
     //edptr->line=edptr->elements.size()-1;
     edptr->pos=0;
     //dbg_printf("dotextarea\n");
-    int res=doTextArea(edptr);
+    int result = doTextArea(edptr);
   }
 }
 
@@ -903,9 +903,9 @@ void ti_sprint_float(char * ch,float d){
 }
 
 void ti_sprint_double(char * ch,double d){
-  const int i=d;
-  if (i==d){
-    sprintf(ch,"%i.0",i);
+  const int d_integer = d;
+  if (d_integer == d){
+    sprintf(ch,"%i.0", d_integer);
     return;
   }
   const real_t tmp_real = os_FloatToReal(d);
@@ -1015,15 +1015,15 @@ void do_run(const char * s){
     if (taille(g,256)>=256)
       Console_Output("Done");
     else {
-      const char * s=g.print(contextptr).c_str();
-      Console_Output(s);
+      const char * str = g.print(contextptr).c_str();
+      Console_Output(str);
       vector<unsigned char> v;
-      tokenize(s,v);
-      //dbg_printf("Y2 %s v.size()=%i\n",s,v.size());
+      tokenize(str,v);
+      //dbg_printf("Y2 %s v.size()=%i\n",str,v.size());
       if (v.size()>2){
-        char buf[3]={0x5e,0,0};
-        buf[1]=yn;
-        int res=os_CreateEquation(buf,(equ_t *)&v.front());
+        char equation_buf[3] = {0x5e, 0, 0};
+        equation_buf[1] = yn;
+        int res = os_CreateEquation(equation_buf,(equ_t *)&v.front());
         // dbg_printf("create Y2 res=%i\n",res);
       }
     }

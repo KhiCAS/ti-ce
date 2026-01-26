@@ -209,17 +209,17 @@ void stringToMini(char* dest, char* orig) {
   dest[dlen] = '\0';
 }
 
-void fix_newlines(textArea * edptr){
-  //dbg_printf("fix newlines %i %x %x\n",edptr->elements.size(),&edptr->elements[0],&edptr->elements[1]);
-  edptr->elements[0].newLine=0;
-  for (size_t i=1;i<edptr->elements.size();++i)
-    edptr->elements[i].newLine=1;
-  for (size_t i=0;i<edptr->elements.size();++i){
-    string S=edptr->elements[i].s;
+void fix_newlines(textArea * r_edptr){
+  //dbg_printf("fix newlines %i %x %x\n",r_edptr->elements.size(),&r_edptr->elements[0],&r_edptr->elements[1]);
+  r_edptr->elements[0].newLine=0;
+  for (size_t i=1;i<r_edptr->elements.size();++i)
+    r_edptr->elements[i].newLine=1;
+  for (size_t i=0;i<r_edptr->elements.size();++i){
+    string S=r_edptr->elements[i].s;
     if (S.size()>120)
-      edptr->minimini=1;
+      r_edptr->minimini=1;
     constexpr const int cut=240;
-    if (edptr->longlinescut && S.size()>cut){
+    if (r_edptr->longlinescut && S.size()>cut){
       // string too long, cut it, set font to minimini
       int j;
       for (j=(4*cut)/5;j>=(2*cut)/5;--j){
@@ -227,8 +227,8 @@ void fix_newlines(textArea * edptr){
           break;
       }
       textElement elem; elem.newLine=1; elem.s=S.substr(j,S.size()-j);
-      edptr->elements[i].s=S.substr(0,j);
-      edptr->elements.insert(edptr->elements.begin()+i+1,elem);
+      r_edptr->elements[i].s=S.substr(0,j);
+      r_edptr->elements.insert(r_edptr->elements.begin()+i+1,elem);
     }
   }
   
@@ -259,24 +259,24 @@ int end_do_then(const std::string & s){
         --i;
     }
     std::string keyw(ptr+i0+1,ptr+i+1);
-    const char * ptr=keyw.c_str();
-    if (strcmp(ptr,"faire")==0 || strcmp(ptr,"do")==0 || strcmp(ptr,"alors")==0 || strcmp(ptr,"then")==0)
+    const char * str = keyw.c_str();
+    if (strcmp(str,"faire")==0 || strcmp(str,"do")==0 || strcmp(str,"alors")==0 || strcmp(str,"then")==0)
       return 1;
-    if (strcmp(ptr,"fsi")==0 || strcmp(ptr,"end")==0 || strcmp(ptr,"fi")==0 || strcmp(ptr,"od")==0 || strcmp(ptr,"ftantque")==0 || strcmp(ptr,"fpour")==0 || strcmp(ptr,"ffonction")==0 || strcmp(ptr,"ffunction")==0)
+    if (strcmp(str,"fsi")==0 || strcmp(str,"end")==0 || strcmp(str,"fi")==0 || strcmp(str,"od")==0 || strcmp(str,"ftantque")==0 || strcmp(str,"fpour")==0 || strcmp(str,"ffonction")==0 || strcmp(str,"ffunction")==0)
       return -1;
   }
   return 0;
 }
 
-void add(textArea *edptr,const std::string & s){
+void add(textArea *r_edptr,const std::string & s){
   //dbg_printf("add %s\n",s.c_str());
   int r=1;
   for (size_t i=0;i<s.size();++i){
     if (s[i]=='\n' || s[i]==char(0x9c))
       ++r;
   }  
-  //dbg_printf("before add %i %i\n",edptr->elements.size(),r);
-  edptr->elements.reserve(edptr->elements.size()+r);
+  //dbg_printf("before add %i %i\n",r_edptr->elements.size(),r);
+  r_edptr->elements.reserve(r_edptr->elements.size()+r);
   //dbg_printf("after add\n");
   textElement cur;
   cur.lineSpacing=0;
@@ -291,20 +291,20 @@ void add(textArea *edptr,const std::string & s){
     }
     string tmp=string(cur.s.begin(),cur.s.end());
     cur.s.swap(tmp);
-    //dbg_printf("add %i %s\n",edptr->elements.size(),cur.s.c_str());
-    edptr->elements.push_back(cur);
-    //dbg_printf("added %i %x\n",edptr->elements.size(),&edptr->elements[i]);
-    ++edptr->line;
+    //dbg_printf("add %i %s\n",r_edptr->elements.size(),cur.s.c_str());
+    r_edptr->elements.push_back(cur);
+    //dbg_printf("added %i %x\n",r_edptr->elements.size(),&r_edptr->elements[i]);
+    ++r_edptr->line;
     cur.s="";
   }
   if (cur.s.size()){
-    //dbg_printf("add %i %s\n",edptr->elements.size(),cur.s.c_str());
-    edptr->elements.push_back(cur);
-    //dbg_printf("added %i %x\n",edptr->elements.size(),&edptr->elements.back());
-    ++edptr->line;
+    //dbg_printf("add %i %s\n",r_edptr->elements.size(),cur.s.c_str());
+    r_edptr->elements.push_back(cur);
+    //dbg_printf("added %i %x\n",r_edptr->elements.size(),&r_edptr->elements.back());
+    ++r_edptr->line;
   }
-  //dbg_printf("added %i\n",edptr->elements.size());
-  fix_newlines(edptr);
+  //dbg_printf("added %i\n",r_edptr->elements.size());
+  fix_newlines(r_edptr);
 }
 
 int find_indentation(const std::string & s){
@@ -1443,13 +1443,13 @@ int handle_key(textArea * text,int key,int keyflag,int & isFirstDraw,int & scrol
       if(sres == MENU_RETURN_SELECTION) {
         sres=smallmenu.selection;
         if(sres==9 || sres==10) {
-          textArea text;
-          text.editable=false;
-          text.clipline=-1;
-          text.title = smallmenuitems[sres-1].text;
-          add(&text,smallmenu.selection==9?shortcuts_string:apropos_string);
-          text.minimini=false;
-          doTextArea(&text);
+          textArea menu_text;
+          menu_text.editable=false;
+          menu_text.clipline=-1;
+          menu_text.title = smallmenuitems[sres-1].text;
+          add(&menu_text,smallmenu.selection==9?shortcuts_string:apropos_string);
+          menu_text.minimini=false;
+          doTextArea(&menu_text);
           return -2;
         }
         if (sres==1)
