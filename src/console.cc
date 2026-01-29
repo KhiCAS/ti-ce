@@ -386,42 +386,53 @@ void draw_line(int x1, int y1, int x2, int y2, int color,unsigned short motif) {
   unsigned char * lcdptr=nullptr;
   int doit=motif;
   if (w==1 && motif==0xffff){
-    lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
-    *lcdptr=color;
     if (x1==x2){ // vertical segment
+      if (x1<0 || x1>=LCD_WIDTH_PX)
+        return;
       if (y1>y2){
-        for (--y1;y1>=y2;--y1){
-          *lcdptr=color;
-          lcdptr-=LCD_WIDTH_PX;
-        }
+        const int tmp=y1;
+        y1=y2;
+        y2=tmp;
       }
-      else {
-        for (++y1;y1<=y2;++y1){
-          *lcdptr=color;
-          lcdptr+=LCD_WIDTH_PX;
-        }
+      if (y2>=LCD_HEIGHT_PX)
+        y2=LCD_HEIGHT_PX-1;
+      if (y1<0)
+        y1=0;
+      lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
+      for (;y1<=y2;++y1){
+        *lcdptr=color;
+        lcdptr+=LCD_WIDTH_PX;
       }
       return;
     }
     else if (y1==y2){ // horizontal segment
-      const unsigned char * lcdend=lcdptr+(x2-x1);
+      if (y1<0 || y1>=LCD_HEIGHT_PX)
+        return;
       if (x1>x2){
-        for (--lcdptr;lcdptr>=lcdend;--lcdptr)
-          *lcdptr=color;
+        const int tmp=x1;
+        x1=x2;
+        x2=tmp;
       }
-      else {
-        for (++lcdptr;lcdptr<=lcdend;++lcdptr)
-          *lcdptr=color;
-      }
+      if (x1<0)
+        x1=0;
+      if (x2>=LCD_WIDTH_PX)
+        x2=LCD_WIDTH_PX-1;
+      lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
+      const unsigned char * lcdend=lcdptr+(x2-x1);
+      for (;lcdptr<=lcdend;++lcdptr)
+        *lcdptr=color;
       return;
     }
   }
-  else {
-    if (doit&1)
-      raw_set_pixel(x1, y1, color);
-    doit >>=1;
-    if (!doit) doit=motif;
-  }
+#ifdef TICE
+  lcdptr=((unsigned char *) lcd_Ram)+x1+(y1<<8)+(y1<<6);
+#else
+  lcdptr=((unsigned char *) lcd_Ram)+x1+y1*LCD_WIDTH_PX;
+#endif
+  if (doit&1)
+    raw_set_pixel(x1, y1, color);
+  doit >>=1;
+  if (!doit) doit=motif;
   if (delta_x >= delta_y) {
     int error = delta_y - (delta_x >> 1);        // error may go below zero
     if (lcdptr){
