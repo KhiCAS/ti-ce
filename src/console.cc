@@ -1597,14 +1597,9 @@ bool inputdouble(const char * msg1,double & d){
       const int currc=32+16*row+col;
       const char buf[8]={(char)(currc==127?'X':currc),32,0};
       Printxy(1+14*col,dy+16*row,buf,1); // draw char selected
-      string s("Current ");
-      s += char(currc);
-      s += " ";
-      s += print_INT_(currc);
-      s += " ";
-      s += hexa_print_INT_(currc);
-      s += "  ";
-      Printxy(0,16*10,s.c_str(),TEXT_MODE_NORMAL);
+      char s[sizeof("Current # 127 0x7f  ")];
+      ce_sprintf(s, "Current %c %d 0x%x  ", (char)currc, currc, currc);
+      Printxy(0,16*10,s,TEXT_MODE_NORMAL);
       // interaction
       int key; ck_getkey(&key);
       Printxy(1+14*col,dy+16*row,buf,0); // undo draw char selected
@@ -1735,13 +1730,11 @@ const char * trig(){
     case KEY_CHAR_ANS:
       return "ans()";
     case KEY_CTRL_F3: {
-      static string * sptr=nullptr;
-      if (!sptr)
-	sptr=new string(" ");
-      const int c=chartab();
-      if (c<0) return "";
-      (*sptr)[0] = (c<32 || c==127)?0:char(c);
-      return sptr->c_str(); // ":=";
+      static char sptr[2] = {' ', '\0'};
+      const int c = chartab();
+      if (c < 0) return "";
+      sptr[0] = (c<32 || c==127) ? '\0' : char(c);
+      return sptr; // ":=";
     }
     case KEY_CHAR_COMMA:
       // if (keyflag==1) return "solve(";
