@@ -20,20 +20,16 @@ tilpcmd="${tilpcmd} --cable=DirectLink -ns"
 
 pushd $SCRIPT_DIR
 
-for i in $(seq -w 00 43); do
+for i in $(seq -w 00 44); do
+    if [ ! -f "app/AppIns${i}.8xv" ]; then
+        break
+    fi
     echo "Transferring AppIns${i}.8xv..."
     $tilpcmd "app/AppIns${i}.8xv" &>/dev/null
 done
 
 echo "Transferring arTIfiCE and the app installer..."
-$tilpcmd arTIfiCE.8xv &>/dev/null
+$tilpcmd arTIfiCE.8xp &>/dev/null
 $tilpcmd INST.8xp &>/dev/null
-
-if [ -f CabriJr_5.0.0.0089.8ek ]; then
-    echo "Transferring CabriJr..."
-    $tilpcmd CabriJr_5.0.0.0089.8ek &>/dev/null
-else
-    echo "'CabriJr_5.0.0.0089.8ek' not found, please download it and transfer it!"
-fi
 
 popd

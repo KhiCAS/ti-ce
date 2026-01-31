@@ -72,8 +72,6 @@ inline int absint(int x){ return x<0?-x:x; }
 int select_script_and_run();
 int fileBrowser(char * filename, const char * ext, const char * title);
 
-void runExternalProgramAndExit(const char* prgmName) __attribute__((noreturn));
-
 // MICROPY & color compat
 extern "C" {
   int do_confirm(const char * s);
