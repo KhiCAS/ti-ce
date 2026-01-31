@@ -13,21 +13,19 @@ Install testée sur une 83ce, OS 5.3.0, avec 3014Ko archive
         2/ Envoyez INST, artifice et tous les fichiers du répertoire app, dans l'ordre, à la calculatrice. Les utilisateurs de la version Windows de TI Connect CE peuvent à la place transférer https://www-fourier.univ-grenoble-alpes.fr/~parisse/ti/khicas83.b83 (attention, cela ne fonctionne pas correctement sur MacOS ou Chrome). Si vous utilisez tilp sous linux, lancez le shell script transfert_tilp.sh (n'utilisez pas l'interface graphique).
         3/ Lancez INST (touche prgm). En cas d'erreur, faire GarbageCollect ou RamasseMiettes en francais (2nd catalog G ou R) et relancez INST.
         4/ IMPORTANT: ensuite faire un reset de la RAM avec 2nd mem 7 1
-        5/ Maintenant vous pouvez effacer les variables AppIns* qui ne sont plus nécessaire (2nd mem 2), effacer ASMHOOK et remetttre le Francais.
+        5/ Maintenant vous pouvez effacer les variables AppIns* qui ne sont plus nécessaire (2nd mem 2) et remetttre le Francais.
 
 
 ==========================================================================
 Install sur une ti83ce python (ou ce avec 0S 5.5 ou plus, 2948K d'archive)
 ==========================================================================
-L'installation est plus compliquée car l'assembleur a été désactivé par TI avec l'OS 5.5. Elle utilise un "exploit" de CabriJs appelé artifice (https://yvantt.github.io/arTIfiCE/)
-        a/ Sauvegardez vos données et applications (en particulier CabriJr) et le pack de langues Francais puis effacer la mémoire d'archive (2nd mem 7 flèche droite 3), effacez aussi les langues y compris le Francais (2nd mem 2 1) (vous pourrez le réinstaller après)
+L'installation est plus compliquée car l'assembleur a été désactivé par TI avec l'OS 5.5. Elle utilise un "exploit" appelé artifice (https://yvantt.github.io/arTIfiCE/)
+        a/ Sauvegardez vos données et applications et le pack de langues Francais puis effacer la mémoire d'archive (2nd mem 7 flèche droite 3), effacez aussi les langues y compris le Francais (2nd mem 2 1) (vous pourrez le réinstaller après)
         b/ Envoyez INST, artifice et tous les fichiers du répertoire app, dans l'ordre, à la calculatrice. Les utilisateurs de la version Windows de TI Connect CE peuvent à la place transférer https://www-fourier.univ-grenoble-alpes.fr/~parisse/ti/khicas83.b83 (attention, cela ne fonctionne pas correctement sur MacOS ou Chrome). Si vous utilisez tilp sous linux, lancez le shell script transfert_tilp.sh (n'utilisez pas l'interface graphique).
-        c/ transferez CabriJr. CabriJr est disponible sur le site de TI ou depuis tiplanet (https://tiplanet.org/forum/archives_voir.php?id=168570)
-        d/ ouvrez CabriJr (depuis 2nd app)
-        e/ ouvrez artifice dans CabriJr
-        f/ depuis artifice, lancez INST. A la fin de l'installation, il se produit un reset de la RAM mais cela n'efface pas la RAM.
-        g/ IMPORTANT: ensuite effacer la RAM avec 2nd mem 7 1
-        h/ Maintenant vous pouvez effacer les variables AppIns* qui ne sont plus nécessaire (2nd mem 2) et remetttre le Francais.
+        c/ ouvrez artifice (prgmA)
+        d/ depuis artifice, lancez INST. A la fin de l'installation, il se produit un reset de la RAM mais cela n'efface pas la RAM.
+        e/ IMPORTANT: ensuite effacer la RAM avec 2nd mem 7 1
+        f/ Maintenant vous pouvez effacer les variables AppIns* qui ne sont plus nécessaire (2nd mem 2) et remetttre le Francais.
 ======================================
 Maintenant, vous pouvez lancer KhiCAS depuis 2nd resol (app)
 Pour quitter KhiCAS, taper la touche [2nde] [quit]

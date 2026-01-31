@@ -1125,22 +1125,6 @@ namespace giac {
 extern "C" unsigned char __heapbot[];
 extern "C" unsigned char __heaptop[];
 
-void runExternalProgramAndExit(const char* prgmName)
-{
-  python_free();
-#if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
-    "ld  sp, ($D19888)\n\t"
-    : /* output */
-    : /* input */
-    : /* clobbered registers */
-  );
-#endif
-  lcd_Control = 0b100100101101; // TI-OS default
-  os_RunPrgm(prgmName, nullptr, 0, nullptr);
-  exit(1);
-}
-
 int main1(){
   ustl::vector<giac::gen> ustlv;
   const unsigned * ustlptr=(unsigned *)&ustlv;
@@ -1220,9 +1204,6 @@ int main1(){
     const Char *expr;
     if ( (expr=Console_GetLine())== nullptr)
       stop("memory error");
-    else if (strcmp(expr, "asm") == 0) {
-      runExternalProgramAndExit("ASMHOOK");
-    }
     else if (strcmp(expr,"kill")==0
         // && confirm("Quitter?",lang?"F1: confirmer,  F5: annuler":"F1: confirm,  F5: cancel")==KEY_CTRL_F1
         ){

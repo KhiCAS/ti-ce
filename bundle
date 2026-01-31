@@ -15,5 +15,5 @@ bext=$2
 
 convbin -j 8x -k "${bext}" \
 $(find . -maxdepth 1 -name 'AppIns[0-9]*.8xv' | sort -V | xargs printf -- '-i %s ') \
--i ../arTIfiCE.8xv -i ../INST.8xp \
+-i ../arTIfiCE.8xp -i ../INST.8xp \
 -o "${bname}.${bext}"

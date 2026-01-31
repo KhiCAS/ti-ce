@@ -33,9 +33,7 @@ jobs:
       - name: "Set up shared/ti/ folder"
         run: |
           mkdir -p shared/ti/
-          curl -sL https://github.com/YvanTT/arTIfiCE/releases/latest/download/arTIfiCE.8xv -o shared/ti/arTIfiCE.8xv
-          curl -sL https://github.com/jacobly0/asmhook/releases/latest/download/ASMHOOK.zip -o /tmp/ASMHOOK.zip
-          unzip /tmp/ASMHOOK.zip ASMHOOK.8xp -d shared/ti/ && rm /tmp/ASMHOOK.zip
+          curl -sL https://github.com/YvanTT/arTIfiCE/releases/v2.1/download/arTIfiCE_v2.1.8xp -o shared/ti/arTIfiCE.8xp
           cp app_tools/INST.8xp shared/ti/INST.8xp
 
       - name: Download and extract CEdev

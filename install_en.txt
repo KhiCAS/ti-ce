@@ -19,14 +19,12 @@ After install, check and remove the variables AppIns* (installation file not req
 ===================================================================
 For more recent OS (5.5 or above), the process is more complicated
 ===================================================================
-Since TI has disabled asm, we will have to run artifice (https://yvantt.github.io/arTIfiCE/) and asmhook (https://github.com/jacobly0/asmhook).
-        a/ Backup your data, apps (especially CabriJr) and your language pack. Reset archive memory (2nd mem 7 rightarrow 3), remove language packs. (2nd mem 2 1)
+Since TI has disabled asm, we will have to run artifice (https://yvantt.github.io/arTIfiCE/).
+        a/ Backup your data, apps and your language pack. Reset archive memory (2nd mem 7 rightarrow 3), remove language packs. (2nd mem 2 1)
         b/ Transfer transfer INST, artifice and all the files in app, in this order, to the calculator. If you are using TI Connect CE on Windows, you can instead transfer https://www-fourier.univ-grenoble-alpes.fr/~parisse/ti/khicas84.b84 (this does not work under Mac OS or Chrome). If you are using tilp under linux, run the transfert_tilp.sh script (don't use the GUI).
-        c/ transfer CabriJr. CabriJr is available from TI site or from tiplanet (https://tiplanet.org/forum/archives_voir.php?id=168570)
-        d/ open CabriJr from apps
-        e/ open artifice in CabriJr
-        f/ run INST. This will reset the calc but not clear the RAM
-        g/ IMPORTANT: clear the RAM with 2nd mem 7 1
+        c/ open artifice (prgmA)
+        d/ run INST. This will reset the calc but not clear the RAM
+        e/ IMPORTANT: clear the RAM with 2nd mem 7 1
 
 After install, check and remove the variables AppIns* (installation file not required anymore).
 
