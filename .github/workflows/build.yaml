@@ -40,7 +40,7 @@ jobs:
 
       - name: Download and extract CEdev
         run: |
-          curl -sL https://github.com/CE-Programming/toolchain/releases/download/v14.0/CEdev-Linux.tar.gz | tar -xvzf - -C ~
+          curl -sL https://github.com/CE-Programming/toolchain/releases/download/v14.2/CEdev-Linux.tar.gz | tar -xvzf - -C ~
 
       - name: Build KhiCAS
         run: |
