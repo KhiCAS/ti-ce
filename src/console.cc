@@ -7,6 +7,7 @@
 #include "file.h"
 #include "main.h"
 #include <cstring>
+#include <ti/sprintf.h>
 #ifndef GIAC_FAKE
 namespace xcas {
   bool eqws(char * s,bool eval);
@@ -644,7 +645,7 @@ void print_alpha_shift(int keyflag){
 
   string printint(int i){
     char s[sizeof("-8388608")];
-    ce_sprintf(s, "%d", i);
+    boot_sprintf(s, "%d", i);
     return s;
   }
 
@@ -1568,13 +1569,13 @@ bool inputdouble(const char * msg1,double & d){
 
   static string print_INT_(int i) {
     char c[sizeof("-8388608")];
-    ce_sprintf(c, "%d", i);
+    boot_sprintf(c, "%d", i);
     return c;
   }
 
   static string hexa_print_INT_(int i){
     char c[sizeof("0xffffff")];
-    ce_sprintf(c, "0x%x", i);
+    boot_sprintf(c, "0x%x", i);
     return c;
   }
   int chartab(){
@@ -1598,7 +1599,7 @@ bool inputdouble(const char * msg1,double & d){
       const char buf[8]={(char)(currc==127?'X':currc),32,0};
       Printxy(1+14*col,dy+16*row,buf,1); // draw char selected
       char s[sizeof("Current # 127 0x7f  ")];
-      ce_sprintf(s, "Current %c %d 0x%x  ", (char)currc, currc, currc);
+      boot_sprintf(s, "Current %c %d 0x%x  ", (char)currc, currc, currc);
       Printxy(0,16*10,s,TEXT_MODE_NORMAL);
       // interaction
       int key; ck_getkey(&key);

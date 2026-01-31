@@ -15,10 +15,6 @@
 #endif
 typedef char Char;
 
-// #include <ce_sprintf.h>
-// if we find out that the OS sprintf is faster than nanoprintf, use it instead
-#define ce_sprintf sprintf
-
 #define LARGEDOUBLE 3e38
 
 #ifdef XLIGHT
