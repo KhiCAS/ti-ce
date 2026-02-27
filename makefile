@@ -27,7 +27,7 @@ else
     $(error VARIANT must be either 'normal' (default) or 'l2')
 endif
 
-NAME = DEMO
+NAME = KhiCAS
 COMPRESSED = NO
 ARCHIVED = NO
 
@@ -40,15 +40,19 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -Oz -Iustl -Isrc/tommath -DMP_16BIT -DTICE -
 CPP_EXTENSION = cc
 APP_NAME = KhiCAS
 APP_VERSION = 5.0.0.0000
-DESCRIPTION = KhiCAS
+DESCRIPTION =
 
-EXTRA_LDFLAGS = -e 9999
+APPLICATION = YES
+APPLICATION_DESCRIPTION =
+
 ALLOCATOR = CUSTOM
 SKIP_LIBRARY_LDFLAGS = YES
 PREFER_OS_CRT = YES
+PREFER_CE_CRT = YES
 PREFER_OS_LIBC = NO
 LIBLOAD_OPTIONAL = fileioc
 
 # ----------------------------
 
-include app_tools/makefile
+# include app_tools/makefile
+include $(shell cedev-config --makefile)

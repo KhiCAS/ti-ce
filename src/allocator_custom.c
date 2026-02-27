@@ -32,12 +32,12 @@ typedef struct __attribute__((packed)) block
     size_t size;
 } __attribute__((packed)) block_t;
 
-extern uint8_t __heapbot[];
-extern uint8_t __heaptop[];
+extern uint8_t __heap_low[];
+extern uint8_t __heap_high[];
 
 // assumes that heap2_ptrend<=lcd_Ram
-static uintptr_t heap2_ptr = (uintptr_t)__heapbot;
-static uintptr_t heap2_ptrend = (uintptr_t)__heaptop;
+static uintptr_t heap2_ptr = (uintptr_t)__heap_low;
+static uintptr_t heap2_ptrend = (uintptr_t)__heap_high;
 
 // 256 slots per pool: byte bitmaps avoid expensive 24-bit divisions on eZ80.
 #define ALLOC2 256
@@ -98,9 +98,9 @@ void* oom_reserve = NULL;
 volatile char oom_hit = 0, oom_soft = 0;
 typedef void oom_interrupt_t(void);
 oom_interrupt_t* oom_interrupt = NULL;
-void _custom_free(void* ptr);
+void free(void* ptr);
 
-void* _custom_malloc(size_t alloc_size)
+void* malloc(size_t alloc_size)
 {
     // dbg_printf("[malloc] %zu bytes\n", alloc_size);
 
@@ -202,9 +202,9 @@ void* _custom_malloc(size_t alloc_size)
                 void* res = oom_reserve;
                 oom_reserve = NULL;
                 oom_hit = 1;
-                _custom_free(res);
+                free(res);
                 if (oom_interrupt) oom_interrupt();
-                return _custom_malloc(alloc_size);
+                return malloc(alloc_size);
             }
             if (oom_soft)
                 return NULL;
@@ -229,7 +229,7 @@ void* _custom_malloc(size_t alloc_size)
     return r + 1;
 }
 
-void _custom_free(void* ptr)
+void free(void* ptr)
 {
     // dbg_printf("[free] %p\n", ptr);
 
@@ -294,7 +294,7 @@ void _custom_free(void* ptr)
     }
 }
 
-void* _custom_realloc(void* ptr, const size_t size)
+void* realloc(void* ptr, const size_t size)
 {
     // dbg_printf("[realloc] %p for %zu bytes\n", ptr, size);
 
@@ -304,7 +304,7 @@ void* _custom_realloc(void* ptr, const size_t size)
 
     if (ptr == NULL)
     {
-        return _custom_malloc(size);
+        return malloc(size);
     }
 
     size_t old_size;
@@ -322,11 +322,11 @@ void* _custom_realloc(void* ptr, const size_t size)
     if (old_size >= size)
         return ptr;
 
-    void* p = _custom_malloc(size);
+    void* p = malloc(size);
     if (p)
     {
         memcpy(p, ptr, old_size);
-        _custom_free(ptr);
+        free(ptr);
     }
 
     return p;

@@ -1104,7 +1104,7 @@ void stop(const char * s)
 {
   python_free();
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
+  asm(".assume\tadl = 1\n\t"
     "ld  sp, ($D19888)\n\t"
     : /* output */
     : /* input */
@@ -1251,7 +1251,7 @@ int main(){
   if (pcmain<appstart || pcmain>=0x3b0000)
     return 1;
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
+  asm(".assume\tadl = 1\n\t"
       "ld  ($D19888), sp\n\t"
       "ld  sp, $D2a800\n\t"
       :        /* output */
@@ -1284,7 +1284,7 @@ int main(){
   python_free();
   sdk_end();
 #if KHICAS_STACK
-  asm("assume	adl = 1\n\t"
+  asm(".assume\tadl = 1\n\t"
       "ld  sp, ($D19888)\n\t"
       :        /* output */
       :  /* input */

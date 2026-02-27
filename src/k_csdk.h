@@ -15,10 +15,12 @@
 #define LCD_WIDTH_PX 320
 #define LCD_HEIGHT_PX 240
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "stdio.h"
 
 #define C58 214
 #define COLOR_WHITE SDK_WHITE
@@ -42,8 +44,6 @@ extern "C" {
 #define MINI_REV 4
 #define false 0
 #define true 1
-
-#include <stdlib.h>
 
   int convertcolor(int c);
   #define STANDALONE // don't use graphx and fileioc
