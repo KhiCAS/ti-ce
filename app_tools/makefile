@@ -18,12 +18,17 @@ default: app # install_prog
 include $(shell cedev-config --makefile)
 
 TARGET8EK ?= $(NAME).8ek
+TARGETBIN ?= $(NAME).bin
 APP_INST_NAME ?= APPINST
 APP_INST_DESC ?= App Installer
 APP_INST_VAR_PREFIX ?= AppIns
 
 app: $(BINDIR)/$(TARGET8EK)
 # install_prog: $(BINDIR)/AppIns0.8xv $(BINDIR)/INSTALL.8xp
+
+$(BINDIR)/$(TARGETBIN): $(BINDIR)/$(TARGETOBJ) $(MAKEFILE_LIST) $(DEPS)
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)(OBJCOPY) -O binary $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$@)
 
 $(BINDIR)/$(TARGET8EK): $(BINDIR)/$(TARGETBIN) $(APP_TOOLS_DIR)/make_8ek.py
 	python3 $(APP_TOOLS_DIR)/make_8ek.py $(BINDIR)/$(TARGETBIN) $(BINDIR)/$(TARGET8EK) $(NAME)
@@ -40,4 +45,4 @@ $(BINDIR)/INSTALL.8xp:
 	VAR_PREFIX="$(APP_INST_VAR_PREFIX)" \
 	$(MAKE) -C $(APP_TOOLS_DIR)/installer
 
-.PHONY: default app # install_prog 
+.PHONY: default app # install_prog
