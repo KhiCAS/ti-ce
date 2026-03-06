@@ -14,36 +14,15 @@
 // minimal size (avoid blocks that are too small)
 #define MALLOC_MINSIZE 6
 
-static unsigned int freeslotpos(unsigned int n)
-{
-    unsigned int r = 1;
-    if ((n << 8) == 0)
-    {
-        // bit15 to 0 are 0, position must be >=16
-        // otherwise position is <16
-        r += 16;
-        n >>= 16;
+static unsigned int freeslotpos(unsigned int n) {
+    if (n == 0) {
+        /**
+         * this is what the original code returns, although this is probably
+         * not the ideal value to return when n == 0
+         */
+        return 31;
     }
-    if ((n << 16) == 0)
-    {
-        // bit7 to 0 are 0, position must be >=8
-        // otherwise position is <8
-        r += 8;
-        n >>= 8;
-    }
-    if ((n << 20) == 0)
-    {
-        r += 4;
-        n >>= 4;
-    }
-    if ((n << 22) == 0)
-    {
-        r += 2;
-        n >>= 2;
-    }
-    r -= n & 1;
-    // dbg_printf("freeslotpos n=%p r=%zu\n",n,r);
-    return r;
+    return __builtin_ctz(n);
 }
 
 typedef struct char2_ {
@@ -125,7 +104,7 @@ void* _custom_malloc(size_t alloc_size)
                 }
                 if (freeslot2[i])
                 {
-                end2: {
+                    end2: {
                         const unsigned int pos = freeslotpos(freeslot2[i]);
                         freeslot2[i] &= ~(1 << pos);
                         // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
@@ -147,14 +126,14 @@ void* _custom_malloc(size_t alloc_size)
                 }
                 if (freeslot3[i])
                 {
-                end3: {
+                    end3: {
                         const unsigned int pos = freeslotpos(freeslot3[i]);
                         freeslot3[i] &= ~(1 << pos);
                         // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
                         return (void*)(tab3 + i * INT24_WIDTH + pos);
                     }
                 }
-                i++;
+                ++i;
                 goto end3;
             }
         }
@@ -169,7 +148,7 @@ void* _custom_malloc(size_t alloc_size)
                 }
                 if (freeslot6[i])
                 {
-                end6: {
+                    end6: {
                         const unsigned int pos = freeslotpos(freeslot6[i]);
                         freeslot6[i] &= ~(1 << pos);
                         // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
