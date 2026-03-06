@@ -95,68 +95,44 @@ void* _custom_malloc(size_t alloc_size)
     {
         if (tab2 && alloc_size <= sizeof(char2_t))
         {
-            for (unsigned int i = 0; i < ALLOC2 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC2 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot2[i] || freeslot2[i + 1]))
+                if (freeslot2[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot2[i])
-                {
-                    end2: {
-                        const unsigned int pos = freeslotpos(freeslot2[i]);
-                        freeslot2[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
-                        return (void*)(tab2 + i * INT24_WIDTH + pos);
-                    }
-                }
-                ++i;
-                goto end2;
+                const unsigned int pos = freeslotpos(freeslot2[i]);
+                freeslot2[i] &= ~(1 << pos);
+                // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
+                return (void*)(tab2 + i * INT24_WIDTH + pos);
             }
         }
         if (tab3 && alloc_size <= sizeof(char3_t))
         {
-            for (unsigned int i = 0; i < ALLOC3 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC3 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot3[i] || freeslot3[i + 1]))
+                if (freeslot3[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot3[i])
-                {
-                    end3: {
-                        const unsigned int pos = freeslotpos(freeslot3[i]);
-                        freeslot3[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
-                        return (void*)(tab3 + i * INT24_WIDTH + pos);
-                    }
-                }
-                ++i;
-                goto end3;
+                const unsigned int pos = freeslotpos(freeslot3[i]);
+                freeslot3[i] &= ~(1 << pos);
+                // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
+                return (void*)(tab3 + i * INT24_WIDTH + pos);
             }
         }
         if (tab6 && alloc_size <= sizeof(char6_t))
         {
-            for (unsigned int i = 0; i < ALLOC6 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC6 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot6[i] || freeslot6[i + 1]))
+                if (freeslot6[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot6[i])
-                {
-                    end6: {
-                        const unsigned int pos = freeslotpos(freeslot6[i]);
-                        freeslot6[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
-                        return (void*)(tab6 + i * INT24_WIDTH + pos);
-                    }
-                }
-                ++i;
-                goto end6;
+                const unsigned int pos = freeslotpos(freeslot6[i]);
+                freeslot6[i] &= ~(1 << pos);
+                // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
+                return (void*)(tab6 + i * INT24_WIDTH + pos);
             }
         }
     }
