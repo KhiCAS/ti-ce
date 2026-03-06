@@ -70,9 +70,9 @@ static unsigned int freeslot6[ALLOC6 / INT24_WIDTH] = {
 #define ALLOC_START ((unsigned char*)lcd_Ram + LCD_SIZE_8BPP)
 #define ALLOC_END ((unsigned char*)lcd_Ram + LCD_SIZE)
 
-static const char2_t* tab2 = (char2_t*)(ALLOC_START);
-static const char3_t* tab3 = (char3_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t));
-static const char6_t* tab6 = (char6_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t));
+static char2_t * const tab2 = (char2_t*)(ALLOC_START);
+static char3_t * const tab3 = (char3_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t));
+static char6_t * const tab6 = (char6_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t));
 
 static uintptr_t heap_ptr = (uintptr_t)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t) + ALLOC6 * sizeof(char6_t));
 static uintptr_t heap_ptrend = (uintptr_t)ALLOC_END;
@@ -296,7 +296,7 @@ void* _custom_realloc(void* ptr, const size_t size)
 
     if (ptr == NULL)
     {
-        return malloc(size);
+        return _custom_malloc(size);
     }
 
     if (
@@ -315,11 +315,11 @@ void* _custom_realloc(void* ptr, const size_t size)
         }
     }
 
-    void* p = malloc(size);
+    void* p = _custom_malloc(size);
     if (p)
     {
         memcpy(p, ptr, size);
-        free(ptr);
+        _custom_free(ptr);
     }
 
     return p;
