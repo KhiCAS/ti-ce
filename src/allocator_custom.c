@@ -14,36 +14,15 @@
 // minimal size (avoid blocks that are too small)
 #define MALLOC_MINSIZE 6
 
-static unsigned int freeslotpos(unsigned int n)
-{
-    unsigned int r = 1;
-    if ((n << 8) == 0)
-    {
-        // bit15 to 0 are 0, position must be >=16
-        // otherwise position is <16
-        r += 16;
-        n >>= 16;
+static unsigned int freeslotpos(unsigned int n) {
+    if (n == 0) {
+        /**
+         * this is what the original code returns, although this is probably
+         * not the ideal value to return when n == 0
+         */
+        return 31;
     }
-    if ((n << 16) == 0)
-    {
-        // bit7 to 0 are 0, position must be >=8
-        // otherwise position is <8
-        r += 8;
-        n >>= 8;
-    }
-    if ((n << 20) == 0)
-    {
-        r += 4;
-        n >>= 4;
-    }
-    if ((n << 22) == 0)
-    {
-        r += 2;
-        n >>= 2;
-    }
-    r -= n & 1;
-    // dbg_printf("freeslotpos n=%p r=%zu\n",n,r);
-    return r;
+    return __builtin_ctz(n);
 }
 
 typedef struct char2_ {
@@ -91,9 +70,9 @@ static unsigned int freeslot6[ALLOC6 / INT24_WIDTH] = {
 #define ALLOC_START ((unsigned char*)lcd_Ram + LCD_SIZE_8BPP)
 #define ALLOC_END ((unsigned char*)lcd_Ram + LCD_SIZE)
 
-static const char2_t* tab2 = (char2_t*)(ALLOC_START);
-static const char3_t* tab3 = (char3_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t));
-static const char6_t* tab6 = (char6_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t));
+static char2_t * const tab2 = (char2_t*)(ALLOC_START);
+static char3_t * const tab3 = (char3_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t));
+static char6_t * const tab6 = (char6_t*)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t));
 
 static uintptr_t heap_ptr = (uintptr_t)(ALLOC_START + ALLOC2 * sizeof(char2_t) + ALLOC3 * sizeof(char3_t) + ALLOC6 * sizeof(char6_t));
 static uintptr_t heap_ptrend = (uintptr_t)ALLOC_END;
@@ -116,68 +95,44 @@ void* _custom_malloc(size_t alloc_size)
     {
         if (tab2 && alloc_size <= sizeof(char2_t))
         {
-            for (unsigned int i = 0; i < ALLOC2 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC2 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot2[i] || freeslot2[i + 1]))
+                if (freeslot2[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot2[i])
-                {
-                end2: {
-                        const unsigned int pos = freeslotpos(freeslot2[i]);
-                        freeslot2[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
-                        return (void*)(tab2 + i * INT24_WIDTH + pos);
-                    }
-                }
-                ++i;
-                goto end2;
+                const unsigned int pos = freeslotpos(freeslot2[i]);
+                freeslot2[i] &= ~(1 << pos);
+                // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
+                return (void*)(tab2 + i * INT24_WIDTH + pos);
             }
         }
         if (tab3 && alloc_size <= sizeof(char3_t))
         {
-            for (unsigned int i = 0; i < ALLOC3 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC3 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot3[i] || freeslot3[i + 1]))
+                if (freeslot3[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot3[i])
-                {
-                end3: {
-                        const unsigned int pos = freeslotpos(freeslot3[i]);
-                        freeslot3[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
-                        return (void*)(tab3 + i * INT24_WIDTH + pos);
-                    }
-                }
-                i++;
-                goto end3;
+                const unsigned int pos = freeslotpos(freeslot3[i]);
+                freeslot3[i] &= ~(1 << pos);
+                // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
+                return (void*)(tab3 + i * INT24_WIDTH + pos);
             }
         }
         if (tab6 && alloc_size <= sizeof(char6_t))
         {
-            for (unsigned int i = 0; i < ALLOC6 / INT24_WIDTH;)
+            for (unsigned int i = 0; i < ALLOC6 / INT24_WIDTH; ++i)
             {
-                if (!(freeslot6[i] || freeslot6[i + 1]))
+                if (freeslot6[i] == 0)
                 {
-                    i += 2;
                     continue;
                 }
-                if (freeslot6[i])
-                {
-                end6: {
-                        const unsigned int pos = freeslotpos(freeslot6[i]);
-                        freeslot6[i] &= ~(1 << pos);
-                        // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
-                        return (void*)(tab6 + i * INT24_WIDTH + pos);
-                    }
-                }
-                ++i;
-                goto end6;
+                const unsigned int pos = freeslotpos(freeslot6[i]);
+                freeslot6[i] &= ~(1 << pos);
+                // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
+                return (void*)(tab6 + i * INT24_WIDTH + pos);
             }
         }
     }
@@ -237,9 +192,10 @@ void* _custom_malloc(size_t alloc_size)
                 return q + 1;
             }
         }
-        if (heap2_ptr + size < heap2_ptr ||
-            heap2_ptr + size >= (uintptr_t)heap2_ptrend)
-        {
+        if (
+            (heap2_ptr + size < heap2_ptr) ||
+            (heap2_ptr + size >= (uintptr_t)heap2_ptrend)
+        ) {
             lcd_Control = 0b100100101101; // TI-OS default
             abort();
             return NULL;
@@ -264,67 +220,73 @@ void* _custom_malloc(size_t alloc_size)
 void _custom_free(void* ptr)
 {
     // dbg_printf("[free] %p\n", ptr);
-    if (ptr != NULL)
+
+    if (ptr == NULL)
     {
-        if (((size_t)ptr >= (size_t)&tab2[0]) &&
-            ((size_t)ptr < (size_t)&tab2[ALLOC2]))
-        {
-            const unsigned int pos = ((size_t)ptr - ((size_t)&tab2[0])) / sizeof(char2_t);
-            // dbg_printf("deletefast2 %p pos=%i\n", ptr, pos);
-            freeslot2[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
-            return;
-        }
-        if (((size_t)ptr >= (size_t)&tab3[0]) &&
-            ((size_t)ptr < (size_t)&tab3[ALLOC3]))
-        {
-            const unsigned int pos = ((size_t)ptr - ((size_t)&tab3[0])) / sizeof(char3_t);
-            // dbg_printf("deletefast3 %p pos=%i\n", ptr, pos);
-            freeslot3[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
-            return;
-        }
-        if (((size_t)ptr >= (size_t)&tab6[0]) &&
-            ((size_t)ptr < (size_t)&tab6[ALLOC6]))
-        {
-            const unsigned int pos = ((size_t)ptr - ((size_t)&tab6[0])) / sizeof(char6_t);
-            // dbg_printf("deletefast6 %p pos=%i\n", ptr, pos);
-            freeslot6[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
-            return;
-        }
+        return;
+    }
 
-        block_t* q = (block_t*)ptr - 1;
+    if (
+        ((size_t)ptr >= (size_t)&tab2[0]) &&
+        ((size_t)ptr < (size_t)&tab2[ALLOC2])
+    ) {
+        const unsigned int pos = ((size_t)ptr - ((size_t)&tab2[0])) / sizeof(char2_t);
+        // dbg_printf("deletefast2 %p pos=%i\n", ptr, pos);
+        freeslot2[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+        return;
+    }
+    if (
+        ((size_t)ptr >= (size_t)&tab3[0]) &&
+        ((size_t)ptr < (size_t)&tab3[ALLOC3])
+    ) {
+        const unsigned int pos = ((size_t)ptr - ((size_t)&tab3[0])) / sizeof(char3_t);
+        // dbg_printf("deletefast3 %p pos=%i\n", ptr, pos);
+        freeslot3[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+        return;
+    }
+    if (
+        ((size_t)ptr >= (size_t)&tab6[0]) &&
+        ((size_t)ptr < (size_t)&tab6[ALLOC6])
+    ) {
+        const unsigned int pos = ((size_t)ptr - ((size_t)&tab6[0])) / sizeof(char6_t);
+        // dbg_printf("deletefast6 %p pos=%i\n", ptr, pos);
+        freeslot6[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+        return;
+    }
 
-        block_t* p = ((uintptr_t)ptr <= heap2_ptrend) ? &_alloc2_base : &_alloc_base;
-        // dbg_printf("free ptr=%p heap_end=%p p=%p pptr=%p psize=%zu\n",ptr,heap_ptrend,p,p->ptr,p->size);
+    block_t* q = (block_t*)ptr - 1;
 
-        for (; p->ptr && p->ptr < q; p = p->ptr) {}
-        // p next pointer in the free-ed chaine list, p->ptr,
-        // is 0 or is the first pointer >= q
-        // (this means that p is before q)
-        if ((uint8_t*)p->ptr == ((uint8_t*)q) + q->size)
-        {
-            // concatenate q and p next pointer
-            q->size += p->ptr->size;
-            q->ptr = p->ptr->ptr;
-            // dbg_printf("free concatenate blocsize=%zu\n", q->size);
-        }
-        else
-        {
-            // insert in chained list: get q next cell from p next cell
-            q->ptr = p->ptr;
-            // dbg_printf("free add block blocsize=%zu\n", q->size);
-        }
-        // check if we can concatenate p and q
-        if (((uint8_t*)p) + p->size == (uint8_t*)q)
-        {
-            // yes
-            p->size += q->size;
-            p->ptr = q->ptr;
-        }
-        else
-        {
-            // no, update next pointer for p
-            p->ptr = q;
-        }
+    block_t* p = ((uintptr_t)ptr <= heap2_ptrend) ? &_alloc2_base : &_alloc_base;
+    // dbg_printf("free ptr=%p heap_end=%p p=%p pptr=%p psize=%zu\n",ptr,heap_ptrend,p,p->ptr,p->size);
+
+    for (; p->ptr && p->ptr < q; p = p->ptr) {}
+    // p next pointer in the free-ed chaine list, p->ptr,
+    // is 0 or is the first pointer >= q
+    // (this means that p is before q)
+    if ((uint8_t*)p->ptr == ((uint8_t*)q) + q->size)
+    {
+        // concatenate q and p next pointer
+        q->size += p->ptr->size;
+        q->ptr = p->ptr->ptr;
+        // dbg_printf("free concatenate blocsize=%zu\n", q->size);
+    }
+    else
+    {
+        // insert in chained list: get q next cell from p next cell
+        q->ptr = p->ptr;
+        // dbg_printf("free add block blocsize=%zu\n", q->size);
+    }
+    // check if we can concatenate p and q
+    if (((uint8_t*)p) + p->size == (uint8_t*)q)
+    {
+        // yes
+        p->size += q->size;
+        p->ptr = q->ptr;
+    }
+    else
+    {
+        // no, update next pointer for p
+        p->ptr = q;
     }
 }
 
@@ -334,13 +296,14 @@ void* _custom_realloc(void* ptr, const size_t size)
 
     if (ptr == NULL)
     {
-        return malloc(size);
+        return _custom_malloc(size);
     }
 
-    if ((((size_t)ptr >= (size_t)&tab2[0]) && ((size_t)ptr < (size_t)&tab2[ALLOC2])) ||
+    if (
+        (((size_t)ptr >= (size_t)&tab2[0]) && ((size_t)ptr < (size_t)&tab2[ALLOC2])) ||
         (((size_t)ptr >= (size_t)&tab3[0]) && ((size_t)ptr < (size_t)&tab3[ALLOC3])) ||
-        (((size_t)ptr >= (size_t)&tab6[0]) && ((size_t)ptr < (size_t)&tab6[ALLOC6])))
-    {
+        (((size_t)ptr >= (size_t)&tab6[0]) && ((size_t)ptr < (size_t)&tab6[ALLOC6]))
+    ) {
         // ok
     }
     else
@@ -352,11 +315,11 @@ void* _custom_realloc(void* ptr, const size_t size)
         }
     }
 
-    void* p = malloc(size);
+    void* p = _custom_malloc(size);
     if (p)
     {
         memcpy(p, ptr, size);
-        free(ptr);
+        _custom_free(ptr);
     }
 
     return p;
