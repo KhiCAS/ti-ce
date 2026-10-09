@@ -54,5 +54,9 @@ LIBLOAD_OPTIONAL = fileioc
 
 # ----------------------------
 
-# include app_tools/makefile
+# The toolchain expands DEPS when reading its compile and link rules.
+# Track variant changes even when no source or makefile has changed.
+DEPS += $(OBJDIR)/.khicas-build-config
+
 include $(shell cedev-config --makefile)
+include app_tools/makefile_elf

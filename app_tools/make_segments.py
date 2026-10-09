@@ -1,8 +1,8 @@
 #!/bin/env python3
 
-import os, sys, datetime
+import os, sys, subprocess
+from pathlib import Path
 
-date = datetime.date.today()
 _, inpath, outdir = sys.argv
 
 appvar_size = 65232
@@ -19,4 +19,11 @@ for (i, segment) in enumerate(segments):
 	filename_8xv = outdir + '/' + var_name + '.8xv'
 	with open(filename_bin, 'wb') as outfile:
 		outfile.write(segment)
-	os.system(f'convbin -i "{filename_bin}" -o "{filename_8xv}" -j bin -k 8xv -n {var_name} -r')
+	subprocess.run([os.environ.get('CONVBIN', 'convbin'), '-i', filename_bin,
+	                '-o', filename_8xv, '-j', 'bin', '-k', '8xv', '-n', var_name,
+	                '-r'], check=True)
+
+# A smaller variant must not leave tail segments from a previous larger build.
+for path in Path(outdir).glob('AppIns[0-9][0-9].*'):
+	if path.suffix in ('.bin', '.8xv') and int(path.stem[6:]) >= len(segments):
+		path.unlink()

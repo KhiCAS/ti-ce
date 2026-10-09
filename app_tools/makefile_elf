@@ -1,0 +1,40 @@
+# The toolchain links ELF and convbin translates its relocations into an 8ek.
+# Pre-apply that table for INST's first-app placement before splitting it.
+.DEFAULT_GOAL := app
+
+APP_TOOLS_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+STATIC_APP_BIN := $(BINDIR)/_$(NAME).bin
+STATIC_APP_8EK := $(BINDIR)/_$(NAME).8ek
+APP_SEGMENTS_STAMP := $(BINDIR)/.AppIns.stamp
+APP_LANGUAGE_FLAG := $(if $(filter fr,$(APPLANG)),--french,)
+APP_CONFIG_STAMP := $(OBJDIR)/.khicas-build-config
+APP_CONFIG := APPLANG=$(APPLANG) VARIANT=$(VARIANT)
+APP_CONFIG_CURRENT := $(shell python3 -c "from pathlib import Path; import sys; p = Path(sys.argv[1]); print(p.read_text() if p.exists() else '')" $(call QUOTE_ARG,$(APP_CONFIG_STAMP)))
+
+.PHONY: app install_prog
+app: $(STATIC_APP_8EK) install_prog
+install_prog: $(APP_SEGMENTS_STAMP) $(BINDIR)/INST.8xp
+
+# Every compile uses the variant flags. Force the whole dependency chain on a
+# switch, including LTO and packaging, even with make's one-second timestamps.
+ifneq ($(APP_CONFIG_CURRENT),$(APP_CONFIG))
+MAKEFLAGS += --always-make
+endif
+
+$(APP_CONFIG_STAMP):
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)python3 -c "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('\n'.join(sys.argv[2:]) + '\n')" $(call QUOTE_ARG,$@) $(call QUOTE_ARG,APPLANG=$(APPLANG)) $(call QUOTE_ARG,VARIANT=$(VARIANT))
+
+$(STATIC_APP_BIN): $(BINDIR)/$(TARGET) $(APP_TOOLS_DIR)relocate_app.py $(APP_CONFIG_STAMP)
+	python3 $(APP_TOOLS_DIR)relocate_app.py $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$@) $(APP_LANGUAGE_FLAG)
+
+$(STATIC_APP_8EK): $(STATIC_APP_BIN) $(APP_TOOLS_DIR)make_8ek.py
+	python3 $(APP_TOOLS_DIR)make_8ek.py $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$@) $(NAME)
+
+$(APP_SEGMENTS_STAMP): $(STATIC_APP_BIN) $(APP_TOOLS_DIR)make_segments.py
+	CONVBIN=$(call QUOTE_ARG,$(CONVBIN)) python3 $(APP_TOOLS_DIR)make_segments.py $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$(BINDIR))
+	python3 -c "from pathlib import Path; import sys; Path(sys.argv[1]).touch()" $(call QUOTE_ARG,$@)
+
+$(BINDIR)/INST.8xp: $(APP_TOOLS_DIR)INST.8xp
+	$(call MKDIR,$(@D))
+	python3 -c "import shutil, sys; shutil.copyfile(*sys.argv[1:])" $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$@)

@@ -8,10 +8,10 @@
 
 ### Prerequisites
 
-- Get the nightly CE toolchain https://github.com/CE-Programming/toolchain/releases/nightly  
+- Get the binutils-based CE toolchain v15.0 or newer: https://github.com/CE-Programming/toolchain/releases
 (See docs: https://ce-programming.github.io/toolchain/)
 
-- `g++` and `python3` are also required for the post-build steps.
+- `python3` is also required for the post-build steps.
 
 ### KhiCAS build
 
@@ -19,6 +19,17 @@ Run the `./mkappen` (English build) or `./mkappfr` (French build) script.
 
 It will create, in the bin/ folder, many appvars (.8xv files) and an installer (.8xp).  
 A bundle file (.b83/.b84), only usable on TI Connect CE for Windows, will also be created with those files.
+
+`make -j8` builds the English app and installer segments without publishing to
+`shared/ti`. The linked ELF is `bin/KhiCAS.obj`; convbin converts it to
+`bin/KhiCAS.8ek`, then `app_tools/relocate_app.py` produces `bin/_KhiCAS.bin`
+with its Flash relocations applied and removed. `bin/_KhiCAS.8ek` and the
+`AppIns*.8xv` files contain this smaller app. The distribution scripts copy the
+pre-relocated 8ek to `shared/ti/KhiCAS.8ek`.
+
+This pre-relocation assumes KhiCAS is the first installed app: delete all apps
+before installing it with `INST`, as described in the installation instructions.
+See [app_tools/readme.md](app_tools/readme.md) for the address calculation and tests.
 
 ## Installation on calculator:
 See [install_en.txt](install_en.txt) or [install_fr.txt](install_fr.txt).

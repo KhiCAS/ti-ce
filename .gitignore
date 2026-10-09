@@ -8,6 +8,7 @@
 # Object files
 obj/
 bin/
+__pycache__/
 *.o
 *.bc
 *.ko
@@ -36,7 +37,6 @@ bin/
 *.dylib
 
 # Executables
-reloc
 shared/ti/
 *.exe
 *.out

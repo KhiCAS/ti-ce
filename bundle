@@ -11,7 +11,7 @@ bext=$2
   echo "Error: extension must be b83 or b84"; exit 1;
 }
 
-[ -d ~/shared/ti/app ] && cd ~/shared/ti/app || cd shared/ti/app || exit 1
+cd shared/ti/app || cd ~/shared/ti/app || exit 1
 
 convbin -j 8x -k "${bext}" \
 $(find . -maxdepth 1 -name 'AppIns[0-9]*.8xv' | sort -V | xargs printf -- '-i %s ') \
