@@ -36,9 +36,9 @@ jobs:
           curl -sL https://github.com/YvanTT/arTIfiCE/releases/download/v2.1/arTIfiCE_v2.1.8xp -o shared/ti/arTIfiCE.8xp
           cp app_tools/INST.8xp shared/ti/INST.8xp
 
-      - name: Download and extract CEdev
+      - name: Download and extract nightly CEdev
         run: |
-          curl -fsSL https://github.com/CE-Programming/toolchain/releases/download/v15.0/CEdev-Linux.tar.gz | tar -xvzf - -C ~
+          curl -fsSL https://github.com/CE-Programming/toolchain/releases/download/nightly/CEdev-Linux-nightly.tar.gz | tar -xvzf - -C ~
 
       - name: Build KhiCAS
         run: |

@@ -8,8 +8,9 @@
 
 ### Prerequisites
 
-- Get the binutils-based CE toolchain v15.0 or newer: https://github.com/CE-Programming/toolchain/releases
-(See docs: https://ce-programming.github.io/toolchain/)
+- Get the [nightly CE toolchain](https://github.com/CE-Programming/toolchain/releases/tag/nightly)
+used by CI, which includes the latest compiler fixes.
+(See [nightly docs](https://ce-programming.github.io/toolchain/nightly/).)
 
 - `python3` is also required for the post-build steps.
 
@@ -31,7 +32,7 @@ The LTO step enables function merging and uses an inline threshold of `-10`
 to reduce app size. Set `LTOFLAGS` on the make command line to override these
 options; for example, `LTOFLAGS=-Oz` uses the compiler's default size tuning.
 CI prints the compiler version, pre-relocated app size and installer AppVar
-count. CEdev v15.0 ships Clang 19; its version number is independent of LLVM's.
+count. CI follows the nightly toolchain release; CEdev v15.0 ships Clang 19.
 
 This pre-relocation assumes KhiCAS is the first installed app: delete all apps
 before installing it with `INST`, as described in the installation instructions.
