@@ -37,6 +37,9 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -Oz -Iustl -Isrc/tommath -DMP_16BIT -DTICE -
     -Wno-unused-variable -Wno-unused-but-set-variable -Wno-deprecated-register -Wno-reorder-ctor -Wno-inline-new-delete \
     -Wno-deprecated-copy-with-user-provided-copy $(LANG_DEF) $(FEATURE_DEFS)
 
+# Tune the whole-program optimization step for app size.
+LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=-10
+
 CPP_EXTENSION = cc
 APP_NAME = KhiCAS
 APP_VERSION = 5.0.0.0000

@@ -27,6 +27,12 @@ with its Flash relocations applied and removed. `bin/_KhiCAS.8ek` and the
 `AppIns*.8xv` files contain this smaller app. The distribution scripts copy the
 pre-relocated 8ek to `shared/ti/KhiCAS.8ek`.
 
+The LTO step enables function merging and uses an inline threshold of `-10`
+to reduce app size. Set `LTOFLAGS` on the make command line to override these
+options; for example, `LTOFLAGS=-Oz` uses the compiler's default size tuning.
+CI prints the compiler version, pre-relocated app size and installer AppVar
+count. CEdev v15.0 ships Clang 19; its version number is independent of LLVM's.
+
 This pre-relocation assumes KhiCAS is the first installed app: delete all apps
 before installing it with `INST`, as described in the installation instructions.
 See [app_tools/readme.md](app_tools/readme.md) for the address calculation and tests.

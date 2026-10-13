@@ -43,7 +43,14 @@ jobs:
       - name: Build KhiCAS
         run: |
           export PATH=~/CEdev/bin:$PATH
+          ez80-clang --version
           make clean && ./${{ matrix.buildscript }}
+          python3 - <<'PY'
+          from pathlib import Path
+          size = Path('bin/_KhiCAS.bin').stat().st_size
+          count = len(list(Path('bin').glob('AppIns??.8xv')))
+          print(f'Pre-relocated app: {size:,} bytes; {count} installer AppVars')
+          PY
 
       - name: Prepare files for upload
         run: |
