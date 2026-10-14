@@ -250,6 +250,13 @@ int getkey(int allow_suspend){
     case sk_Vars:
       return KEY_CTRL_VARS;
     case sk_Annul:
+      // Consume Clear through release so the following redraw does not see
+      // the menu-cancel key as a new calculation interrupt. Keep the OS scan
+      // path active; kb_Scan() would change scan mode and disable interrupts.
+      do {
+        os_wait_1ms(10);
+        os_GetCSC();
+      } while (kb_Data[6]&64);
       return Shift?KEY_CTRL_AC:KEY_CTRL_EXIT;
     case sk_TglExact:
       //dbg_printf("tab\n");
