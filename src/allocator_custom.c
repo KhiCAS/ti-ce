@@ -14,17 +14,6 @@
 // minimal size (avoid blocks that are too small)
 #define MALLOC_MINSIZE 6
 
-static unsigned int freeslotpos(unsigned int n) {
-    if (n == 0) {
-        /**
-         * this is what the original code returns, although this is probably
-         * not the ideal value to return when n == 0
-         */
-        return 31;
-    }
-    return __builtin_ctz(n);
-}
-
 typedef struct char2_ {
     char c1, c2, c3, c4;
 } char2_t;
@@ -50,21 +39,43 @@ extern uint8_t __heaptop[];
 static uintptr_t heap2_ptr = (uintptr_t)__heapbot;
 static uintptr_t heap2_ptrend = (uintptr_t)__heaptop;
 
-#define ALLOC2 (12 * INT24_WIDTH)
-static unsigned int freeslot2[ALLOC2 / INT24_WIDTH] = {
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
+// 256 slots per pool: byte bitmaps avoid expensive 24-bit divisions on eZ80.
+#define ALLOC2 256
+#define ALLOC3 256
+#define ALLOC6 256
+
+struct small_pool {
+    unsigned char used[32];
+    unsigned char hint; // first bitmap byte that may have a free slot
 };
-#define ALLOC3 (12 * INT24_WIDTH)
-static unsigned int freeslot3[ALLOC3 / INT24_WIDTH] = {
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
-};
-#define ALLOC6 (12 * INT24_WIDTH)
-static unsigned int freeslot6[ALLOC6 / INT24_WIDTH] = {
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
-    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,
-};
+
+static struct small_pool pool2, pool3, pool6;
+static const unsigned char pool_bit[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+
+static int pool_take(struct small_pool* p)
+{
+    for (unsigned char i = p->hint; i < sizeof(p->used); ++i)
+    {
+        const unsigned char u = p->used[i];
+        if (u != 0xff)
+        {
+            unsigned char f = ~u, k = 0;
+            while (!(f & 1)) { f >>= 1; ++k; }
+            p->used[i] = u | pool_bit[k];
+            p->hint = i;
+            return (unsigned char)(i << 3) | k;
+        }
+    }
+    p->hint = sizeof(p->used);
+    return -1;
+}
+
+static void pool_give(struct small_pool* p, unsigned char pos)
+{
+    const unsigned char i = pos >> 3;
+    p->used[i] &= ~pool_bit[pos & 7];
+    if (i < p->hint) p->hint = i;
+}
 
 #define LCD_SIZE_8BPP (LCD_WIDTH * LCD_HEIGHT)
 #define ALLOC_START ((unsigned char*)lcd_Ram + LCD_SIZE_8BPP)
@@ -80,6 +91,15 @@ static uintptr_t heap_ptrend = (uintptr_t)ALLOC_END;
 static block_t _alloc_base, _alloc2_base;
 // these are 0 initialized, pointing to a chained list of freed pointers
 
+// Optional emergency reserve and callback for a caller-managed OOM recovery.
+// Without a reserve, retain the existing abort behavior unless soft mode is set.
+#define OOM_RESERVE 8192
+void* oom_reserve = NULL;
+volatile char oom_hit = 0, oom_soft = 0;
+typedef void oom_interrupt_t(void);
+oom_interrupt_t* oom_interrupt = NULL;
+void _custom_free(void* ptr);
+
 void* _custom_malloc(size_t alloc_size)
 {
     // dbg_printf("[malloc] %zu bytes\n", alloc_size);
@@ -90,51 +110,32 @@ void* _custom_malloc(size_t alloc_size)
     // This allows callers to query how much free memory there is left
     if (alloc_size == MAGIC_SIZE_QUERY_FREEMEM)
         return (void*)((heap_ptrend - heap_ptr) + (heap2_ptrend - heap2_ptr));
+    if (alloc_size == MAGIC_SIZE_QUERY_FREEMEM - 1)
+    {
+        size_t total = 0;
+        for (block_t* b = _alloc_base.ptr; b; b = b->ptr) total += b->size;
+        for (block_t* b = _alloc2_base.ptr; b; b = b->ptr) total += b->size;
+        return (void*)total;
+    }
+    if (alloc_size == MAGIC_SIZE_QUERY_FREEMEM - 2)
+    {
+        size_t big = 0;
+        for (block_t* b = _alloc_base.ptr; b; b = b->ptr)
+            if (b->size > big) big = b->size;
+        for (block_t* b = _alloc2_base.ptr; b; b = b->ptr)
+            if (b->size > big) big = b->size;
+        return (void*)big;
+    }
 
     if (alloc_size <= sizeof(char6_t))
     {
-        if (tab2 && alloc_size <= sizeof(char2_t))
-        {
-            for (unsigned int i = 0; i < ALLOC2 / INT24_WIDTH; ++i)
-            {
-                if (freeslot2[i] == 0)
-                {
-                    continue;
-                }
-                const unsigned int pos = freeslotpos(freeslot2[i]);
-                freeslot2[i] &= ~(1 << pos);
-                // dbg_printf("allocfast2 %p %p\n", tab2, tab2 + i * INT24_WIDTH + pos);
-                return (void*)(tab2 + i * INT24_WIDTH + pos);
-            }
-        }
-        if (tab3 && alloc_size <= sizeof(char3_t))
-        {
-            for (unsigned int i = 0; i < ALLOC3 / INT24_WIDTH; ++i)
-            {
-                if (freeslot3[i] == 0)
-                {
-                    continue;
-                }
-                const unsigned int pos = freeslotpos(freeslot3[i]);
-                freeslot3[i] &= ~(1 << pos);
-                // dbg_printf("allocfast3 %p %p\n", tab3, tab3 + i * INT24_WIDTH + pos);
-                return (void*)(tab3 + i * INT24_WIDTH + pos);
-            }
-        }
-        if (tab6 && alloc_size <= sizeof(char6_t))
-        {
-            for (unsigned int i = 0; i < ALLOC6 / INT24_WIDTH; ++i)
-            {
-                if (freeslot6[i] == 0)
-                {
-                    continue;
-                }
-                const unsigned int pos = freeslotpos(freeslot6[i]);
-                freeslot6[i] &= ~(1 << pos);
-                // dbg_printf("allocfast6 %p %p\n", tab6, tab6 + i * INT24_WIDTH + pos);
-                return (void*)(tab6 + i * INT24_WIDTH + pos);
-            }
-        }
+        int pos;
+        if (alloc_size <= sizeof(char2_t) && (pos = pool_take(&pool2)) >= 0)
+            return (void*)(tab2 + pos);
+        if (alloc_size <= sizeof(char3_t) && (pos = pool_take(&pool3)) >= 0)
+            return (void*)(tab3 + pos);
+        if ((pos = pool_take(&pool6)) >= 0)
+            return (void*)(tab6 + pos);
     }
 
     block_t* q;
@@ -196,6 +197,17 @@ void* _custom_malloc(size_t alloc_size)
             (heap2_ptr + size < heap2_ptr) ||
             (heap2_ptr + size >= (uintptr_t)heap2_ptrend)
         ) {
+            if (oom_reserve && alloc_size <= OOM_RESERVE - 16)
+            {
+                void* res = oom_reserve;
+                oom_reserve = NULL;
+                oom_hit = 1;
+                _custom_free(res);
+                if (oom_interrupt) oom_interrupt();
+                return _custom_malloc(alloc_size);
+            }
+            if (oom_soft)
+                return NULL;
             lcd_Control = 0b100100101101; // TI-OS default
             abort();
             return NULL;
@@ -226,31 +238,23 @@ void _custom_free(void* ptr)
         return;
     }
 
-    if (
-        ((size_t)ptr >= (size_t)&tab2[0]) &&
-        ((size_t)ptr < (size_t)&tab2[ALLOC2])
-    ) {
-        const unsigned int pos = ((size_t)ptr - ((size_t)&tab2[0])) / sizeof(char2_t);
-        // dbg_printf("deletefast2 %p pos=%i\n", ptr, pos);
-        freeslot2[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+    size_t o = (size_t)ptr - (size_t)tab2;
+    if (o < ALLOC2 * sizeof(char2_t))
+    {
+        pool_give(&pool2, (unsigned char)(o >> 2));
         return;
     }
-    if (
-        ((size_t)ptr >= (size_t)&tab3[0]) &&
-        ((size_t)ptr < (size_t)&tab3[ALLOC3])
-    ) {
-        const unsigned int pos = ((size_t)ptr - ((size_t)&tab3[0])) / sizeof(char3_t);
-        // dbg_printf("deletefast3 %p pos=%i\n", ptr, pos);
-        freeslot3[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+    o = (size_t)ptr - (size_t)tab3;
+    if (o < ALLOC3 * sizeof(char3_t))
+    {
+        // 10 = 2*5; 0xCD is the inverse of 5 modulo 256.
+        pool_give(&pool3, (unsigned char)((unsigned char)(o >> 1) * 0xCD));
         return;
     }
-    if (
-        ((size_t)ptr >= (size_t)&tab6[0]) &&
-        ((size_t)ptr < (size_t)&tab6[ALLOC6])
-    ) {
-        const unsigned int pos = ((size_t)ptr - ((size_t)&tab6[0])) / sizeof(char6_t);
-        // dbg_printf("deletefast6 %p pos=%i\n", ptr, pos);
-        freeslot6[pos / INT24_WIDTH] |= (1 << (pos % INT24_WIDTH));
+    o = (size_t)ptr - (size_t)tab6;
+    if (o < ALLOC6 * sizeof(char6_t))
+    {
+        pool_give(&pool6, (unsigned char)(o >> 4));
         return;
     }
 
@@ -294,31 +298,34 @@ void* _custom_realloc(void* ptr, const size_t size)
 {
     // dbg_printf("[realloc] %p for %zu bytes\n", ptr, size);
 
+    // The three largest sizes are malloc query commands, not allocations.
+    if (size >= MAGIC_SIZE_QUERY_FREEMEM - 2)
+        return NULL;
+
     if (ptr == NULL)
     {
         return _custom_malloc(size);
     }
 
-    if (
-        (((size_t)ptr >= (size_t)&tab2[0]) && ((size_t)ptr < (size_t)&tab2[ALLOC2])) ||
-        (((size_t)ptr >= (size_t)&tab3[0]) && ((size_t)ptr < (size_t)&tab3[ALLOC3])) ||
-        (((size_t)ptr >= (size_t)&tab6[0]) && ((size_t)ptr < (size_t)&tab6[ALLOC6]))
-    ) {
-        // ok
-    }
+    size_t old_size;
+    if ((size_t)ptr - (size_t)tab2 < ALLOC2 * sizeof(char2_t))
+        old_size = sizeof(char2_t);
+    else if ((size_t)ptr - (size_t)tab3 < ALLOC3 * sizeof(char3_t))
+        old_size = sizeof(char3_t);
+    else if ((size_t)ptr - (size_t)tab6 < ALLOC6 * sizeof(char6_t))
+        old_size = sizeof(char6_t);
     else
     {
         const block_t* h = (block_t*)((uint8_t*)ptr - sizeof(block_t));
-        if (h->size >= (size + sizeof(block_t)))
-        {
-            return ptr;
-        }
+        old_size = h->size - sizeof(block_t);
     }
+    if (old_size >= size)
+        return ptr;
 
     void* p = _custom_malloc(size);
     if (p)
     {
-        memcpy(p, ptr, size);
+        memcpy(p, ptr, old_size);
         _custom_free(ptr);
     }
 
