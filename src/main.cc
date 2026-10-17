@@ -1157,7 +1157,10 @@ int main1(){
   //do_confirm("SDK init"); return 0;
   // main starts after malloc init
   int i = 0, j = 0;
-  
+
+  giac::gen oom=giac::gen_oom();
+  if (oom.type==0)
+    return 99;
   SetQuitHandler(save_session); // automatically save session when exiting
   // FIXME turtle
   turtle(); 
