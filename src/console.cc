@@ -1884,7 +1884,10 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
     menu += "| ";
     menu += adjust(menu_f3);
     menu += "|  chartab "; //     menu += adjust(menu_f3);
-    menu += lang?"|  Fichier  ":"|    File     ";
+    if (app==6) // the 2D editor (mathinput_edit.cc): F5 evaluates the selection
+      menu += "|   eval    ";
+    else
+      menu += lang?"|  Fichier  ":"|    File     ";
   }
   //drawRectangle(0,174,LCD_WIDTH_PX,24,COLOR_BLACK);
   int python_color=65520;
@@ -1894,10 +1897,10 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
   menucolorbg=python_color;
 }
 
-void console_disp_status(int keyflag){
+void console_disp_status(int keyflag,int app){
   Console_FMenu_Init();
   string menu(" "),shiftmenu=menu,alphamenu; int menucolorbg=12345;
-  get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
+  get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,app);
   //dbg_printf("keyflag=%i menu=%s %s %s\n",keyflag,menu.c_str(),shiftmenu.c_str(),alphamenu.c_str());
   if (keyflag==1) menu=shiftmenu;
   if (keyflag & 0xc) menu=alphamenu;

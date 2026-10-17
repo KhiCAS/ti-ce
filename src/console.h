@@ -38,7 +38,7 @@ const char * select_var();
   void delete_clipboard();
 void get_current_console_menu(std::string & menu,std::string & shiftmenu,std::string & alphamenu,int &menucolorbg,int app);
 void set_xcas_status();
-void console_disp_status(int keyflag);
+void console_disp_status(int keyflag,int app=0); // app 6: the 2D editor (F5 eval)
   int confirm(const char * msg1,const char * msg2,bool acexit=false);
   bool confirm_overwrite();
   void invalid_varname();

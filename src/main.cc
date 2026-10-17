@@ -26,6 +26,7 @@ const int oom_reserve_size=8192;
 extern "C" {
   extern void * oom_reserve;
   extern volatile char oom_hit, oom_soft;
+  extern void (*oom_interrupt)(void);
   void do_oom_interrupt(){
     giac::ctrl_c=giac::interrupted=true;
   }
@@ -493,7 +494,7 @@ void do_eval(giac::gen & g){
   statuslinemsg(!lang?"cancel: stop calcul.":"annul: stoppe calcul",COLOR_RED);
   g=giac::eval(g,giac::eval_level(contextptr),contextptr);
   if (giac::interrupted){
-    print_msg12(lang?"Interrompu":"Interrupted",nullptr);
+    print_msg12(oom_hit?(lang?"Memoire insuffisante":"Out of memory"):(lang?"Interrompu":"Interrupted"),nullptr); // oom_hit: the reserve was used (allocator_custom.c)
     getkey(0);
     freeze=false;
   }
@@ -820,13 +821,16 @@ int restore_session(const char * fname){
   // os_draw_string_medium_(0,3*C18,"");
   os_draw_string_medium_(0,4*C18,lang?"Utiliser les 5 touches sous l'ecran pour":"Press one of the 5 keys below the screen");
   os_draw_string_medium_(0,5*C18,lang?"ouvrir un menu, cf. la legende au-dessus":"will open a fast menu according to the legend");
-  os_draw_string_medium_(0,6*C18,lang?"Touche sto: sauvegarde la session":"Press sto to save the session");
+  os_draw_string_medium_(0,6*C18,lang?"Touche fraction: editeur 2d":"2nd X,T,theta,n: 2d editor"); // KEY_EQW_TEMPLATE (k_csdk.c)
+  os_draw_string_medium_(0,7*C18,lang?"Touche sto: sauvegarde la session":"Press sto to save the session");
   const string filename(remove_path(remove_extension(fname)));
-  if (load_console_state_smem((filename+".xw").c_str()))
+  os_draw_string_medium_(0,9*C18,lang?"Tapez une touche.":"Press any key");
+  if (load_console_state_smem((filename+".xw").c_str())){
+    int key; ck_getkey(&key);
     return 1;
+  }
   else {
     statuslinemsg("");
-    os_draw_string_medium_(0,9*C18,lang?"Tapez une touche.":"Press any key");
     int key; ck_getkey(&key);
     return 0;
   }
@@ -1152,6 +1156,7 @@ extern "C" unsigned char __heapbot[];
 extern "C" unsigned char __heaptop[];
 
 int main1(){
+  oom_interrupt=do_oom_interrupt;
   std::vector<giac::gen> ustlv;
   const unsigned * ustlptr=(unsigned *)&ustlv;
   giac::ustl_vecteur_prolog=*ustlptr;
@@ -1196,7 +1201,7 @@ int main1(){
   // please do not remove this check, it's here for TI
   if (sptr && sptr->osMajorVersion==5 &&
       (sptr->osMinorVersion>8 ||
-       (sptr->osMinorVersion==8 && sptr->osRevisionVersion>=2)
+       (sptr->osMinorVersion==8 && sptr->osRevisionVersion>=5)
        )
       ){
     if (sptr->hardwareType==0){

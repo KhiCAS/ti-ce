@@ -76,7 +76,10 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
         break;
       }
       const bool insel=sx1>sx0 && x>=sx0 && x+o.w<=sx1 && y-f.asc>=sy0 && y+f.desc<=sy1;
-      xcas::text_print(o.small?12:18,t,x,y+(o.small?3:4),MI_INK,insel?selbg:COLOR_WHITE,0);
+      int ty=y+(o.small?3:4); // text_print's y: 4 (big) / 3 (small) px below the baseline
+      if (t[0]==0x1e && !t[1]) // the arrow (lim, taylor): its shaft on the math axis, not on the baseline
+        ty-=o.small?2:4;
+      xcas::text_print(o.small?12:18,t,x,ty,MI_INK,insel?selbg:COLOR_WHITE,0);
       break;
     }
     case MI_DOT:

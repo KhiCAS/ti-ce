@@ -334,7 +334,7 @@ static int pgroup() { // ( [ { : content to the matching closer or the end
 static const struct { const char * nm; unsigned char na, k; } spec[] = {
   {"sqrt", 1, K_SQRT}, {"surd", 2, K_SURD}, {"abs", 1, K_ABS}, {"integrate", 2, K_INT},
   {"integrate", 4, K_DEFINT}, {"int", 2, K_INT}, {"int", 4, K_DEFINT}, {"diff", 2, K_DIFF},
-  {"sum", 4, K_SUM}, {"limit", 3, K_LIM}, {"exp", 1, K_EXP}, {"series", 4, K_SER}};
+  {"sum", 4, K_SUM}, {"limit", 3, K_LIM}, {"exp", 1, K_EXP}, {"series", 4, K_SER}, {"series", 5, K_SER}};
 
 int mi_drawn_as_template(const char * name, int nlen, int na) {
   for (unsigned i = 0; i < sizeof(spec) / sizeof(spec[0]); ++i) {
@@ -543,11 +543,15 @@ static int slot(int n, int i) { // i-th slot content of a 2D construct (hidden p
     if (!(T[c].f & F_ARGSEP) && !i--) return (T[c].k == K_GROUP && (T[c].f & F_HID)) ? T[c].kid : c;
   return 0;
 }
-static int sfont(int k, int i, int sm) { // font of slot i (must match the sl() calls in cons)
-  if (k == K_POW || k == K_EXP || (k == K_SURD && i == 1) || (k == K_DEFINT && i >= 2) ||
-      ((k == K_SUM || k == K_LIM || k == K_SER) && i >= 1)) return 1;
+static int sfont(int k, int i, int sm) { // font of slot i (must match the sl() calls in cons): the
+  // small font for exponents, a root's index and the side of a limit (+ or -); the bounds of
+  // integrals, sums, limits and series in the font of the construct (the small one was too small)
+  if (k == K_POW || k == K_EXP || (k == K_SURD && i == 1) || (k == K_LIM && i == 3) || (k == K_SER && i == 4)) return 1;
   return sm;
 }
+// the arrow of lim and taylor (x -> a): its width with a gap each side (drawn 1 glyph + 2 px
+// wide, at x + 3)
+static int arroww(int sm) { return lw("\x1e", 1, sm) + 9; }
 static int needp(int n) { // diff(f,x): f needs parentheses (top level + - = , ...)
   if (T[n].k == K_ROW)
     for (int c = T[n].kid; c; c = T[c].nx)
@@ -570,7 +574,7 @@ static void op(int code, int sm, int x, int y, int w, int h, int pos, int len, c
 // decoration ops; i >= 0: origin (gx,gy) and font gs of slot i.
 // Coordinates passed to sl/dec/dtext are offsets from the construct origin (ox, oy).
 enum { GM_MEASURE = -2, GM_DECO = -1 };
-static int gm, gx, gy, gs, cw, by0, by1, ox, oy, sn[4];
+static int gm, gx, gy, gs, cw, by0, by1, ox, oy, sn[5];
 static void sl(int i, int x, int y, int sm) { // slot i (node sn[i]) at (x, y)
   if (gm == GM_MEASURE) { by0 = mn(by0, y - T[sn[i]].as); by1 = mx(by1, y + T[sn[i]].ds); }
   else if (gm == i) { gx = ox + x; gy = oy + y; gs = sm; }
@@ -588,8 +592,8 @@ static void dtext(const char * lit, int ng, int sm, int x, int y) { // literal t
 static void cons(int n, int x, int y, int sm) {
   const mi_font & f = fnt(sm), & sf = M->small;
   int k = T[n].k, a = f.adv, h = a / 2, ax = f.asc / 3, t, u, v, i;
-  for (i = 0; i < 4; ++i) sn[i] = slot(n, i);
-  const mi_node & A = T[sn[0]], & B = T[sn[1]], & C = T[sn[2]], & D = T[sn[3]]; // T[0]: none
+  for (i = 0; i < 5; ++i) sn[i] = slot(n, i);
+  const mi_node & A = T[sn[0]], & B = T[sn[1]], & C = T[sn[2]], & D = T[sn[3]], & E = T[sn[4]]; // T[0]: none
   int ca = mx(f.asc, A.as), cd = mx(f.desc, A.ds); // content extent, at least the font
   ox = x; oy = y;
   switch (k) {
@@ -644,18 +648,22 @@ static void cons(int n, int x, int y, int sm) {
     int s = ISW, g = GAP, dw = lw("d", 1, sm);
     i = needp(sn[0]);
     ca = mx(ca, B.as); cd = mx(cd, B.ds);
-    dec(MI_INTEGRAL, sm, 0, -ca - g, s, ca + cd + 2 * g);
-    t = s + 1;
-    if (k == K_DEFINT) { // a at the bottom right, b at the top right, never overlapping
-      u = (cd - ca) / 2;
-      sl(2, s + 1, mx(cd + g - C.ds, u + 1 + C.as), 1);
-      sl(3, s + 1, mn(-ca - g + D.as, u - 1 - D.ds), 1);
-      t += mx(C.w, D.w) + 1;
+    if (k == K_DEFINT) { // bounds in the construct's font: b at the top right, a at the bottom
+      // right; the sign taller (2/3 of each bound beyond the content) and wider
+      const int Dh = D.as + D.ds, Ch = C.as + C.ds, yt = -ca - g - 2 * Dh / 3, yb = cd + g + 2 * Ch / 3;
+      s += 2;
+      dec(MI_INTEGRAL, sm, 0, yt, s, yb - yt);
+      sl(3, s + 1, yt + D.as, sm);
+      sl(2, s + 1, yb - C.ds, sm);
+      t = s + 1 + mx(C.w, D.w) + 1 + g; // a gap before the integrand
+    } else {
+      dec(MI_INTEGRAL, sm, 0, -ca - g, s, ca + cd + 2 * g);
+      t = s + 1 + g;
     }
     if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
     sl(0, t, 0, sm);
     if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
-    t += A.w + g;
+    t += A.w + 2 * g; // a gap before the d of dx
     dtext("d", 1, sm, t, 0);
     sl(1, t + dw, 0, sm);
     cw = t + dw + B.w + 2; // trailing gap: "after the construct" differs from "end of x"
@@ -674,16 +682,16 @@ static void cons(int n, int x, int y, int sm) {
     if (i) dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd);
     cw = t + A.w + (i ? h + 1 : 2);
   } break;
-  case K_SUM: { // column: b, sigma, k=a; then f
-    int sh = 2 * f.asc, sw = M->wf ? lw("S", 1, sm) : a + 4, st = -ax - sh / 2, bx, bb, ew = lw("=", 1, 1);
-    u = B.w + ew + C.w; v = mx(sf.asc, mx(B.as, C.as));
+  case K_SUM: { // column: b, sigma, k=a (in the construct's font); then f
+    int sh = 2 * f.asc + 6, sw = M->wf ? 3 * lw("S", 1, sm) / 2 : a + 8, st = -ax - sh / 2, bx, bb, ew = lw("=", 1, sm);
+    u = B.w + ew + C.w; v = mx(f.asc, mx(B.as, C.as));
     t = mx(sw, mx(u, D.w));
     dec(MI_SIGMA, sm, (t - sw) / 2, st, sw, sh);
-    bx = (t - u) / 2; bb = st + sh + 1 + v;
-    sl(1, bx, bb, 1);
-    dtext("=", 1, 1, bx + B.w, bb);
-    sl(2, bx + B.w + ew, bb, 1);
-    sl(3, (t - D.w) / 2, st - 1 - D.ds, 1);
+    bx = (t - u) / 2; bb = st + sh + 2 + v;
+    sl(1, bx, bb, sm);
+    dtext("=", 1, sm, bx + B.w, bb);
+    sl(2, bx + B.w + ew, bb, sm);
+    sl(3, (t - D.w) / 2, st - 2 - D.ds, sm);
     i = needp(sn[0]); // a sum in parentheses: the sum of (1-(-1)^n), not of 1, minus (-1)^n
     t += 2;
     if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
@@ -691,31 +699,34 @@ static void cons(int n, int x, int y, int sm) {
     if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
     cw = t + 2 + A.w;
   } break;
-  case K_SER: { // series(f,x,a,n), as lim: column "taylor" over "x->a deg n" (small); then f
-    int bx, bb, tw = lw("taylor", 6, sm), aw = lw("", 1, 1), dw = lw(" deg ", 5, 1);
-    u = B.w + aw + C.w + dw + D.w; v = mx(sf.asc, mx(B.as, mx(C.as, D.as)));
+  case K_SER: { // series(f,x,a,n[,polynom]), as lim: column "series" (the command's name) over
+                // "x -> a deg n [polynom]" (polynom small); then f
+    int bx, bb, tw = lw("series", 6, sm), aw = arroww(sm), dw = lw(" deg ", 5, sm), pw = sn[4] ? h + E.w : 0;
+    u = B.w + aw + C.w + dw + D.w + pw; v = mx(f.asc, mx(B.as, mx(C.as, D.as)));
     t = mx(tw, u);
-    dtext("taylor", 6, sm, (t - tw) / 2, 0);
-    bx = (t - u) / 2; bb = f.desc + 1 + v;
-    sl(1, bx, bb, 1);
-    dtext("", 1, 1, bx + B.w, bb);
-    sl(2, bx + B.w + aw, bb, 1);
-    dtext(" deg ", 5, 1, bx + B.w + aw + C.w, bb);
-    sl(3, bx + B.w + aw + C.w + dw, bb, 1);
+    dtext("series", 6, sm, (t - tw) / 2, 0);
+    bx = (t - u) / 2; bb = f.desc + 2 + v;
+    sl(1, bx, bb, sm);
+    dtext("", 1, sm, bx + B.w + 3, bb);
+    sl(2, bx + B.w + aw, bb, sm);
+    dtext(" deg ", 5, sm, bx + B.w + aw + C.w, bb);
+    sl(3, bx + B.w + aw + C.w + dw, bb, sm);
+    if (sn[4]) sl(4, bx + B.w + aw + C.w + dw + D.w + h, bb, 1);
     sl(0, t + h, 0, sm);
     cw = t + h + A.w + 2;
   } break;
-  case K_LIM: { // column: lim over x->a (results: x->a+ or a-, its 4th argument 1 or -1); then f
-    int bx, bb, lmw = lw("lim", 3, sm), aw = lw("\x1e", 1, 1);
+  case K_LIM: { // column: lim over x -> a, in the construct's font (results: x->a+ or a-, its
+                // 4th argument 1 or -1, the + or - small); then f
+    int bx, bb, lmw = lw("lim", 3, sm), aw = arroww(sm);
     const char * sg = sn[3] ? (ch(T[sn[3]].a) == '-' ? "-" : "+") : "";
     const int sw = *sg ? lw(sg, 1, 1) : 0;
-    u = B.w + aw + C.w + sw; v = mx(sf.asc, mx(B.as, C.as));
+    u = B.w + aw + C.w + sw; v = mx(f.asc, mx(B.as, C.as));
     t = mx(lmw, u);
     dtext("lim", 3, sm, (t - lmw) / 2, 0);
-    bx = (t - u) / 2; bb = f.desc + 1 + v;
-    sl(1, bx, bb, 1);
-    dtext("\x1e", 1, 1, bx + B.w, bb);
-    sl(2, bx + B.w + aw, bb, 1);
+    bx = (t - u) / 2; bb = f.desc + 2 + v;
+    sl(1, bx, bb, sm);
+    dtext("\x1e", 1, sm, bx + B.w + 3, bb);
+    sl(2, bx + B.w + aw, bb, sm);
     if (sw) { // (- as a bar: the small font's hyphen was a dot; the 1 or -1 itself off the screen)
       const int sx = bx + B.w + aw + C.w, sy = bb - sf.asc / 2;
       if (*sg == '-') dec(MI_HLINE, 1, sx + 1, sy - sf.asc / 3, sw - 1, BAR); else dtext(sg, 1, 1, sx, sy);
@@ -1041,20 +1052,26 @@ void mi_build(const char * s, int len, int caret, const mi_metrics & m, mi_layou
 // from beside a construct enters its first drawn slot, out of a slot to the next drawn one, out
 // of the last one beside the construct; left the same, mirrored. vorder: the drawn order.
 static int vorder(int k, int * o) {
-  static const signed char t[][5] = {{K_DEFINT, 2, 3, 0, 1}, {K_SUM, 1, 2, 3, 0}, {K_LIM, 1, 2, 0, -1},
-                                     {K_DIFF, 1, 0, -1, -1}, {K_SURD, 1, 0, -1, -1}, {K_SER, 1, 2, 3, 0}};
+  static const signed char t[][6] = {{K_DEFINT, 2, 3, 0, 1, -1}, {K_SUM, 1, 2, 3, 0, -1}, {K_LIM, 1, 2, 0, -1, -1},
+                                     {K_DIFF, 1, 0, -1, -1, -1}, {K_SURD, 1, 0, -1, -1, -1}, {K_SER, 1, 2, 3, 4, 0}};
   for (unsigned i = 0; i < sizeof(t) / sizeof(t[0]); ++i)
     if (t[i][0] == k) {
       int n = 0;
-      while (n < 4 && t[i][n + 1] >= 0) { o[n] = t[i][n + 1]; ++n; }
+      while (n < 5 && t[i][n + 1] >= 0) { o[n] = t[i][n + 1]; ++n; }
       return n;
     }
   return 0;
 }
+static int vord(int n, int * o) { // the drawn order of n's slots that exist (series: polynom or not)
+  int m = vorder(T[n].k, o), j = 0;
+  for (int i = 0; i < m; ++i)
+    if (slot(n, o[i])) o[j++] = o[i];
+  return j;
+}
 static int vmove(int c, int right) { // the caret's new position, -1: buffer order applies
-  int o[4], m, best = -1, bs = 0, bi = 0, n, i, s;
+  int o[5], m, best = -1, bs = 0, bi = 0, n, i, s;
   for (n = 1; n < nn; ++n) // in the text of such a construct (name, commas, parens): where it is drawn
-    if (vorder(T[n].k, o) && T[n].a < c && c < T[n].b && (best < 0 || T[n].b - T[n].a < bs)) {
+    if (vord(n, o) && T[n].a < c && c < T[n].b && (best < 0 || T[n].b - T[n].a < bs)) {
       for (i = 0; (s = slot(n, i)) && !(T[s].a <= c && c <= T[s].b); ++i) {}
       if (!s) { best = n; bs = T[n].b - T[n].a; }
     }
@@ -1066,21 +1083,21 @@ static int vmove(int c, int right) { // the caret's new position, -1: buffer ord
     best = -1;
   }
   for (n = 1; n < nn; ++n) // beside a construct (the outermost one there): enter it (after it:
-    if (vorder(T[n].k, o) && (right ? T[n].a == c : T[n].b == c && (T[n].f & F_CLOSED)) // closed)
+    if (vord(n, o) && (right ? T[n].a == c : T[n].b == c && (T[n].f & F_CLOSED)) // closed)
         && (best < 0 || T[n].b - T[n].a > bs)) {
       best = n; bs = T[n].b - T[n].a;
     }
   if (best >= 0) {
-    m = vorder(T[best].k, o);
+    m = vord(best, o);
     s = slot(best, o[right ? 0 : m - 1]);
     return s ? (right ? T[s].a : T[s].b) : -1;
   }
   for (n = 1; n < nn; ++n) // the innermost slot of such a construct around the caret (a power or a
-    if (vorder(T[n].k, o))  // fraction ending a body ends with it: the body's end leaves the body)
+    if (vord(n, o))  // fraction ending a body ends with it: the body's end leaves the body)
       for (i = 0; (s = slot(n, i)); ++i)
         if (T[s].a <= c && c <= T[s].b && (best < 0 || T[s].b - T[s].a < bs)) { best = n; bi = i; bs = T[s].b - T[s].a; }
   if (best < 0) return -1;
-  m = vorder(T[best].k, o);
+  m = vord(best, o);
   s = slot(best, bi);
   if (c != (right ? T[s].b : T[s].a)) return -1; // inside the slot: as usual
   for (i = 0; i < m && o[i] != bi; ++i) {}

@@ -10,7 +10,8 @@
 //    its result replaces it, another function wraps it (sin(sel)); a binary operator takes the
 //    selection as its first argument, the caret in the second one; a char replaces it; DEL
 //    deletes it.
-// integrate( sum( limit( diff( surd( series( (F1, F2, MATH: the catalog) insert their template:
+// integrate( sum( limit( diff( surd( series( (F1, F2, MATH: the catalog) insert their template
+// (series with polynom: no remainder term, polynom can be erased):
 // the integral sign, sigma, lim... with boxes for the bounds (left empty: dropped).
 // Matrices ([[a,b],[c,d]] is drawn as a grid; matrix( from the matrix menu inserts a 2x2 one):
 // in a cell, , adds a column after it, shift ENTER a row after it (DOWN on the last row too), DEL at the start of a
@@ -20,6 +21,7 @@
 // replaces the selection.
 // No static data beyond a few bytes (KhiCAS's start needs the heap that follows the BSS): the
 // buffers are on the stack or on the heap while the editor is open.
+// F5: eval, the selection (or the whole expression) replaced by its value.
 // EXE: accept; ANNUL (and shift UNDO): back to the state before the last change (nothing to
 // undo: ANNUL cancels); shift QUIT: cancel; shift CLEAR: empty the line.
 #include <string.h>
@@ -69,7 +71,7 @@ static bool mie_replace(char * s,int cap,int a,int b,const char * t){
 // in rest, the first slot drawn: the lower bound, the point of a limit, the index of a root
 // (-1: on the selection, the whole is selected; typed, the caret in the first argument)
 static const struct { const char * name, * rest; short car; } mie_tpl[]={
-  {"integrate",",x,,)",3},{"int",",x,,)",3},{"sum",",k,,)",3},{"limit",",x,)",3},{"diff",",x)",-1},{"surd",",)",1},{"series",",x,,)",3},{0,0,0}};
+  {"integrate",",x,,)",3},{"int",",x,,)",3},{"sum",",k,,)",3},{"limit",",x,)",3},{"diff",",x)",-1},{"surd",",)",1},{"series",",x,,,polynom)",3},{0,0,0}};
 static int mie_tpl_find(const char * name){
   for (int i=0;mie_tpl[i].name;++i){
     if (!strcmp(mie_tpl[i].name,name))
@@ -80,7 +82,51 @@ static int mie_tpl_find(const char * name){
 
 // empty bounds dropped: integrate(f,x,,) -> integrate(f,x), sum(f,k,,) -> sum(f,k) (,,) is never
 // valid giac)
+// series(f,x,a,n,polynom) with a or n left empty: 0 and 5 (giac's defaults), the boxes drawn in
+// place of the point and the order cannot be dropped as the bounds are (polynom follows them)
+static void mie_series_fill(char * s,int cap){
+  for (char * q=s;(q=strstr(q,"series("));q+=7){
+    if (q>s && ((q[-1]>='a' && q[-1]<='z') || (q[-1]>='A' && q[-1]<='Z') || q[-1]=='_'))
+      continue;
+    int d=0,na=0,i=q+7-s;
+    int st[5]={i,0,0,0,0},en[5]={0,0,0,0,0};
+    for (;s[i];++i){
+      const char c=s[i];
+      if (c=='(' || c=='[' || c=='{')
+        ++d;
+      else if (c==')' || c==']' || c=='}'){
+        if (!d){
+          if (na<5)
+            en[na]=i;
+          break;
+        }
+        --d;
+      }
+      else if (c==',' && !d){
+        if (na<5)
+          en[na]=i;
+        ++na;
+        if (na<5)
+          st[na]=i+1;
+      }
+    }
+    if (!s[i] || na!=4) // not series(f,x,a,n,polynom): left as typed
+      continue;
+    for (int k=3;k>=2;--k){ // from the right: the positions on the left stay valid
+      int a=st[k],b=en[k];
+      while (a<b && s[a]==' ')
+        ++a;
+      const int l=strlen(s);
+      if (a==b && l+1<cap){
+        memmove(s+a+1,s+a,l-a+1);
+        s[a]=k==2?'0':'5';
+      }
+    }
+  }
+}
+
 static void mie_clean(char * s,int cap){
+  mie_series_fill(s,cap);
   for (char * q;(q=strstr(s,",,)"));)
     memmove(q,q+2,strlen(q+2)+1);
   // an empty element of a list or a matrix cell gets 0: [[1,],[,2]] -> [[1,0],[0,2]] ([] stays)
@@ -647,7 +693,7 @@ static bool mie_run(char * s,int cap,bool sel){
     }
     int keyflag=(unsigned char)Setup_GetEntry(0x14);
     if (oldkeyflag!=keyflag)
-      console_disp_status(keyflag);
+      console_disp_status(keyflag,6); // the console's menu line, F5: eval
     oldkeyflag=keyflag;
     mie_draw(s,p,sa,sb,scrollx,scrolly);
     int key;
@@ -755,6 +801,8 @@ static bool mie_run(char * s,int cap,bool sel){
       }
       else if (key==KEY_CTRL_SYMB)
         t=catbuf;
+      else if (key==KEY_CTRL_F5) // eval: the selection replaced by its value
+        t="eval(";
       else if ((key>=KEY_CTRL_F1 && key<=KEY_CTRL_F6) || (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20))
         t=key==KEY_CTRL_F4?0:console_menu(key,0);
       else if (key!=KEY_CHAR_POW && key!=KEY_CHAR_SQUARE && key!=KEY_CHAR_RECIP && key!=KEY_EQW_TEMPLATE && key!=KEY_EQW_TEMPLATE2 && key!=KEY_CHAR_PMINUS)
@@ -777,6 +825,18 @@ static bool mie_run(char * s,int cap,bool sel){
       continue;
     }
     // ---- caret mode
+    if (key==KEY_CTRL_F5){ // eval: the whole expression replaced by its value, selected
+      const int l=strlen(s);
+      sa=0;
+      sb=l;
+      if (l && mi_select(s,l,&sa,&sb,-2,mi_device_metrics,&slv)){
+        mie_sel_key(s,cap,&sa,&sb,slv,key,"eval(");
+        mi_select(s,strlen(s),&sa,&sb,-2,mi_device_metrics,&slv);
+      }
+      else
+        sa=sb=0;
+      continue;
+    }
     if (key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN){
       const int dir=key==KEY_CTRL_LEFT?0:key==KEY_CTRL_RIGHT?1:key==KEY_CTRL_UP?2:3;
       const int q=mi_move(s,strlen(s),p,dir,mi_device_metrics);
