@@ -1015,7 +1015,8 @@ void do_run(const char * s){
     if (taille(g,256)>=256)
       Console_Output("Done");
     else {
-      const char * str = g.print(contextptr).c_str();
+      std::string printed=g.print(contextptr);
+      const char * str = printed.c_str();
       Console_Output(str);
       vector<unsigned char> v;
       tokenize(str,v);

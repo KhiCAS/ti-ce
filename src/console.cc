@@ -1150,6 +1150,10 @@ int Console_MoveCursor(int direction){
 	      free(Line[Current_Line].str);
 	      Line[Current_Line].str = Edit_Line;
 	    }
+	  if (Current_Line==Last_Line){
+	    Cursor.x=editline_cursor;
+	    if (Cursor.x>Line[Current_Line].disp_len) Cursor.x=Line[Current_Line].disp_len;
+	  }
 	}
       break;
     case CURSOR_LEFT:
@@ -1559,12 +1563,16 @@ bool inputdouble(const char * msg1,double & d){
 	break;
     }
     // cmdname in buf+l
-    const char * cmdname=buf+l,*cmdnameorig=cmdname;
-    l=strlen(cmdname);
-    const int res=doCatalogMenu(buf,(char *)"Index",0,cmdname);
-    if (!res)
+    const string prefix(buf+l);
+    // the catalog writes the chosen entry at the start of its output buffer: use a separate one
+    // (reusing buf made "1+fac" + factor insert "1+facr("), delete the typed prefix, insert the full name
+    char out[256];
+    out[0]=0;
+    const int res=doCatalogMenu(out,(char *)"Index",0,prefix.c_str());
+    if (!res || !out[0])
       return "";
-    return cmdname+l;
+    back+=prefix.size();
+    return out;
   }
 
   static string print_INT_(int i) {
@@ -2524,11 +2532,12 @@ const char * console_menu(int key,Char* cfg_,int active_app){
       strcpy(tabmenu[int(entry.count)], temp);
       entry.count++;
     }
-    cfg++;
+    if (*cfg)
+      cfg++;
   }
-  if(entry.count > 0) {
+  if (entry.count > 0) {
     const char * ret=nullptr;
-    ret = Console_Draw_FMenu(key, &entry,cfg,active_app);
+    ret = Console_Draw_FMenu(key, &entry,cfg_,active_app);
     // cout << "console0 " << (uintptr_t) ret << endl;
     if (!ret) return ret;
     if (strcmp(ret,"char table")==0){
