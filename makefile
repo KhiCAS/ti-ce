@@ -41,8 +41,6 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -Oz -Iustl -Isrc/tommath -DMP_16BIT -DTICE -
 LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=-10
 
 CPP_EXTENSION = cc
-APP_NAME = KhiCAS
-APP_VERSION = 5.0.0.0000
 DESCRIPTION =
 
 APPLICATION = YES

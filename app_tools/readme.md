@@ -17,6 +17,12 @@ publish the pre-relocated app, segments and installer, and create the bundle.
 The `.8ek` is unsigned; use `INST` and the split AppVars to install it as
 described in the repository's installation instructions.
 
+The application name comes from `NAME` in the root makefile.
+`APPLICATION_DESCRIPTION` controls the optional description embedded by
+convbin. The transfer-file `COMMENT` defaults to the build time and toolchain
+version from `cedev-config --comment`. Distribution builds are published
+under the `nightly` release tag.
+
 For `APPLANG=fr`, the relocator preserves the legacy French-app metadata bit
 (byte 0x0E of the eZ8 metadata, bit 3, or raw app byte 0x10E). English leaves
 the bit clear; French and French L2 set it (`0x00` -> `0x08`). Language and L2

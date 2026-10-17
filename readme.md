@@ -4,6 +4,44 @@
 
 ![KhiCAS Screenshots](screenshot.jpg)
 
+## Recent changes
+
+- Native 2D expression and matrix editing, with fractions, powers, roots,
+integrals, sums, limits and series templates. The editor uses the FlowCE
+layout and structural editing code adapted by Bernard Parisse.
+- F5 evaluates the selected subexpression, or the whole expression in caret
+mode. Series templates default to polynomial output without a remainder term.
+- Improved interruption and low-memory handling, plus fixes for catalog
+completion, console menus and cursor placement, reciprocal printing, and
+graph redraw after cancelling a menu.
+
+## Using the 2D editor
+
+Open the editor from the console with the **fraction template key** on a
+TI-83 Premium CE, or **2nd, X,T,theta,n** on a TI-84 Plus CE. The current
+expression starts selected. On the TI-83 Premium CE, **2nd, fraction** starts
+with the caret at the end instead.
+
+| Key | Action in the editor |
+| --- | --- |
+| MODE | Switch between caret and subexpression selection modes |
+| Arrows | Move the caret; in selection mode, left/right select siblings and up/down select the parent/child |
+| F5 (rightmost key under the screen) | Evaluate the selection, or the whole expression in caret mode |
+| ENTER | Accept the edited expression into the console |
+| CLEAR / annul | Undo the last edit; cancel when there is nothing left to undo |
+| 2nd, MODE (QUIT) | Cancel and discard edits immediately |
+| 2nd, CLEAR | Empty the editor |
+
+F1/F2 menus and MATH provide command templates. For example,
+`series(sin(x),x,0,5,polynom)` displays a series template; empty point and
+order fields default to `0` and `5` when accepted. In a matrix cell, comma
+adds a column and 2nd, ENTER adds a row. The text line below the 2D display
+shows the underlying Giac expression.
+
+An 8 KiB emergency reserve and a preallocated error value help interrupted
+calculations unwind under memory pressure. Recovery is best effort; some
+allocation failures still terminate the application.
+
 ## Compilation:
 
 ### Prerequisites
@@ -13,6 +51,10 @@ used by CI, which includes the latest compiler fixes.
 (See [nightly docs](https://ce-programming.github.io/toolchain/nightly/).)
 
 - `python3` is also required for the post-build steps.
+
+Clone with `git clone --recurse-submodules https://github.com/KhiCAS/ti-ce.git`.
+In an existing checkout, run `git submodule update --init --recursive` after
+pulling so that the Giac sources match the referenced revision.
 
 ### KhiCAS build
 

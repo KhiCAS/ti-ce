@@ -3,6 +3,8 @@ ou https://github.com/KhiCAS/ti-ce/
         
 Notez que l'application occupera presque toute la mémoire d'archive bien que cette version soit ultra-allégée. Notez aussi que le microprocesseur de la TI83 est une évolution d'un microprocesseur 8 bits datant de 1976 (!). Il est bien plus lent qu'un microprocesseur 32 bits contemporain, environ 10 fois plus lent que le sh4 d'un modèle de la même gamme de prix chez Casio, 100 fois plus qu'un arm d'un modèle Numworks. Il va falloir être patient pour des calculs non triviaux.
 
+IMPORTANT : supprimez manuellement toutes les applications Flash installées, y compris les packs de langues, dans la gestion de la mémoire (2nde, +, puis 2). Un reset de la mémoire ne les supprime pas. INST impose que KhiCAS soit la première application installée car son adresse en Flash est fixe. Sauvegardez vos applications avant de les supprimer ; réinstallez les autres applications seulement après KhiCAS. La taille de l'application et le nombre de fichiers AppIns dépendent de la compilation.
+
 Avertissement: l'installation va écrire sur la flash de votre calculatrice. Si le programmation d'installation génère un blocage de la calculatrice, appuyez sur les touches 2nd et suppr, et sur le bouton reset à l'arrière en maintenant les touches enfoncées. Puis sur la touche annul pour effacer toute la flash de la calculatrice, renvoyer l'OS de la calculatrice. Pour retenter l'installation, n'utilisez pas le fichier bundle khicas83.b83 (étape 2 ou b ci-dessous).
 
 
@@ -30,6 +32,13 @@ L'installation est plus compliquée car l'assembleur a été désactivé par TI 
 Maintenant, vous pouvez lancer KhiCAS depuis 2nd resol (app)
 Pour quitter KhiCAS, taper la touche [2nde] [quit]
 Pour saisir une commande, vous pouvez vous aider des menus rapides (touches en-dessous de l'écran, F1 à F5), du menu maths (commandes par catégories), et du catalog. Le menu Fichier permet en particulier de sauvegarder une session.
+
+Éditeur 2D natif :
+Appuyez sur la touche fraction pour ouvrir l'expression courante, sélectionnée, dans l'éditeur 2D. 2nde, fraction ouvre directement avec le curseur en fin d'expression. MODE alterne entre le curseur et la sélection d'une sous-expression. En mode sélection, gauche/droite sélectionnent les expressions voisines et haut/bas le parent ou un élément enfant.
+F5 (la touche la plus à droite sous l'écran) évalue la sélection, ou toute l'expression en mode curseur. ENTER valide la modification. Annul annule la dernière modification, puis quitte lorsqu'il n'y a plus rien à annuler ; 2nde, MODE (quitter) abandonne immédiatement les modifications. 2nde, annul vide l'éditeur.
+F1/F2 et MATH proposent des modèles de fractions, intégrales, sommes, limites et séries. Les matrices sont affichées en grille ; la virgule ajoute une colonne et 2nde, ENTER une ligne. La ligne sous l'affichage 2D montre le texte Giac correspondant.
+
+La gestion des interruptions et du manque de mémoire a été améliorée. La récupération après épuisement de la mémoire n'est pas garantie ; sauvegardez régulièrement votre session.
 
 Interaction avec l'OS:
 a/ KhiCAS peut importer les variables d'OS Y1-Y9 et Y0

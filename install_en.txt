@@ -2,7 +2,9 @@ KhiCAS for ti84ce: (c) 2024 B. Parisse et al. License GPL2. Source code
 https://www-fourier.univ-grenoble-alpes.fr/~parisse/ti/khicas.tgz
 or https://github.com/KhiCAS/ti-ce/
         
-Install will require almost all the flash archive (128 to 256K remaining after install). Note that the TI84 CPU is an evolution of a CPU from 1976. It is much slower than a current CPU, e.g. about 10* slower than a Casio fxcg50 processor, or 100* slower than a Numworks. Be prepared to wait if you run a non trivial computation.
+The application uses several megabytes of flash archive; its size and the number of AppIns installer files depend on the build. Note that the TI84 CPU is an evolution of a CPU from 1976. It is much slower than a current CPU, e.g. about 10* slower than a Casio fxcg50 processor, or 100* slower than a Numworks. Be prepared to wait if you run a non trivial computation.
+
+IMPORTANT: manually delete all installed Flash apps, including language packs, in Memory Management (2nd, +, then 2). A memory reset alone does not remove them. INST requires KhiCAS to be the first installed app because its Flash address is fixed. Back up your apps first; reinstall other apps only after installing KhiCAS.
 
 Beware: the install program below will write in the calculator user flash. If the install program freezes the calculator, press 2nd and del, then the reset button while 2nd and del are pressed. Then press cancel to erase all the flash, transfer the OS to the calc. If you make another install try, do not use the bundle file khicas84.b84 (step 2 or b below).
 
@@ -32,7 +34,14 @@ After install, check and remove the variables AppIns* (installation file not req
 Now you can run KhiCAS from app (2nd resol on 83ce)
 ===================================================
 Use the 5 keys just under the screen for fast menus (3 menus per key using 2nd/alpha), press the math key for a list of commands by categories.
-Leave KhiCAS from shell with the f(x) key (or 2nd quit).
+Leave KhiCAS from the shell with 2nd, MODE (QUIT).
+
+Native 2D editor:
+Press 2nd, X,T,theta,n on a TI-84 Plus CE, or the fraction template key on a TI-83 Premium CE. The current expression opens selected; MODE switches between selection and caret editing. In selection mode, left/right select siblings and up/down select the parent/child expression.
+F5 (the rightmost key under the screen) evaluates the selection, or the whole expression in caret mode. ENTER accepts the edit. CLEAR undoes the last edit, then cancels when nothing remains to undo; 2nd, MODE (QUIT) discards edits immediately. 2nd, CLEAR empties the editor.
+F1/F2 and MATH provide templates for fractions, integrals, sums, limits and series. Matrices are shown as grids; comma adds a column and 2nd, ENTER adds a row. The line below the 2D display shows the Giac source text.
+
+Interrupted calculations and low-memory handling have been improved. Recovery from memory exhaustion is best effort; save your session regularly.
 
 OS interaction:
 a/ KhiCAS can import OS Y1-Y9 and Y0 variables.
