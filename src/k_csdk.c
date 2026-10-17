@@ -267,7 +267,7 @@ int getkey(int allow_suspend){
     case sk_Resol:
       return Alpha?KEY_CHAR_F+decal:(Shift?KEY_CTRL_APPS:KEY_CTRL_SOLVE);
     case sk_Frac:
-      return Alpha?KEY_CHAR_G+decal:KEY_EQW_TEMPLATE;
+      return Alpha?KEY_CHAR_G+decal:(Shift?KEY_EQW_TEMPLATE2:KEY_EQW_TEMPLATE);
     case sk_Power:
       return Alpha?KEY_CHAR_H+decal:KEY_CHAR_POW;
 #else

@@ -22,6 +22,26 @@
 #endif
 using namespace std;
 
+const int oom_reserve_size=8192;
+extern "C" {
+  extern void * oom_reserve;
+  extern volatile char oom_hit, oom_soft;
+  void do_oom_interrupt(){
+    giac::ctrl_c=giac::interrupted=true;
+  }
+}
+
+static void oom_rearm(){
+  giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+  oom_hit=0;
+  if (!oom_reserve){
+    oom_soft=1;
+    oom_reserve=malloc(oom_reserve_size);
+    oom_soft=0;
+  }
+}
+
+
 #define EXPR_BUF_SIZE 256
 #define GIAC_HISTORY_SIZE 2
 #define GIAC_HISTORY_MAX_TAILLE 32
@@ -96,6 +116,8 @@ int micropy_ck_eval(const char *line){
 
 #if defined WITH_EQW && !defined FAKE_GIAC
 
+bool mi_eqw_matrix(giac::gen & ge,bool sel=false); // mathinput_eval.cc
+
 const char * input_matrix(const giac::gen &g,giac::gen & ge,const giac::context *){
   if (ge.type==giac::_VECT)
     ge.subtype=0;
@@ -138,9 +160,10 @@ const char * input_matrix(bool list){
     giac::gen ge(eval(g,1,contextptr));
     if (g.type==giac::_IDNT){
       if (ge.type==giac::_VECT){
-	ge=xcas::eqw(ge,true);
+	if (!mi_eqw_matrix(ge)) // the 2D editor (mathinput_eval.cc)
+	  return nullptr;
 	ge=giac::eval(ge,1,contextptr);
-        freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+  oom_rearm();//freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
 	return input_matrix(g,ge,contextptr);
       }
       if (ge==g || confirm_overwrite()){
@@ -164,9 +187,10 @@ const char * input_matrix(bool list){
 	      if (c>0 && l*c<256)
 		ge=giac::_matrix(giac::makesequence(l,c),contextptr);
 	    }
-	    ge=xcas::eqw(ge,true);
+	    if (!mi_eqw_matrix(ge)) // the 2D editor (mathinput_eval.cc)
+	      return nullptr;
 	    ge=giac::eval(ge,1,contextptr);
-            freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+      oom_rearm();//freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
             reset_kbd();
 	    if (ge.type==giac::_VECT)
 	      return input_matrix(g,ge,contextptr);
@@ -460,7 +484,7 @@ void do_eval(giac::gen & g){
   statuslinemsg(!lang?"cancel: stop calcul.":"annul: stoppe calcul",COLOR_RED);
   os_wait_1ms(1000);
 #else
-  freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+  oom_rearm(); // freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
 #ifndef WITH_QUAD
   if (taille(g,64)<64)
     dbg_printf("Eval %s\n",g.print(contextptr).c_str());
@@ -474,7 +498,7 @@ void do_eval(giac::gen & g){
     freeze=false;
   }
   giac::clear_abort();
-  giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+  oom_rearm();// giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
   if (freeze){
     statuslinemsg(lang?"Ecran fige.":"Screen freezed",COLOR_RED);
     getkey(0);
@@ -994,7 +1018,7 @@ void do_run(const char * s){
   }
   Console_NewLine(LINE_TYPE_OUTPUT,1);
 #else
-  giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;
+  oom_rearm();
   if (1 && xcas_python_eval==0){
     if (!contextptr)
       contextptr=new giac::context;
@@ -1159,6 +1183,7 @@ int main1(){
   int i = 0, j = 0;
 
   giac::gen oom=giac::gen_oom();
+  oom_rearm();
   if (oom.type==0)
     return 99;
   SetQuitHandler(save_session); // automatically save session when exiting

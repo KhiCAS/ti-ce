@@ -1956,6 +1956,9 @@ string run_periodic_table(){
 }
 #endif
 
+bool mi_edit(char * s,int cap,bool sel=false); // mathinput_edit.cc
+bool mi_eqws(char * s,bool eval); // mathinput_eval.cc: the 2D editor in place of xcas::eqws
+
 int Console_GetKey(){
   unsigned int key, move_line, move_col;
   Char tmp_str[3];
@@ -2022,15 +2025,27 @@ int Console_GetKey(){
       }
       return CONSOLE_SUCCEEDED;
     }
+    if (key==KEY_EQW_TEMPLATE2){ // shift+fraction: FlowCE's 2D editor (mathinput_edit.cc)
+      const Char * src=Current_Line==Last_Line?Edit_Line:Line[Current_Line].str;
+      if (src && strlen((const char *)src)<GEN_PRINT_BUFSIZE){
+        char buf[GEN_PRINT_BUFSIZE];
+        strcpy(buf,(const char *)src);
+        if (mi_edit(buf,sizeof(buf))){
+          // a line of the history: the result goes to the edit line
+          for (int g=0;Current_Line<Last_Line && g<4000;++g)
+            Console_MoveCursor(CURSOR_DOWN);
+          Console_Clear_EditLine();
+          Console_Input((const Char *)buf);
+        }
+      }
+      Console_Disp(1);
+      continue;
+    }
 #ifdef WITH_EQW
     if (key==KEY_EQW_TEMPLATE && Current_Line==Last_Line){
       char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen(Edit_Line)+1)];
       strcpy(buf,(const char *)Edit_Line);
-      if (buf[0]==0){
-        buf[0]='0';
-        buf[1]=0;
-      }
-      if (xcas::eqws(buf,false /* eval */)){
+      if (mi_eqws(buf,false /* eval */)){ // the 2D editor (an empty line: an empty expression)
         Console_Clear_EditLine();
         return Console_Input((const Char *)buf);
       }
@@ -2045,7 +2060,7 @@ int Console_GetKey(){
       char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str)+1)];
       strcpy(buf,(const char *)Line[l].str);
 #ifdef WITH_EQW
-      if ( (alph || key==KEY_CTRL_RIGHT) ?textedit(buf):xcas::eqws(buf,graph /* eval */))
+      if ( (alph || key==KEY_CTRL_RIGHT) ?textedit(buf):mi_eqws(buf,graph /* eval */))
 #else
       if (alph || textedit(buf))
 #endif
@@ -2244,8 +2259,8 @@ int Console_GetKey(){
           if (smallmenu.selection == 11){
 #ifdef WITH_EQW
             char buf[GEN_PRINT_BUFSIZE+2];
-            buf[0]='0'; buf[1]=0;
-            if (xcas::eqws(buf,false/* eval */))
+            buf[0]=0;
+            if (mi_eqws(buf,false/* eval */))
               return Console_Input(buf);
             else
               break;

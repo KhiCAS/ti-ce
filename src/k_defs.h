@@ -169,6 +169,7 @@
 #define KEY_FLAG 31102
 #define KEY_BOOK 31103
 #define KEY_CTRL_SOLVE 31108
+#define KEY_EQW_TEMPLATE2 31109 // shift+fraction: FlowCE's 2D editor (mathinput_edit.cc)
 #define KEY_CTRL_APPS 31104
 #define KEY_CTRL_SYMB 31105
 //#define KEY_CTRL_NUM 31106

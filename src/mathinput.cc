@@ -1,0 +1,1330 @@
+// mathinput.cc - 2D (MathPrint style) display of the 1D console input buffer.
+//
+// The user edits a plain giac string with a caret index; this module draws that string
+// as 2D math with the caret inside the layout, moves the caret in 2D and decides what
+// Backspace deletes. Pure functions of (buffer, caret, metrics); output is a display list.
+//
+// Pipeline: lex+parse (recursive descent) into a static pool of 16-byte nodes, measure
+// (bottom up), place (top down). The place pass emits the display ops and the caret
+// location of every buffer position 0..len, in increasing position order.
+//
+// Input language (tolerant giac subset; never fails):
+//  tokens: numbers 12 1.5 .5 2e-3, names [A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*,
+//    strings "..." (\x escapes), := => -> == != <= >= **, other single chars. Blanks
+//    belong to the following token.
+//  grammar, low to high: (1) ; and , (2) := => -> (3) = == != < > <= >= (4) binary + -
+//    (5) * / implicit multiplication (6) prefix - + ! ' (7) ^ ** (right assoc)
+//    (8) postfix ! ' (9) number name name(args) (..) [..] {..} string.
+//  Levels 1-5 are kept as flat rows; a / takes everything of its level-5 term as the
+//  numerator. Missing operands are boxes (not after a trailing ;, not in f() [] {}).
+//  An unclosed group runs to the end; a closer of an enclosing group closes the inner
+//  ones; unknown tokens and stray closers are plain text.
+//  Limits: nesting deeper than 24, ~176 nodes or ~384 ops: the rest of the buffer is one
+//  plain text op. Layout recursion is capped too (a/b/c/... chains nest without parser
+//  recursion): a subtree deeper than RMAX is drawn as plain text.
+//
+// Layout (y grows down, baseline 0; f = current font; axis = -(f.asc/3)):
+//  text: adv per glyph (UTF-8 sequence = 1 glyph); blank = adv/2; pi/infinity = 1 glyph.
+//  binary + - = == != < > <= >= := => -> get opgap each side; , and ; are followed by adv/2;
+//  * is a dot box adv/2+2 wide at mid-x-height; implicit multiplication is a 1 px gap.
+//  a/b: stacked, centered, bar (1px) at the axis, width max+4, 2 px gaps, same font.
+//  a^b: b in the small font, its bottom at 45% of the base's ascent above the baseline.
+//  Hidden parentheses: an operand of / or the exponent of ^ that is exactly (..).
+//  Visible ( [ {: boxes adv/2+1 wide, as tall as the content (at least the font).
+//  name(args): name, parens, args separated by ", ". Special calls (exact arg count;
+//  their parentheses and commas are hidden structure):
+//   sqrt(a) radical; surd(a,n) radical with small index n; abs(a) bars;
+//   integrate|int(f,x[,a,b]) sign (content+4 tall, 6 wide), bounds small at the top/bottom
+//   right, f, 2 px, "d", x; diff(f,x) d/(d x) then f (in parens if f is a sum/relation);
+//   sum(f,k,a,b) sigma (2*asc) with k=a below, b above, then f;
+//   limit(f,x,a) "lim" over x ->a (small), then f;  exp(a) "e" with exponent a.
+//   integrate/diff/sum/limit end with a 2 px gap so "after the construct" and "end of the
+//   last slot" are different caret locations.
+//
+// Caret: position p gets the location (x, top, h=font height) of the deepest row (slot)
+// containing it; positions inside hidden structure (function names, hidden ( ) , / ^)
+// alias the previous position, so they share the location of the end of the slot they
+// follow (or of the construct's left edge). Left/right go to the nearest position with a
+// different location (left lands on the first index of the target's run, i.e. inside the
+// slot, never between structure chars).
+// Up/down: candidates are the positions inside the innermost 2D construct enclosing the
+// caret that has any, then the next one outwards. A construct's left/right edge positions
+// belong to the parent row. A power's base line counts as inside the power for candidates
+// (down from the exponent lands on the base line) but not for the caret (up from the main
+// line is -1). Among candidates: entirely below/above the caret's vertical range first,
+// else partially lower/higher; then vertically nearest (quantized to half a small line),
+// then smallest |dx|, then smallest index. No enclosing construct: -1 (console history).
+//
+// Backspace: a visible char deletes one glyph; a hidden structure char deletes its whole
+// construct (name included; for a power from the ^) when all its slots are empty (the
+// default variable x, k for sum, counts as empty), else it acts like LEFT.
+//
+// Not reentrant: one static node pool (MAXN nodes of 16 bytes) and static state.
+
+#include "mathinput.h"
+
+// node pool, parser nesting, display ops budget, layout recursion, construct chain
+enum { MAXN = 192, MAXD = 24, MAXOPS = 400, RMAX = 2 * MAXD + 4, MAXC = 64, MAXMC = 16 };
+
+// token types: TK_* or the punctuation char itself
+enum { TK_END, TK_NUM, TK_NAME, TK_STR, OP_DEF, OP_IMP, OP_ARR, OP_EQ, OP_NE, OP_LE, OP_GE,
+       OP_POW, TK_OTHER = 31 };
+
+// node kinds; leaves first
+enum { K_TEXT, K_OP, K_OPU, K_SEP, K_DOT, K_BLANK, K_FLAT, K_PI, K_INF, K_THETA,
+       K_EMPTY, K_ROW, K_GROUP, K_CALL, K_FRAC, K_POW,
+       K_SQRT, K_SURD, K_ABS, K_INT, K_DEFINT, K_DIFF, K_SUM, K_LIM, K_EXP, K_SER, K_MAT, K_MROW };
+enum { F_IMPL = 1, F_HID = 2, F_CLOSED = 4, F_NOBOX = 8, F_ARGSEP = 16, F_NAME = 32, F_FN = 64, F_LABEL = 128 };
+
+struct mi_node {
+  unsigned char k, f;     // kind, flags
+  short a, b, c;          // buffer span [a,b); c: core start after leading blanks
+  unsigned char kid, nx;  // first child, next sibling (0: none)
+  short w, as, ds;        // measured width, ascent, descent
+};
+
+static mi_node T[MAXN + 1];  // T[0] = nil, T[MAXN] = overflow sink (never used in practice)
+int (*mi_arg_label)(const char * name, int nlen, int i, const char ** label);
+enum { MAXLB = 12 };         // MI_F_HINTS: the empty boxes (F_LABEL) and the names they show
+static short lbn[MAXLB];
+static const char * lbs[MAXLB];
+static unsigned char lbl[MAXLB];
+static int nlb;
+static int nn, nops, dep, broken, rtail, ftail;
+static unsigned char nopen[3];   // open ( [ { groups
+static const char * S;
+static int L;
+static const mi_metrics * M;
+static int ta, tc, tb, tt;       // current token [ta,tb), core at tc, type tt
+
+#ifdef MI_TEST
+int mi_test_errors;              // pool overflow or position emission order errors
+#define MI_ERR() (++mi_test_errors)
+#else
+#define MI_ERR() ((void)0)
+#endif
+
+static int mx(int a, int b) { return a > b ? a : b; }
+static int mn(int a, int b) { return a < b ? a : b; }
+static int ch(int i) { return (unsigned char)S[i]; }
+static int blank(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
+static int digit(int c) { return c >= '0' && c <= '9'; }
+static int namec(int c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c >= 0x80; }
+static int gstart(int i) { return (ch(i) & 0xC0) != 0x80; }  // not a UTF-8 continuation byte
+static int digits(int i) { while (i < L && digit(ch(i))) ++i; return i; }
+static const mi_font & fnt(int sm) { return sm ? M->small : M->big; }
+// decoration sizes; the classic values when the metrics leave them 0
+static int dflt(int v, int d) { return v ? v : d; }
+#define BAR dflt(M->bar, 1)
+#define GAP dflt(M->gap, 2)
+#define RAD dflt(M->rad, 6)
+#define ISW dflt(M->isw, 6)
+static int tw(int i, int n, int sm, int st) { // width of the buffer glyphs [i, i+n)
+  if (M->wf) return n > 0 ? M->wf(S + i, n, sm, st) : 0;
+  int w = 0;
+  for (int j = i; j < i + n; ++j)
+    if (j == i || gstart(j)) w += fnt(sm).adv;
+  return w;
+}
+static int lw(const char * lit, int ng, int sm) { // width of a literal of ng glyphs
+  if (!M->wf) return ng * fnt(sm).adv;
+  int n = 0;
+  while (lit[n]) ++n;
+  return M->wf(lit, n, sm, MI_SYM);
+}
+
+// ---------------------------------------------------------------- lexer
+static void lex(int i) {
+  ta = i;
+  while (i < L && blank(ch(i))) ++i;
+  tc = i;
+  if (i >= L) { tt = TK_END; tb = L; return; }
+  int c = ch(i), d = i + 1 < L ? ch(i + 1) : 0;
+  if (digit(c) || (c == '.' && digit(d))) {
+    i = digits(i);
+    if (i < L && S[i] == '.') i = digits(i + 1);
+    if (i < L && (S[i] | 32) == 'e') { // exponent only if digits follow
+      int j = i + 1;
+      if (j < L && (S[j] == '+' || S[j] == '-')) ++j;
+      if (j < L && digit(ch(j))) i = digits(j);
+    }
+    tt = TK_NUM;
+  } else if (namec(c)) {
+    while (i < L && (namec(ch(i)) || digit(ch(i)))) ++i;
+    // pi right before a letter (2pir typed with the pi key) is its own token, drawn as the pi
+    // glyph, as the input pre-pass reads it (2*pi*r); not before ( : piecewise(...) is a name
+    if (i - tc > 2 && S[tc] == 'p' && S[tc + 1] == 'i' && (S[tc + 2] | 32) >= 'a' &&
+        (S[tc + 2] | 32) <= 'z' && !(i < L && S[i] == '('))
+      i = tc + 2;
+    tt = TK_NAME;
+  } else if (c == '"') {
+    for (++i; i < L && S[i] != '"'; ++i)
+      if (S[i] == '\\' && i + 1 < L) ++i;
+    if (i < L) ++i;
+    tt = TK_STR;
+  } else {
+    static const char two[] = ":==>->==!=<=>=**";
+    tt = c < 32 ? TK_OTHER : c;
+    ++i;
+    for (int j = 0; j < 16; j += 2)
+      if (c == two[j] && d == two[j + 1]) { tt = OP_DEF + j / 2; ++i; break; }
+  }
+  tb = i;
+}
+
+static int binlev(int t) { // binary operator precedence level, 0: none
+  switch (t) {
+  case ';': case ',': return 1;
+  case OP_DEF: case OP_IMP: case OP_ARR: return 2;
+  case '=': case OP_EQ: case OP_NE: case '<': case '>': case OP_LE: case OP_GE: return 3;
+  case '+': case '-': return 4;
+  case '*': case '/': return 5;
+  }
+  return 0;
+}
+static int prim(int t) { return t == TK_NUM || t == TK_NAME || t == TK_STR || t == '(' || t == '[' || t == '{'; }
+static int prefix(int t) { return t == '-' || t == '+' || t == '!' || t == '\''; }
+static int powop(int t) { return t == '^' || t == OP_POW; }
+static int otype(int t) { return t == '(' ? 0 : t == '[' ? 1 : t == '{' ? 2 : -1; }
+static int ctype(int t) { return t == ')' ? 0 : t == ']' ? 1 : t == '}' ? 2 : -1; }
+
+// ---------------------------------------------------------------- parser
+static int newnode(int k, int a, int b, int ops) {
+  int n = nn;
+  if (n < MAXN) ++nn; else { n = MAXN; broken = 1; MI_ERR(); }
+  mi_node & d = T[n];
+  d.k = k; d.f = 0; d.a = a; d.b = b; d.c = a; d.kid = d.nx = 0; d.w = d.as = d.ds = 0;
+  nops += ops; // upper bound of the display ops this node will produce
+  return n;
+}
+static int leaf(int k) { int n = newnode(k, ta, tb, 1); T[n].c = tc; return n; }
+static int box(int p) { return newnode(K_EMPTY, p, p, 1); }
+// the symbol drawn for a name (ui_math maps these literals to glyphs)
+static const char * symlit(int k) { return k == K_PI ? "pi" : k == K_INF ? "oo" : "theta"; }
+// budget exhausted: keep a reserve for the nodes created while unwinding (<= 2 per level)
+static int over() { return nops > MAXOPS - 16 || nn + 2 * dep + 16 > MAXN; }
+static int flat() { // the rest of the buffer as plain text
+  if (tt == TK_END) return 0;
+  int n = newnode(K_FLAT, ta, L, 1);
+  ta = tc = tb = L; tt = TK_END;
+  return n;
+}
+static void add(int & h, int & t, int h2, int t2) { if (h) T[t].nx = h2; else h = h2; t = t2; }
+static int wrap(int h, int t) { // list -> single node
+  if (h == t) return h;
+  int r = newnode(K_ROW, T[h].a, T[t].b, 0);
+  T[r].kid = h;
+  return r;
+}
+static void hide(int n) { if (T[n].k == K_GROUP && S[T[n].c] == '(') T[n].f |= F_HID; }
+// read-only (MI_F_TIDY): the user's group around a whole numerator or denominator is not drawn
+// either, 1/(x+1) typed is (1)/((x+1)) (the edit line keeps it: the caret goes in and out)
+static void inner(int n) {
+  int c = T[n].kid;
+  if ((M->flags & MI_F_TIDY) && (T[n].f & F_HID) && c && !T[c].nx && T[c].k == K_GROUP && S[T[c].c] == '(' &&
+      (T[c].f & F_CLOSED)) T[c].f |= F_HID;
+}
+static int namei(int n, const char * w) { // name core == w
+  int i = T[n].c;
+  for (; *w; ++w, ++i)
+    if (i >= T[n].b || S[i] != *w) return 0;
+  return i == T[n].b;
+}
+// the name a function is drawn with, as textbooks and TI write it (asin: arcsin, log10: log), 0:
+// its own. The caret steps over it as a whole.
+static const char * dname(int n) {
+  static const char * const al[] = {"asin", "arcsin", "acos", "arccos", "atan", "arctan", "log10", "log", "ans", "Ans", 0};
+  if (!(T[n].f & F_FN)) return 0;
+  for (int i = 0; al[i]; i += 2)
+    if (namei(n, al[i])) return al[i + 1];
+  return 0;
+}
+// a built-in function's name before its ( (the caret steps over it as a whole; f( stays editable)
+static int kfn(int n) {
+  static const char * const fn[] = {"sin", "cos", "tan", "sec", "csc", "cot", "asin", "acos", "atan", "sinh",
+    "cosh", "tanh", "ln", "log", "log10", "exp", "abs", "sqrt", "floor", "ceil", "round", "factor", "expand",
+    "simplify", "solve", "partfrac", "ans", 0};
+  if (!(T[n].f & F_FN)) return 0;
+  for (int i = 0; fn[i]; ++i)
+    if (namei(n, fn[i])) return 1;
+  return 0;
+}
+static int dw(const char * t, int sm) { // width of a display name, upright
+  int n = 0;
+  while (t[n]) ++n;
+  return M->wf ? M->wf(t, n, sm, MI_UP) : n * fnt(sm).adv;
+}
+
+static int pseq(int stopc);
+static int pfactor();
+
+// a matrix [[a,b],[c,d]]: a closed [ ] group of closed [ ] rows separated by commas, all with
+// the same number of cells (at most MAXMC columns). The group becomes K_MAT, its kids the rows
+// (K_MROW), their kids the cells (several items of a row: wrapped in a K_ROW).
+static int issep(int n) { return T[n].k == K_SEP && ch(T[n].c) == ','; }
+static int isrowg(int n) { return T[n].k == K_GROUP && ch(T[n].c) == '[' && (T[n].f & F_CLOSED); }
+static int ncells(int r) { // cells of row group r, 0: not a row of cells
+  int c = T[r].kid, n = 1;
+  if (T[c].k != K_ROW) return T[c].k == K_SEP || T[c].k == K_BLANK ? 0 : 1;
+  for (c = T[c].kid; c; c = T[c].nx) {
+    if (T[c].k == K_SEP && !issep(c)) return 0; // ;
+    if (issep(c)) ++n;
+  }
+  return n;
+}
+static void matrix(int g) {
+  int c = T[g].kid, nc = -1, nr = 0, q;
+  if (!(T[g].f & F_CLOSED) || ch(T[g].c) != '[') return;
+  if (isrowg(c)) { nc = ncells(c); nr = 1; }
+  else if (T[c].k == K_ROW) {
+    int want = 1; // a row, then a comma
+    for (q = T[c].kid; q; q = T[q].nx) {
+      if (T[q].k == K_BLANK && !T[q].nx) break;
+      if (want) {
+        int n = isrowg(q) ? ncells(q) : 0;
+        if (!n || (nc >= 0 && n != nc)) return;
+        nc = n; ++nr;
+      } else if (!issep(q)) return;
+      want = !want;
+    }
+    if (want) return; // ends with a comma
+  }
+  if (nc < 1 || nr < 1 || nc > MAXMC || nr > MAXMC || over()) return;
+  // the rows' chain without the commas, each row's chain of cells
+  int first = isrowg(c) ? c : T[c].kid, prev = 0;
+  for (q = first; q;) {
+    int nxq = T[q].nx;
+    if (isrowg(q)) {
+      int rc = T[q].kid, h = 0, t = 0, ch0 = 0, ct = 0; // cells head / tail, current cell items
+      if (T[rc].k == K_ROW) {
+        for (int it = T[rc].kid; it;) {
+          int nit = T[it].nx;
+          if (issep(it) || T[it].k == K_BLANK) {
+            if (ch0) { T[ct].nx = 0; int cell = wrap(ch0, ct); add(h, t, cell, cell); ch0 = ct = 0; }
+          } else { if (!ch0) ch0 = it; ct = it; }
+          it = nit;
+        }
+        if (ch0) { T[ct].nx = 0; int cell = wrap(ch0, ct); add(h, t, cell, cell); }
+        T[t].nx = 0;
+      } else h = rc;
+      T[q].k = K_MROW; T[q].kid = h;
+      if (prev) T[prev].nx = q;
+      prev = q;
+      T[q].nx = 0;
+    }
+    q = nxq;
+  }
+  T[g].k = K_MAT; T[g].kid = first;
+}
+
+static int pgroup() { // ( [ { : content to the matching closer or the end
+  int ty = otype(tt), g = newnode(K_GROUP, ta, 0, 2), c;
+  T[g].c = tc;
+  lex(tb); ++nopen[ty];
+  c = pseq(0);
+  if (!c) { c = box(ta); if (ty) T[c].f |= F_NOBOX; } // () shows a box, [] {} nothing
+  --nopen[ty];
+  T[g].kid = c;
+  if (ctype(tt) == ty) { T[g].f |= F_CLOSED; T[g].b = tb; lex(tb); }
+  else T[g].b = T[c].b;
+  if (ty == 1) matrix(g);
+  return g;
+}
+
+static const struct { const char * nm; unsigned char na, k; } spec[] = {
+  {"sqrt", 1, K_SQRT}, {"surd", 2, K_SURD}, {"abs", 1, K_ABS}, {"integrate", 2, K_INT},
+  {"integrate", 4, K_DEFINT}, {"int", 2, K_INT}, {"int", 4, K_DEFINT}, {"diff", 2, K_DIFF},
+  {"sum", 4, K_SUM}, {"limit", 3, K_LIM}, {"exp", 1, K_EXP}, {"series", 4, K_SER}};
+
+int mi_drawn_as_template(const char * name, int nlen, int na) {
+  for (unsigned i = 0; i < sizeof(spec) / sizeof(spec[0]); ++i) {
+    const char * w = spec[i].nm;
+    int k = 0;
+    while (k < nlen && w[k] == name[k]) ++k;
+    if (spec[i].na == na && k == nlen && !w[k]) return 1;
+  }
+  return 0;
+}
+
+static int pcall(int nm) { // name( args ): normal or special call
+  int cl = newnode(K_CALL, T[nm].a, 0, 4), t = nm, na = 0, a, k = 0;
+  lex(tb); ++nopen[0];
+  for (;;) {
+    a = pseq(1);
+    if (!a) a = box(ta);
+    T[t].nx = a; t = a; ++na;
+    if (tt != ',') break;
+    a = leaf(K_SEP); T[a].f |= F_ARGSEP;
+    T[t].nx = a; t = a; lex(tb);
+  }
+  --nopen[0];
+  if (tt == ')') { T[cl].f |= F_CLOSED; T[cl].b = tb; lex(tb); }
+  else T[cl].b = T[t].b;
+  for (unsigned i = 0; i < sizeof(spec) / sizeof(spec[0]); ++i)
+    if (spec[i].na == na && namei(nm, spec[i].nm)) k = spec[i].k;
+  if (!k && na == 4 && (M->flags & MI_F_IMPLDOT) && namei(nm, "limit")) k = K_LIM; // a result: lim x->0+
+  if (k) { T[cl].k = k; T[cl].kid = T[nm].nx; T[cl].c = T[nm].c; } // name is structure
+  else {
+    T[cl].kid = nm;
+    T[nm].f |= F_FN; // a function name: upright
+    if (na == 1 && T[t].k == K_EMPTY && (!(M->flags & MI_F_CALLBOX) || namei(nm, "ans"))) T[t].f |= F_NOBOX; // f(), ans(): no box
+    if (na == 1 && T[t].k == K_EMPTY && namei(nm, "ans") && (T[cl].f & F_CLOSED)) T[cl].f |= F_HID; // ans(): Ans, as on a TI
+    if ((M->flags & MI_F_HINTS) && mi_arg_label) { // its empty arguments show their names
+      for (int i = 0, q = T[nm].nx; q; q = T[q].nx) {
+        if (T[q].k == K_SEP) { ++i; continue; }
+        int e = q, in = 0; // the box: the argument, or inside it when it is an empty [ ] (a list)
+        if (T[q].k == K_GROUP && S[T[q].c] == '[' && T[T[q].kid].k == K_EMPTY) e = T[q].kid, in = 1;
+        if (T[e].k != K_EMPTY || (!in && (T[e].f & F_NOBOX)) || nlb >= MAXLB) continue;
+        const char * s;
+        int n = mi_arg_label(S + T[nm].c, T[nm].b - T[nm].c, i, &s);
+        if (in) { // inside the list's brackets: the name without its own ([x,y,..]: x,y,..)
+          if (n < 2 || s[0] != '[' || s[n - 1] != ']') continue;
+          ++s; n -= 2;
+        }
+        if (n > 0 && n < 40) {
+          lbn[nlb] = (short)e; lbs[nlb] = s; lbl[nlb++] = (unsigned char)n;
+          T[e].f = (unsigned char)((T[e].f | F_LABEL) & ~F_NOBOX);
+          ++nops;
+        }
+      }
+    }
+  }
+  return cl;
+}
+// the name shown in the empty box n (F_LABEL): its length, *s pointing at it
+static int label(int n, const char ** s) {
+  for (int i = 0; i < nlb; ++i)
+    if (lbn[i] == n) { *s = lbs[i]; return lbl[i]; }
+  return 0;
+}
+
+// a function name written with a power before its argument (sin^2(x), TI style)
+static int fnpow(int n) {
+  static const char * const fn[] = {"sin", "cos", "tan", "sec", "csc", "cot", "sinh", "cosh", "tanh", "ln", "log"};
+  for (unsigned i = 0; i < sizeof(fn) / sizeof(fn[0]); ++i)
+    if (namei(n, fn[i])) return 1;
+  return 0;
+}
+static int primary() {
+  int k = tt, n;
+  if (k == TK_NUM || k == TK_STR) { n = leaf(K_TEXT); lex(tb); return n; }
+  if (k == TK_NAME) {
+    n = leaf(K_TEXT); lex(tb);
+    if (namei(n, "pi")) T[n].k = K_PI;
+    else if (namei(n, "infinity") || namei(n, "oo") || namei(n, "inf")) T[n].k = K_INF;
+    else if (namei(n, "theta")) T[n].k = K_THETA;
+    else T[n].f |= F_NAME;
+    if (tt == '^' && fnpow(n)) T[n].f |= F_FN; // sin^2(x): sin is a function, upright
+    return tt == '(' ? pcall(n) : n;
+  }
+  return otype(k) >= 0 ? pgroup() : 0;
+}
+
+// levels 6-9: prefix ops, primary, postfix ops, ^. Returns a list head (tail in ftail).
+static int pfactor() {
+  if (tt == TK_END) return 0;
+  if (dep > MAXD || over()) return ftail = flat(); // nesting deeper than 24: plain text
+  ++dep;
+  int h = 0, t = 0, b, bt, n;
+  while (prefix(tt) && !over()) { n = leaf(K_OPU); add(h, t, n, n); lex(tb); }
+  b = over() ? flat() : primary();
+  if (!b && (h || powop(tt))) b = box(ta); // missing operand
+  if (b) {
+    bt = b;
+    while ((tt == '!' || tt == '\'') && !over()) { n = leaf(K_OPU); T[bt].nx = n; bt = n; lex(tb); }
+    if (powop(tt) && !over()) {
+      int base = wrap(b, bt), p = newnode(K_POW, T[base].a, 0, 0), e;
+      lex(tb);
+      e = pfactor(); // right associative, may start with - (level 6)
+      e = e ? wrap(e, ftail) : box(ta);
+      hide(e);
+      T[p].kid = base; T[base].nx = e; T[p].b = T[e].b;
+      b = bt = p;
+    }
+    add(h, t, b, bt);
+  }
+  --dep;
+  ftail = t;
+  return h;
+}
+
+// levels 1-5 as one flat row. Returns a list head (tail in rtail).
+static int prow(int stopc) {
+  int h = 0, t = 0, tp = 0, need = 1, nb = 0, n; // tp: item before the current level-5 term
+  for (;;) {
+    int k = tt, lv = binlev(k);
+    if (stopc && k == ',') lv = 0;
+    if (over()) { if ((n = flat())) { add(h, t, n, n); need = 0; } break; }
+    if (need ? prim(k) || prefix(k) || powop(k) : prim(k)) { // operand, or implicit *
+      if (!(n = pfactor())) break;
+      if (!need) T[n].f |= F_IMPL;
+      add(h, t, n, ftail); need = 0;
+      continue;
+    }
+    if (!lv) break;
+    if (need && (nb || k != ';')) { n = box(ta); add(h, t, n, n); } // missing left operand
+    if (k == '/') { // numerator = current term
+      int first = tp ? T[tp].nx : h, last = t, num, fr, den;
+      if (tp) T[tp].nx = 0; else h = 0;
+      t = tp;
+      if (M->wf && first != last && T[first].k == K_OPU && S[T[first].c] == '-') { // -a/b: minus before the bar
+        int m = first;
+        first = T[m].nx; T[m].nx = 0;
+        add(h, t, m, m);
+      }
+      num = wrap(first, last);
+      fr = newnode(K_FRAC, T[num].a, 0, 1);
+      lex(tb);
+      den = pfactor();
+      den = den ? wrap(den, ftail) : box(ta);
+      hide(num); hide(den);
+      inner(num); inner(den);
+      T[fr].kid = num; T[num].nx = den; T[fr].b = T[den].b;
+      add(h, t, fr, fr); need = nb = 0;
+      continue;
+    }
+    n = leaf(lv == 1 ? K_SEP : k == '*' ? K_DOT : K_OP);
+    add(h, t, n, n); lex(tb);
+    if (lv < 5) tp = n;
+    need = 1; nb = k != ';';
+  }
+  if (need && nb) { n = box(ta); add(h, t, n, n); } // missing right operand
+  rtail = t;
+  return h;
+}
+
+// rows plus stray tokens up to the end, a closer of an open group or (stopc) a comma
+static int pseq(int stopc) {
+  int h = 0, t = 0, n;
+  for (;;) {
+    if ((n = prow(stopc))) add(h, t, n, rtail);
+    if (tt == TK_END) {
+      if (ta < L) { n = newnode(K_BLANK, ta, L, 0); T[n].c = L; add(h, t, n, n); ta = tc = L; }
+      break;
+    }
+    if (stopc && tt == ',') break;
+    int ty = ctype(tt);
+    if (ty >= 0 && nopen[ty]) break;
+    if (over()) n = flat();
+    else { n = leaf(K_TEXT); lex(tb); } // stray token: plain text
+    add(h, t, n, n);
+  }
+  return h ? wrap(h, t) : 0;
+}
+
+static int parse() {
+  nn = 1; nops = dep = broken = nlb = 0;
+  nopen[0] = nopen[1] = nopen[2] = 0;
+  lex(0);
+  int r = pseq(0);
+  if (broken) { nn = 1; nops = nlb = 0; r = L ? newnode(K_FLAT, 0, L, 1) : 0; } // cannot happen
+  return r;
+}
+
+// ---------------------------------------------------------------- measure / geometry
+static int style(int n, int k) { // style of the text of leaf n of kind k: names italic, calls upright
+  // (a one-letter name stays italic before its bracket: x(x+1), f(x), as textbooks write them)
+  return k == K_TEXT && (T[n].f & F_NAME) && (!(T[n].f & F_FN) || T[n].b - T[n].c == 1) ? (int)MI_IT : (int)MI_UP;
+}
+static int hidedot(int n) { // MI_F_IMPLDOT: a * before a letter or ( is implicit multiplication:
+  if (!(M->flags & MI_F_IMPLDOT)) return 0; // its gap, 1 px; a thin space before a differential
+  int j = T[n].b;                           // (2x dx) or a name of letters (x sin(x))
+  while (j < L && blank(ch(j))) ++j;
+  if (j >= L || (!namec(ch(j)) && ch(j) != '(')) return 0;
+  const int c1 = j + 1 < L ? ch(j + 1) : 0, c2 = j + 2 < L ? ch(j + 2) : 0;
+  if (!namec(ch(j)) || !namec(c1)) return 1;
+  return 1 + M->big.adv / (ch(j) == 'd' && !namec(c2) && !digit(c2) ? 3 : 5); // (as the font grows)
+}
+
+static int slot(int n, int i) { // i-th slot content of a 2D construct (hidden parens removed)
+  int c = T[n].kid;
+  if (T[n].k == K_POW) c = T[c].nx;
+  for (; c; c = T[c].nx)
+    if (!(T[c].f & F_ARGSEP) && !i--) return (T[c].k == K_GROUP && (T[c].f & F_HID)) ? T[c].kid : c;
+  return 0;
+}
+static int sfont(int k, int i, int sm) { // font of slot i (must match the sl() calls in cons)
+  if (k == K_POW || k == K_EXP || (k == K_SURD && i == 1) || (k == K_DEFINT && i >= 2) ||
+      ((k == K_SUM || k == K_LIM || k == K_SER) && i >= 1)) return 1;
+  return sm;
+}
+static int needp(int n) { // diff(f,x): f needs parentheses (top level + - = , ...)
+  if (T[n].k == K_ROW)
+    for (int c = T[n].kid; c; c = T[c].nx)
+      if (T[c].k == K_OP || T[c].k == K_SEP) return 1;
+  return 0;
+}
+
+// display ops (only when building)
+static mi_layout * OUT;
+static void op(int code, int sm, int x, int y, int w, int h, int pos, int len, const char * lit, int st = MI_UP) {
+  if (!OUT) return;
+  mi_op o;
+  o.code = code; o.small = sm; o.x = x; o.y = y; o.w = w; o.h = h; o.pos = pos; o.len = len; o.lit = lit;
+  o.style = (unsigned char)st;
+  OUT->ops.push_back(o);
+}
+
+// cons() describes the geometry of a 2D construct once, for three uses (gm):
+// GM_MEASURE: union of the vertical extents (by0,by1) and width cw; GM_DECO: emit its
+// decoration ops; i >= 0: origin (gx,gy) and font gs of slot i.
+// Coordinates passed to sl/dec/dtext are offsets from the construct origin (ox, oy).
+enum { GM_MEASURE = -2, GM_DECO = -1 };
+static int gm, gx, gy, gs, cw, by0, by1, ox, oy, sn[4];
+static void sl(int i, int x, int y, int sm) { // slot i (node sn[i]) at (x, y)
+  if (gm == GM_MEASURE) { by0 = mn(by0, y - T[sn[i]].as); by1 = mx(by1, y + T[sn[i]].ds); }
+  else if (gm == i) { gx = ox + x; gy = oy + y; gs = sm; }
+}
+static void dec(int code, int sm, int x, int y, int w, int h) { // decoration box
+  if (gm == GM_MEASURE) { by0 = mn(by0, y); by1 = mx(by1, y + h); }
+  else if (gm == GM_DECO) op(code, sm, ox + x, oy + y, w, h, -1, 0, 0);
+}
+static void dtext(const char * lit, int ng, int sm, int x, int y) { // literal text, ng glyphs
+  const mi_font & f = fnt(sm);
+  if (gm == GM_MEASURE) { by0 = mn(by0, y - f.asc); by1 = mx(by1, y + f.desc); }
+  else if (gm == GM_DECO) op(MI_TEXT, sm, ox + x, oy + y, lw(lit, ng, sm), f.asc + f.desc, -1, ng, lit, MI_SYM);
+}
+
+static void cons(int n, int x, int y, int sm) {
+  const mi_font & f = fnt(sm), & sf = M->small;
+  int k = T[n].k, a = f.adv, h = a / 2, ax = f.asc / 3, t, u, v, i;
+  for (i = 0; i < 4; ++i) sn[i] = slot(n, i);
+  const mi_node & A = T[sn[0]], & B = T[sn[1]], & C = T[sn[2]], & D = T[sn[3]]; // T[0]: none
+  int ca = mx(f.asc, A.as), cd = mx(f.desc, A.ds); // content extent, at least the font
+  ox = x; oy = y;
+  switch (k) {
+  case K_FRAC: { // bar at the axis, parts centered, gaps g (classic: 1 px bar, 2 px gaps)
+    int g = GAP, b = BAR;
+    if (sm && M->wf) { // proportional fonts: a fraction in an exponent is inline, a/b; a sum in
+      const int sw = lw("/", 1, sm), q = lw("(", 1, sm), pa = needp(sn[0]) ? q : 0, pb = needp(sn[1]) ? q : 0;
+      if (pa) { dtext("(", 1, sm, 0, 0); dtext(")", 1, sm, pa + A.w, 0); } // parentheses: 1/(N+1), not 1/N+1
+      sl(0, pa, 0, sm);
+      t = 2 * pa + A.w;
+      dtext("/", 1, sm, t, 0);
+      t += sw;
+      if (pb) { dtext("(", 1, sm, t, 0); dtext(")", 1, sm, t + pb + B.w, 0); }
+      sl(1, t + pb, 0, sm);
+      cw = t + 2 * pb + B.w;
+      break;
+    }
+    cw = mx(A.w, B.w) + 2 * g;
+    dec(MI_HLINE, sm, 0, -ax, cw, b);
+    sl(0, (cw - A.w) / 2, -ax - g - A.ds, sm);
+    sl(1, (cw - B.w) / 2, -ax + b + g + B.as, sm);
+  } break;
+  case K_POW: case K_EXP: { // exponent bottom at 45% of the base ascent
+    int b = k == K_POW ? T[n].kid : 0, bw = b ? T[b].w : lw("e", 1, sm), ba = b ? T[b].as : f.asc;
+    int eg = M->wf ? mx(1, a / 10) : 0; // proportional fonts: a hair between base and exponent
+    if (b) { if (gm == GM_MEASURE) { by0 = mn(by0, -ba); by1 = mx(by1, T[b].ds); } }
+    else dtext("e", 1, sm, 0, 0);
+    if (!b && (M->flags & MI_F_IMPLDOT) && T[sn[0]].b == T[sn[0]].a + 1 && ch(T[sn[0]].a) == '1') { // a result's e^1: e
+      if (gm != GM_MEASURE) sl(0, -30000, 0, 1);
+      cw = bw;
+      break;
+    }
+    sl(0, bw + eg, -(ba * 45 / 100) - A.ds, 1);
+    cw = bw + eg + A.w;
+  } break;
+  case K_SQRT: case K_SURD: { // sign r px + 1, overbar g px above the content, index overhang t
+    int r = RAD, g = GAP;
+    t = k == K_SURD ? mx(0, B.w - r / 2) : 0;
+    cw = t + A.w + r + 2;
+    dec(MI_SQRT, sm, t, -ca - g, A.w + r + 2, ca + g + cd);
+    sl(0, t + r + 1, 0, sm);
+    if (k == K_SURD) sl(1, t + r / 2 - B.w, (cd - ca - g) / 2 - 1 - B.ds, 1);
+  } break;
+  case K_ABS:
+    t = mx(1, h - 1);
+    dec(MI_BAR, sm, 0, -ca, t, ca + cd);
+    sl(0, t + 1, 0, sm);
+    dec(MI_BAR, sm, t + 2 + A.w, -ca, t, ca + cd);
+    cw = 2 * t + 2 + A.w;
+    break;
+  case K_INT: case K_DEFINT: { // sign, [bounds], f (in parens if it is a sum), gap, d, x
+    int s = ISW, g = GAP, dw = lw("d", 1, sm);
+    i = needp(sn[0]);
+    ca = mx(ca, B.as); cd = mx(cd, B.ds);
+    dec(MI_INTEGRAL, sm, 0, -ca - g, s, ca + cd + 2 * g);
+    t = s + 1;
+    if (k == K_DEFINT) { // a at the bottom right, b at the top right, never overlapping
+      u = (cd - ca) / 2;
+      sl(2, s + 1, mx(cd + g - C.ds, u + 1 + C.as), 1);
+      sl(3, s + 1, mn(-ca - g + D.as, u - 1 - D.ds), 1);
+      t += mx(C.w, D.w) + 1;
+    }
+    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
+    sl(0, t, 0, sm);
+    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    t += A.w + g;
+    dtext("d", 1, sm, t, 0);
+    sl(1, t + dw, 0, sm);
+    cw = t + dw + B.w + 2; // trailing gap: "after the construct" differs from "end of x"
+  } break;
+  case K_DIFF: { // d/(d x) then f, in parens if it is a sum or a factor follows (d/dx(u) v)
+    int g = GAP, b = BAR, dw = lw("d", 1, sm);
+    i = needp(sn[0]) || (T[n].nx && T[T[n].nx].k == K_DOT);
+    u = mx(f.asc, B.as); v = dw + B.w + 2 * g;
+    dec(MI_HLINE, sm, 0, -ax, v, b);
+    dtext("d", 1, sm, (v - dw) / 2, -ax - g - f.desc);
+    dtext("d", 1, sm, g, -ax + b + g + u);
+    sl(1, g + dw, -ax + b + g + u, sm);
+    t = v + g;
+    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
+    sl(0, t, 0, sm);
+    if (i) dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd);
+    cw = t + A.w + (i ? h + 1 : 2);
+  } break;
+  case K_SUM: { // column: b, sigma, k=a; then f
+    int sh = 2 * f.asc, sw = M->wf ? lw("S", 1, sm) : a + 4, st = -ax - sh / 2, bx, bb, ew = lw("=", 1, 1);
+    u = B.w + ew + C.w; v = mx(sf.asc, mx(B.as, C.as));
+    t = mx(sw, mx(u, D.w));
+    dec(MI_SIGMA, sm, (t - sw) / 2, st, sw, sh);
+    bx = (t - u) / 2; bb = st + sh + 1 + v;
+    sl(1, bx, bb, 1);
+    dtext("=", 1, 1, bx + B.w, bb);
+    sl(2, bx + B.w + ew, bb, 1);
+    sl(3, (t - D.w) / 2, st - 1 - D.ds, 1);
+    i = needp(sn[0]); // a sum in parentheses: the sum of (1-(-1)^n), not of 1, minus (-1)^n
+    t += 2;
+    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
+    sl(0, t, 0, sm);
+    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    cw = t + 2 + A.w;
+  } break;
+  case K_SER: { // series(f,x,a,n), as lim: column "taylor" over "x->a deg n" (small); then f
+    int bx, bb, tw = lw("taylor", 6, sm), aw = lw("", 1, 1), dw = lw(" deg ", 5, 1);
+    u = B.w + aw + C.w + dw + D.w; v = mx(sf.asc, mx(B.as, mx(C.as, D.as)));
+    t = mx(tw, u);
+    dtext("taylor", 6, sm, (t - tw) / 2, 0);
+    bx = (t - u) / 2; bb = f.desc + 1 + v;
+    sl(1, bx, bb, 1);
+    dtext("", 1, 1, bx + B.w, bb);
+    sl(2, bx + B.w + aw, bb, 1);
+    dtext(" deg ", 5, 1, bx + B.w + aw + C.w, bb);
+    sl(3, bx + B.w + aw + C.w + dw, bb, 1);
+    sl(0, t + h, 0, sm);
+    cw = t + h + A.w + 2;
+  } break;
+  case K_LIM: { // column: lim over x->a (results: x->a+ or a-, its 4th argument 1 or -1); then f
+    int bx, bb, lmw = lw("lim", 3, sm), aw = lw("\x1e", 1, 1);
+    const char * sg = sn[3] ? (ch(T[sn[3]].a) == '-' ? "-" : "+") : "";
+    const int sw = *sg ? lw(sg, 1, 1) : 0;
+    u = B.w + aw + C.w + sw; v = mx(sf.asc, mx(B.as, C.as));
+    t = mx(lmw, u);
+    dtext("lim", 3, sm, (t - lmw) / 2, 0);
+    bx = (t - u) / 2; bb = f.desc + 1 + v;
+    sl(1, bx, bb, 1);
+    dtext("\x1e", 1, 1, bx + B.w, bb);
+    sl(2, bx + B.w + aw, bb, 1);
+    if (sw) { // (- as a bar: the small font's hyphen was a dot; the 1 or -1 itself off the screen)
+      const int sx = bx + B.w + aw + C.w, sy = bb - sf.asc / 2;
+      if (*sg == '-') dec(MI_HLINE, 1, sx + 1, sy - sf.asc / 3, sw - 1, BAR); else dtext(sg, 1, 1, sx, sy);
+      if (gm != GM_MEASURE) sl(3, -30000, 0, 1);
+    }
+    i = needp(sn[0]); // the limit of (1-(-1)^n), not of 1, minus (-1)^n
+    t += h;
+    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
+    sl(0, t, 0, sm);
+    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    cw = t + A.w + 2;
+  } break;
+  }
+}
+
+// Layout recursion depth (measure and place recurse identically). A subtree deeper than
+// RMAX (e.g. a long a/b/c/d/... chain, which nests without parser recursion) is drawn as
+// plain text, like K_FLAT.
+static int rd;
+static int kindof(int n) { return rd > RMAX ? (int)K_FLAT : (int)T[n].k; }
+static int corec(int n, int k) { return k == K_FLAT ? T[n].a : T[n].c; }
+
+// a matrix's column widths cw (and its number of columns, mncol); with doit, measures the cells
+// first and sets each row's ascent and descent
+static int mncol;
+static void measure(int n, int sm);
+static void mgeom(int n, int sm, int * cw, int doit) {
+  mncol = 0;
+  for (int r = T[n].kid; r; r = T[r].nx) {
+    int j = 0;
+    if (doit) { T[r].as = fnt(sm).asc; T[r].ds = fnt(sm).desc; }
+    for (int c = T[r].kid; c && j < MAXMC; c = T[c].nx, ++j) {
+      if (doit) {
+        measure(c, sm);
+        T[r].as = mx(T[r].as, T[c].as); T[r].ds = mx(T[r].ds, T[c].ds);
+      }
+      if (j >= mncol) { cw[j] = 0; mncol = j + 1; }
+      cw[j] = mx(cw[j], T[c].w);
+    }
+  }
+}
+static void measure(int n, int sm) {
+  mi_node & d = T[n];
+  const mi_font & f = fnt(sm);
+  int k, h = f.adv / 2, w, c, first;
+  ++rd;
+  k = kindof(n); c = corec(n, k); w = (c - d.a) * h;
+  d.as = f.asc; d.ds = f.desc;
+  if (k < K_EMPTY) { // leaf: leading blanks, glyphs, gaps
+    if (k == K_DOT) { const int g = hidedot(n); w += g ? g : h + 2; }
+    else if (k == K_PI || k == K_INF || k == K_THETA) w += lw(symlit(k), 1, sm);
+    else if (k != K_BLANK) {
+      const char * dn = dname(n);
+      w += dn ? dw(dn, sm) : tw(c, d.b - c, sm, style(n, k));
+      if (k == K_OP) w += 2 * M->opgap;
+      if (k == K_SEP) w += h;
+    }
+    d.w = w;
+  } else if (k == K_EMPTY) {
+    const char * s;
+    int l = (d.f & F_LABEL) && !sm ? label(n, &s) : 0; // a name: in the small font, 3 px in
+    d.w = (d.f & F_NOBOX) ? 0 : l ? (M->wf ? M->wf(s, l, 1, MI_IT) : l * M->small.adv) + 8 : f.adv;
+  }
+  else if (k <= K_CALL) { // row, group, call: items side by side, delimiters as tall as the content
+    c = d.kid; w = 0;
+    if (k == K_CALL) { measure(c, sm); w = T[c].w; c = T[c].nx; }
+    for (first = c; c; c = T[c].nx) {
+      measure(c, sm);
+      w += T[c].w + (T[c].f & F_IMPL ? 1 : 0);
+      d.as = mx(d.as, T[c].as); d.ds = mx(d.ds, T[c].ds);
+      if (k != K_ROW && !(d.f & F_HID)) {
+        if (c == first) w += (T[c].a - 1 - (k == K_CALL ? T[d.kid].b : d.a)) * h + h + 1;
+        if (!T[c].nx && (d.f & F_CLOSED)) w += (d.b - 1 - T[c].b) * h + h + 1;
+      }
+    }
+    d.w = w;
+  } else if (k == K_MAT) { // grid: columns as wide as their widest cell, centered on the axis
+    int cw[MAXMC], H = 0, nr = 0, ax = f.asc / 3;
+    mgeom(n, sm, cw, 1);
+    w = 2 * (h + 1) + 4 + (mncol - 1) * f.adv;
+    for (int j = 0; j < mncol; ++j) w += cw[j];
+    for (int r = d.kid; r; r = T[r].nx, ++nr) H += T[r].as + T[r].ds;
+    H += (nr - 1) * 2 * GAP;
+    d.w = w; d.as = mx(f.asc, ax + (H + 1) / 2); d.ds = mx(f.desc, H - (ax + (H + 1) / 2));
+  } else { // 2D construct
+    if (k == K_POW) measure(d.kid, sm);
+    for (int i = 0, s; (s = slot(n, i)); ++i) measure(s, sfont(k, i, sm));
+    gm = GM_MEASURE; by0 = -f.asc; by1 = f.desc;
+    cons(n, 0, 0, sm);
+    d.w = cw; d.as = -by0; d.ds = by1;
+  }
+  --rd;
+}
+
+// ---------------------------------------------------------------- caret positions
+// emit() receives every position 0..len in increasing order; for the same position the
+// deepest claim wins (a slot edge beats the row boundary at the same index). The previous
+// position is kept pending and handed to deliver() once it is final.
+// Each position also records which 2D constructs it was emitted inside (ck: stack of
+// construct nodes being placed). A construct's own edges belong to the parent row. A
+// power's base line (edges included) is "weakly" inside the power: as a candidate it is
+// inside (down from the exponent reaches it), as the caret it is not (up from the main
+// line still returns -1). Structure positions inherit everything from the position they
+// alias.
+enum { MD_LOC, MD_LEFT, MD_RIGHT, MD_UP, MD_DOWN };
+static int md, tgt, pp, pd, pc, px, py, ph, lx, ly, lh, rs, rx, ry, rh, res, ckn, tkn, cp, bl, bk[5];
+static unsigned char ck[MAXC], tk[MAXC]; // constructs enclosing the current / target position
+// cp: length of the common prefix of ck and tk (target chain), maintained by push/pop
+// bl: stack depth while emitting the base line of the innermost power, else -1
+
+static void push(int n) {
+  if (ckn < MAXC) ck[ckn] = n;
+  if (cp == ckn && ckn < tkn && tk[ckn] == n) cp = ckn + 1;
+  ++ckn;
+}
+static void pop() { if (cp >= ckn) cp = ckn - 1; --ckn; }
+
+static void cand(int p, int x, int y, int h, int c) { // up/down candidate
+  int t = y, b = y + h, ct = ly, cb = ly + lh, q = mx(1, (M->small.asc + M->small.desc) / 2), key[5], i;
+  if (!c) return; // only positions inside the target's 2D constructs (top level: -1)
+  if (md == MD_UP) { t = -b; b = -y; ct = -cb; cb = -ly; } // mirror: up becomes down
+  // tier 0: entirely below (gap); tier 1: partially lower (center distance, doubled).
+  // Distances are quantized (half a small line) so that rows a pixel or two apart tie
+  // and the smallest |dx| decides.
+  if (t >= cb) { key[1] = 0; key[2] = (t - cb) / q; }
+  else if ((t >= ct && b > cb) || (t > ct && b >= cb)) { key[1] = 1; key[2] = (t + b - ct - cb) / (2 * q); }
+  else return;
+  key[0] = tkn - c; // innermost shared construct first
+  key[3] = x > lx ? x - lx : lx - x;
+  key[4] = p;
+  for (i = 0; i < 5 && key[i] == bk[i]; ++i) {}
+  if (bk[4] < 0 || (i < 5 && key[i] < bk[i]))
+    for (i = 0; i < 5; ++i) bk[i] = key[i];
+}
+
+static void deliver(int p, int x, int y, int h, int c) {
+  int same = x == lx && y == ly && h == lh;
+  if (md == MD_LOC) { if (p == tgt) { lx = x; ly = y; lh = h; } }
+  else if (md == MD_LEFT) {
+    if (p >= tgt) return;
+    if (x != rx || y != ry || h != rh) { rs = p; rx = x; ry = y; rh = h; } // run of equal locations
+    if (!same) res = rs;
+  } else if (md == MD_RIGHT) { if (p > tgt && res < 0 && !same) res = p; }
+  else if (p != tgt) cand(p, x, y, h, c);
+}
+
+static void emit(int p, int x, int y, int h, int d, int c) {
+  if (p == pp) { if (d < pd) return; }
+  else {
+    if (p < pp || (pp >= 0 && p != pp + 1)) MI_ERR();
+    if (p < pp) return;
+    if (pp >= 0) deliver(pp, px, py, ph, pc);
+  }
+  pp = p; px = x; py = y; ph = h; pd = d; pc = c;
+  if (p == tgt && md == MD_LOC) {
+    tkn = mn(ckn - (ckn == bl), MAXC); // on a power's base line: not inside that power
+    for (int i = 0; i < tkn; ++i) tk[i] = ck[i];
+  }
+}
+static void alias(int p, int e) { for (; p < e; ++p) emit(p, px, py, ph, pd, pc); } // structure
+static void P(int p, int x, int y, int sm, int d) {
+  const mi_font & f = fnt(sm);
+  emit(p, x, y - f.asc, f.asc + f.desc, d, cp);
+}
+
+// ---------------------------------------------------------------- place
+static int cs(int n) { // core start of node n: after its leading blanks
+  int i = T[n].a;
+  while (i < T[n].b && blank(ch(i))) ++i;
+  return i;
+}
+static int selA = -1, selB = -1, sx0, sy0, sx1, sy1; // mi_build: the selection and its box
+// Draws node n at (x, baseline y); emits positions (a,b] (a itself belongs to the caller,
+// a construct may re-claim it from a deeper slot). dp: slot depth.
+static void place(int n, int x, int y, int dp, int sm) {
+  const mi_node & d = T[n];
+  const mi_font & f = fnt(sm);
+  int k, c, h = f.adv / 2, p, xx = x;
+  ++rd;
+  k = kindof(n); c = corec(n, k);
+  if (k < K_EMPTY) { // leaf
+    for (p = d.a + 1; p <= c; ++p) { xx += h; P(p, xx, y, sm, dp); } // leading blanks
+    if (c < d.b) {
+      int gx = xx + (k == K_OP ? M->opgap : 0);
+      if (k == K_DOT) { if (!hidedot(n)) op(MI_DOT, sm, gx, y - f.asc / 4 - 1, h + 2, 2, c, 1, 0); }
+      else {
+        int st = style(n, k), sy = k == K_PI || k == K_INF || k == K_THETA;
+        const char * dn = sy ? 0 : dname(n);
+        op(MI_TEXT, sm, gx, y, sy ? lw(symlit(k), 1, sm) : dn ? dw(dn, sm) : tw(c, d.b - c, sm, st),
+           f.asc + f.desc, c, d.b - c, sy ? symlit(k) : dn, sy ? (int)MI_SYM : st);
+        for (p = c + 1; p < d.b; ++p) // inside a glyph or a built-in function's name (sin is one
+          if (k < K_PI && k != K_OP && !kfn(n) && gstart(p)) P(p, gx + tw(c, p - c, sm, st), y, sm, dp);
+          else alias(p, p + 1);         // unit: the arrows stepped into it, s0in(x) was typed; <= is one glyph)
+      }
+    }
+    P(d.b, x + d.w, y, sm, dp);
+  } else if (k == K_EMPTY) {
+    const char * s;
+    int l = (d.f & F_LABEL) && !sm ? label(n, &s) : 0;
+    if (l) { // a box down to the descent, the argument's name centered in it
+      const mi_font & g = fnt(1);
+      int top = y - f.asc + 2, bh = f.asc + f.desc - 3;
+      op(MI_BOX, sm, x + 1, top, d.w - 2, bh, d.a, 0, 0);
+      op(MI_HINT, 1, x + 4, top + (bh - g.asc - g.desc) / 2 + g.asc, d.w - 8, g.asc + g.desc, d.a, l, s, MI_IT);
+    } else if (!(d.f & F_NOBOX)) op(MI_BOX, sm, x + 1, y - f.asc + 2, f.adv - 2, f.asc - 2, d.a, 0, 0);
+  } else if (k <= K_CALL) { // row, visible group, call
+    int vis = k != K_ROW && !(d.f & F_HID), code = MI_LPAREN, last;
+    c = d.kid; p = d.a;
+    if (k == K_CALL) { place(c, x, y, dp, sm); xx += T[c].w; p = T[c].b; c = T[c].nx; }
+    if (vis) {
+      code += 2 * otype(ch(T[c].a - 1));
+      for (++p; p < T[c].a; ++p) { xx += h; P(p, xx, y, sm, dp); }
+      op(code, sm, xx, y - d.as, h + 1, d.as + d.ds, T[c].a - 1, 1, 0);
+      xx += h + 1;
+      P(T[c].a, xx, y, sm, dp);
+    }
+    for (last = c; c; c = T[c].nx) {
+      if (T[c].f & F_IMPL) ++xx;
+      place(c, xx, y, dp, sm);
+      xx += T[c].w; last = c;
+    }
+    if (vis && (d.f & F_CLOSED)) {
+      for (p = T[last].b + 1; p < d.b; ++p) { xx += h; P(p, xx, y, sm, dp); }
+      op(code + 1, sm, xx, y - d.as, h + 1, d.as + d.ds, d.b - 1, 1, 0);
+      P(d.b, xx + h + 1, y, sm, dp);
+    }
+  } else if (k == K_MAT) { // brackets as tall as the grid; the cells row by row (buffer order),
+    int cw[MAXMC], cy = y - d.as, obl = bl;   // centered in their column; commas and inner
+    mgeom(n, sm, cw, 0);                      // brackets are hidden structure
+    op(MI_LBRACKET, sm, x, y - d.as, h + 1, d.as + d.ds, d.a, 1, 0);
+    op(MI_RBRACKET, sm, x + d.w - h - 1, y - d.as, h + 1, d.as + d.ds, d.b - 1, 1, 0);
+    push(n);
+    bl = -1;
+    p = d.a;
+    for (int r = d.kid; r; r = T[r].nx) {
+      int by = cy + T[r].as, cx = x + h + 3, j = 0;
+      for (int c = T[r].kid; c && j < MAXMC; c = T[c].nx, ++j) {
+        int ex = cx + (cw[j] - T[c].w) / 2;
+        alias(p + 1, T[c].a);
+        P(T[c].a, ex, by, sm, dp + 1);
+        place(c, ex, by, dp + 1, sm);
+        p = T[c].b;
+        cx += cw[j] + f.adv;
+      }
+      cy += T[r].as + T[r].ds + 2 * GAP;
+    }
+    bl = obl;
+    alias(p + 1, d.b);
+    pop();
+    P(d.b, x + d.w, y, sm, dp);
+  } else { // 2D construct: decorations, [base], slots in buffer order, structure between
+    int obl = bl;
+    gm = GM_DECO; cons(n, x, y, sm);
+    push(n);
+    p = d.a;
+    if (k == K_POW) { // the base line, edges included, is weakly inside the power
+      bl = ckn;
+      P(p, x, y, sm, dp);
+      place(d.kid, x, y, dp, sm);
+      p = T[d.kid].b;
+    }
+    for (int i = 0, s; (s = slot(n, i)); ++i) {
+      gm = i; cons(n, x, y, sm);
+      int sx = gx, sy = gy, ss = gs;
+      alias(p + 1, T[s].a);
+      bl = -1;
+      P(T[s].a, sx, sy, ss, dp + 1);
+      place(s, sx, sy, dp + 1, ss);
+      p = T[s].b;
+    }
+    bl = k == K_POW ? ckn : obl;
+    alias(p + 1, d.b);
+    if (k != K_POW) pop();
+    P(d.b, x + d.w, y, sm, dp);
+    if (k == K_POW) pop();
+    bl = obl;
+  }
+  if (selA < selB) { // the box of the selection: the nodes inside it
+    int c0 = cs(n);
+    if (c0 >= selA && d.b <= selB && d.b > c0) {
+      int bx = x + (k < K_EMPTY ? (c0 - d.a) * h : 0);
+      sx0 = mn(sx0, bx); sx1 = mx(sx1, x + d.w); sy0 = mn(sy0, y - d.as); sy1 = mx(sy1, y + d.ds);
+    }
+  }
+  --rd;
+}
+
+// ---------------------------------------------------------------- API
+static int prep(const char * s, int len, const mi_metrics & m) {
+  S = s; L = s && len > 0 ? mn(len, 30000) : 0; M = &m;
+  int r = parse();
+  rd = 0;
+  if (r) measure(r, 0);
+  return r;
+}
+static void run(int r, int mode, int target) { // one place pass
+  md = mode; tgt = target; pp = -1; ckn = rd = cp = 0; bl = -1;
+  P(0, 0, 0, 0, 0);
+  if (r) place(r, 0, 0, 0, 0);
+  if (pp >= 0) deliver(pp, px, py, ph, pc);
+}
+static int clampc(int c) { return c < 0 ? 0 : c > L ? L : c; }
+
+void mi_build(const char * s, int len, int caret, const mi_metrics & m, mi_layout & out, int sa, int sb) {
+  int r = prep(s, len, m);
+  out.ops.clear();
+  out.ops.reserve(nops + 1);
+  OUT = &out; lx = ly = lh = 0;
+  selA = sa; selB = sb; sx0 = sy0 = 30000; sx1 = sy1 = -30000;
+  run(r, MD_LOC, caret < 0 ? -1 : clampc(caret));
+  OUT = 0;
+  out.sw = 0;
+  if (selA < selB && sx0 < sx1) { out.sx = sx0; out.sy = sy0; out.sw = sx1 - sx0; out.sh = sy1 - sy0; }
+  selA = selB = -1;
+  out.width = r ? T[r].w : 0;
+  out.asc = mx(m.big.asc, r ? T[r].as : 0);
+  out.desc = mx(m.big.desc, r ? T[r].ds : 0);
+  out.cx = lx; out.cy = ly; out.ch = lh;
+}
+
+// LEFT/RIGHT walk what is drawn: in the constructs whose slots are not drawn in buffer order
+// (bounds, index, variable left of the body), the arrows visit the slots in drawn order: right
+// from beside a construct enters its first drawn slot, out of a slot to the next drawn one, out
+// of the last one beside the construct; left the same, mirrored. vorder: the drawn order.
+static int vorder(int k, int * o) {
+  static const signed char t[][5] = {{K_DEFINT, 2, 3, 0, 1}, {K_SUM, 1, 2, 3, 0}, {K_LIM, 1, 2, 0, -1},
+                                     {K_DIFF, 1, 0, -1, -1}, {K_SURD, 1, 0, -1, -1}, {K_SER, 1, 2, 3, 0}};
+  for (unsigned i = 0; i < sizeof(t) / sizeof(t[0]); ++i)
+    if (t[i][0] == k) {
+      int n = 0;
+      while (n < 4 && t[i][n + 1] >= 0) { o[n] = t[i][n + 1]; ++n; }
+      return n;
+    }
+  return 0;
+}
+static int vmove(int c, int right) { // the caret's new position, -1: buffer order applies
+  int o[4], m, best = -1, bs = 0, bi = 0, n, i, s;
+  for (n = 1; n < nn; ++n) // in the text of such a construct (name, commas, parens): where it is drawn
+    if (vorder(T[n].k, o) && T[n].a < c && c < T[n].b && (best < 0 || T[n].b - T[n].a < bs)) {
+      for (i = 0; (s = slot(n, i)) && !(T[s].a <= c && c <= T[s].b); ++i) {}
+      if (!s) { best = n; bs = T[n].b - T[n].a; }
+    }
+  if (best >= 0) { // before its first slot: beside it; else the end of the slot before
+    int e = T[best].a;
+    for (i = 0; (s = slot(best, i)); ++i)
+      if (T[s].b < c) e = T[s].b;
+    c = e;
+    best = -1;
+  }
+  for (n = 1; n < nn; ++n) // beside a construct (the outermost one there): enter it (after it:
+    if (vorder(T[n].k, o) && (right ? T[n].a == c : T[n].b == c && (T[n].f & F_CLOSED)) // closed)
+        && (best < 0 || T[n].b - T[n].a > bs)) {
+      best = n; bs = T[n].b - T[n].a;
+    }
+  if (best >= 0) {
+    m = vorder(T[best].k, o);
+    s = slot(best, o[right ? 0 : m - 1]);
+    return s ? (right ? T[s].a : T[s].b) : -1;
+  }
+  for (n = 1; n < nn; ++n) // the innermost slot of such a construct around the caret (a power or a
+    if (vorder(T[n].k, o))  // fraction ending a body ends with it: the body's end leaves the body)
+      for (i = 0; (s = slot(n, i)); ++i)
+        if (T[s].a <= c && c <= T[s].b && (best < 0 || T[s].b - T[s].a < bs)) { best = n; bi = i; bs = T[s].b - T[s].a; }
+  if (best < 0) return -1;
+  m = vorder(T[best].k, o);
+  s = slot(best, bi);
+  if (c != (right ? T[s].b : T[s].a)) return -1; // inside the slot: as usual
+  for (i = 0; i < m && o[i] != bi; ++i) {}
+  i += right ? 1 : -1;
+  if (i < 0) return T[best].a;
+  if (i >= m) return T[best].b;
+  s = slot(best, o[i]);
+  return right ? T[s].a : T[s].b;
+}
+
+int mi_move(const char * s, int len, int caret, int dir, const mi_metrics & m) {
+  int r = prep(s, len, m), c = clampc(caret);
+  if (r && (dir == 0 || dir == 1)) {
+    int v = vmove(c, dir);
+    if (v >= 0) return v;
+  }
+  lx = ly = lh = tkn = 0;
+  run(r, MD_LOC, c); // location (and enclosing constructs) of the caret
+  if (dir < 0 || dir > 3) return c;
+  res = bk[4] = -1; rx = -30000;
+  run(r, MD_LEFT + dir, c);
+  if (dir < 2) return res < 0 ? c : res;
+  return bk[4];
+}
+
+int mi_backspace(const char * s, int len, int caret, int & from, int & to, const mi_metrics & m) {
+  int r = prep(s, len, m), c = clampc(caret), i = c - 1, n = r, k, nx, j, q, lv = 0;
+  from = to = c;
+  if (c <= 0 || !r) return c;
+  for (;;) { // innermost node owning char i
+    k = ++lv > RMAX ? (int)K_FLAT : (int)T[n].k; nx = 0; // same depth rule as measure/place
+    if (k < K_EMPTY) break;
+    if (k <= K_CALL) {
+      for (q = T[n].kid; q; q = T[q].nx)
+        if (T[q].a <= i && i < T[q].b) nx = q;
+    } else if (k == K_MAT || k == K_MROW) { // a row, a cell; a comma or a bracket: like LEFT
+      for (q = T[n].kid; q; q = T[q].nx)
+        if (T[q].a <= i && i < T[q].b) nx = q;
+      if (!nx) return mi_move(s, len, c, 0, m);
+    } else {
+      if (k == K_POW && i < T[T[n].kid].b) nx = T[n].kid;
+      for (j = 0; (q = slot(n, j)); ++j)
+        if (T[q].a <= i && i < T[q].b) nx = q;
+      if (!nx) { // hidden structure char of construct n
+        for (j = 0; (q = slot(n, j)); ++j) // the default variable x (k for sum) counts as empty
+          if (T[q].k != K_EMPTY && !(j == 1 && k >= K_INT && k <= K_LIM && T[q].k == K_TEXT &&
+                                       namei(q, k == K_SUM ? "k" : "x")))
+            return mi_move(s, len, c, 0, m); // a slot is not empty: act like LEFT
+        j = k == K_POW ? T[T[n].kid].b : T[n].a; // empty template: delete it whole
+        while (j < L && blank(ch(j))) ++j;
+        from = j; to = T[n].b;
+        return j;
+      }
+    }
+    if (!nx) break; // delimiter or blank of a visible group/call
+    n = nx;
+  }
+  // visible char: delete one glyph
+  from = i; to = c;
+  if (k == K_PI || k == K_INF || k == K_THETA || k == K_OP) { if (i >= T[n].c) { from = T[n].c; to = T[n].b; } } // (<= => as a whole)
+  else {
+    while (from > T[n].a && !gstart(from)) --from;
+    while (to < T[n].b && !gstart(to)) ++to;
+  }
+  return from;
+}
+
+// ---------------------------------------------------------------- selection
+// The expression tree as a list of nodes in preorder (siblings in buffer order): V[i] has the
+// core span [a,b) of a subexpression, its parent and its precedence level. A node with the span
+// of its parent is not added (the same text: one selection).
+static struct { short a, b, par; unsigned char lv; } V[MAXN];
+static int nv, ne;
+static short el[MAXN]; // the elements of the rows being split (a stack)
+
+static int vnew(int a, int b, int par, int lv) {
+  if (a >= b) return par; // empty: nothing to select
+  if (par >= 0 && V[par].a == a && V[par].b == b) { if (lv < V[par].lv) V[par].lv = (unsigned char)lv; return par; }
+  if (nv >= MAXN) return par;
+  V[nv].a = (short)a; V[nv].b = (short)b; V[nv].par = (short)par; V[nv].lv = (unsigned char)lv;
+  return nv++;
+}
+// precedence level of the row element e as an operator (0: an operand); first: e begins the
+// segment (an implicit product starts with its second factor)
+static int oplev(int e, int first) {
+  int k = T[e].k, c = T[e].c, c1 = c + 1 < L ? ch(c + 1) : 0;
+  if (k == K_SEP) return 1;
+  if (k == K_DOT) return 5;
+  if (k == K_OP) {
+    int c0 = ch(c);
+    if (c0 == ':' || ((c0 == '=' || c0 == '-') && c1 == '>')) return 2;
+    if (c0 == '+' || c0 == '-') return 4;
+    return 3;
+  }
+  if (k != K_OPU && (T[e].f & F_IMPL) && !first) return 5;
+  return 0;
+}
+static void vbuild(int n, int par);
+// the elements el[i,j) of a row, split at the operators of the lowest level >= lv
+static void vrow(int i, int j, int lv, int par) {
+  for (; lv <= 5; ++lv) {
+    int q = i;
+    while (q < j && oplev(el[q], q == i) != lv) ++q;
+    if (q < j) break;
+  }
+  if (lv <= 5) {
+    int v = vnew(cs(el[i]), T[el[j - 1]].b, par, lv), st = i;
+    for (int q = i; q <= j; ++q)
+      if (q == j || oplev(el[q], q == st) == lv) {
+        if (q > st) vrow(st, q, lv + 1, v);
+        st = q < j && T[el[q]].k != K_DOT && T[el[q]].k != K_OP && T[el[q]].k != K_SEP ? q : q + 1; // an implicit product: the factor begins the next segment
+      }
+    return;
+  }
+  if (j - i == 1) { vbuild(el[i], par); return; }
+  int v = vnew(cs(el[i]), T[el[j - 1]].b, par, 6); // a factor: prefix operators, operand, postfix operators
+  if (T[el[i]].k == K_OPU) vrow(i + 1, j, 6, v);
+  else vrow(i, j - 1, 6, v);
+}
+static void vbuild(int n, int par) {
+  int k = T[n].k, v, q, i;
+  switch (k) {
+  case K_TEXT: case K_PI: case K_INF: case K_THETA: case K_FLAT:
+    vnew(cs(n), T[n].b, par, 9);
+    break;
+  case K_EMPTY: case K_BLANK: case K_OP: case K_OPU: case K_SEP: case K_DOT:
+    break;
+  case K_ROW: {
+    int base = ne;
+    for (q = T[n].kid; q; q = T[q].nx)
+      if (T[q].k != K_BLANK && ne < MAXN) el[ne++] = (short)q;
+    if (ne > base) vrow(base, ne, 1, par);
+    ne = base;
+  } break;
+  case K_GROUP:
+    if (T[n].f & F_HID) vbuild(T[n].kid, par);
+    else { v = vnew(cs(n), T[n].b, par, 9); vbuild(T[n].kid, v); }
+    break;
+  case K_CALL:
+    v = vnew(cs(n), T[n].b, par, 9);
+    for (q = T[T[n].kid].nx; q; q = T[q].nx)
+      if (T[q].k != K_SEP) vbuild(q, v);
+    break;
+  case K_POW:
+    v = vnew(cs(n), T[n].b, par, 7);
+    vbuild(T[n].kid, v);
+    if ((q = slot(n, 0))) vbuild(q, v);
+    break;
+  case K_MAT: // its cells (an empty cell is not selectable)
+    v = vnew(cs(n), T[n].b, par, 9);
+    for (int row = T[n].kid; row; row = T[row].nx)
+      for (q = T[row].kid; q; q = T[q].nx) vbuild(q, v);
+    break;
+  default: // fraction, templates: their slots
+    v = vnew(cs(n), T[n].b, par, k == K_FRAC ? 5 : 9);
+    for (i = 0; (q = slot(n, i)); ++i) vbuild(q, v);
+  }
+}
+
+// in matrix t (K_MAT), the cell of the node V[v] (same core span), then the cell dr rows below
+// it, same column: its span [*ca,*cb); 0 if V[v] is not a cell or there is no such cell (the
+// rows and columns are computed from the parse tree: no per-node storage, the BSS stays small)
+static int mcellv(int t, int v, int dr, int * ca, int * cb) {
+  int r = 0, j, q, row, fr = -1, fc = -1;
+  for (row = T[t].kid; row && fr < 0; row = T[row].nx, ++r)
+    for (j = 0, q = T[row].kid; q; q = T[q].nx, ++j)
+      if (cs(q) == V[v].a && T[q].b == V[v].b) { fr = r; fc = j; break; }
+  if (fr < 0) return 0;
+  for (r = 0, row = T[t].kid; row; row = T[row].nx, ++r)
+    if (r == fr + dr)
+      for (j = 0, q = T[row].kid; q; q = T[q].nx, ++j)
+        if (j == fc) { *ca = cs(q); *cb = T[q].b; return *cb > *ca; }
+  return 0;
+}
+
+int mi_select(const char * s, int len, int * a, int * b, int dir, const mi_metrics & m, int * lv) {
+  int r = prep(s, len, m), cur = -1, nx, i;
+  nv = ne = 0;
+  if (r) vbuild(r, -1);
+  if (!nv) return 0;
+  if (dir != -1)
+    for (i = 0; i < nv; ++i)
+      if (V[i].a == *a && V[i].b == *b) { cur = i; break; }
+  if (cur < 0 && dir == -2) // the smallest node containing [*a,*b)
+    for (i = 0; i < nv; ++i)
+      if (V[i].a <= *a && *b <= V[i].b && (cur < 0 || V[i].b - V[i].a < V[cur].b - V[cur].a)) cur = i;
+  if (dir == -2 && cur >= 0) nx = cur;
+  else if (cur < 0) { // start at the caret: the smallest node ending at it or starting at it
+    int c = clampc(*a), bs = 0;   // (or around it); for the same size, the one ending at it
+    for (i = 0; i < nv; ++i) {
+      int sz = 2 * (V[i].b - V[i].a);
+      if (V[i].a < c && c <= V[i].b) --sz;
+      else if (!(V[i].a <= c && c < V[i].b)) continue;
+      if (cur < 0 || sz < bs) { cur = i; bs = sz; }
+    }
+    if (cur < 0) cur = 0;
+    nx = cur;
+  } else {
+    nx = cur;
+    if ((dir == 2 || dir == 3) && V[cur].par >= 0) { // a matrix cell: the cell above / below (the
+      int t = 0, ca, cb;                              // first row: up to the matrix; the last one:
+      for (i = 1; i < nn && !t; ++i)                  // down into the cell)
+        if (T[i].k == K_MAT && cs(i) == V[V[cur].par].a && T[i].b == V[V[cur].par].b) t = i;
+      if (t && mcellv(t, cur, dir == 2 ? -1 : 1, &ca, &cb))
+        for (i = V[cur].par + 1; i < nv; ++i)
+          if (V[i].par == V[cur].par && V[i].a == ca && V[i].b == cb) { nx = i; dir = -3; break; }
+    }
+    if (dir == 2) { if (V[cur].par >= 0) nx = V[cur].par; }
+    else if (dir == 3) { for (i = cur + 1; i < nv; ++i) if (V[i].par == cur) { nx = i; break; } }
+    else if (dir == 0) { for (i = cur - 1; i > V[cur].par; --i) if (V[i].par == V[cur].par) { nx = i; break; } }
+    else if (dir == 1) { for (i = cur + 1; i < nv; ++i) if (V[i].par == V[cur].par) { nx = i; break; } }
+  }
+  *a = V[nx].a; *b = V[nx].b;
+  if (lv) *lv = V[nx].lv;
+  return 1;
+}
+
+int mi_matrix_at(const char * s, int len, int caret, const mi_metrics & m, mi_matrix & out) {
+  int r = prep(s, len, m), best = 0, c = clampc(caret), n, k;
+  if (!r) return 0;
+  for (n = 1; n < nn; ++n) // the innermost matrix around the caret
+    if (T[n].k == K_MAT && T[n].a < c && c < T[n].b && (!best || T[n].b - T[n].a < T[best].b - T[best].a)) best = n;
+  if (!best) return 0;
+  out.a = T[best].a; out.b = T[best].b; out.nr = out.nc = 0; out.r = out.c = 0;
+  k = 0;
+  for (int row = T[best].kid; row; row = T[row].nx, ++out.nr) {
+    out.ra[out.nr] = (short)cs(row); out.rb[out.nr] = T[row].b;
+    int j = 0;
+    for (int q = T[row].kid; q; q = T[q].nx, ++j, ++k) {
+      out.ca[k] = (short)cs(q); out.cb[k] = T[q].b;
+      if (out.ca[k] <= c) { out.r = out.nr; out.c = j; } // the last cell starting at or before the caret
+    }
+    out.nc = j;
+  }
+  return 1;
+}
+
+static const mi_template tpl[MI_T_COUNT] = {
+  {"()/()", 1}, {"/()", 2}, {"^()", 2}, {"^2", 2}, {"sqrt()", 5}, {"surd(,)", 5}, {"abs()", 4},
+  {"integrate(,x)", 10}, {"integrate(,x,,)", 10}, {"diff(,x)", 5}, {"sum(,k,,)", 4},
+  {"limit(,x,)", 6}, {"e^()", 3}};
+
+const mi_template & mi_get_template(int kind) {
+  return tpl[kind >= 0 && kind < MI_T_COUNT ? kind : 0];
+}
+
+const mi_metrics mi_default_metrics = {{8, 14, 4}, {6, 9, 3}, 2, 0, 0, 0, 0, 0, 0};
