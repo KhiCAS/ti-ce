@@ -15,6 +15,10 @@ mode. Series templates default to polynomial output without a remainder term.
 **MODE → 2D history** to switch to compact text history. Copying and recalling
 an entry keeps its Giac source text; strings, programs and expressions that
 do not fit use text display.
+- Leaving a graph adds a monochrome thumbnail to 2D history. Recall or copy
+the entry to recover its plot command, or open it again to redisplay the graph.
+Saved sessions retain the command and a “Graphic object” placeholder rather
+than the thumbnail bitmap.
 - Improved interruption and low-memory handling, plus fixes for catalog
 completion, console menus and cursor placement, reciprocal printing, and
 graph redraw after cancelling a menu.

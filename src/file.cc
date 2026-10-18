@@ -190,8 +190,15 @@ void save_console_state_smem(const char * filename,bool xwaspy){
   int size=2*sizeof(int)+statesize+scriptsize;
   int start_row=0;//Last_Line-max_lines_saved; 
   if (start_row<0) start_row=0;
+  // a graph thumbnail is saved as "Graphic object" (on 1 row): the session file stays text
+  int tw,th;
   for (int i=start_row;i<=Last_Line;++i){
-    size += 2*sizeof(short)+2*sizeof(char)+strlen((const char *)Line[i].str);
+    if (i>start_row && Line[i].type==LINE_TYPE_CONT && mi_thumb_size((const char *)Line[i-1].str,&tw,&th)){
+      while (i<Last_Line && Line[i+1].type==LINE_TYPE_CONT)
+        ++i;
+      continue;
+    }
+    size += 2*sizeof(short)+2*sizeof(char)+(mi_thumb_size((const char *)Line[i].str,&tw,&th)?14:strlen((const char *)Line[i].str));
   }
   char savebuf[size+4];
   char * hFile=savebuf;
@@ -204,8 +211,15 @@ void save_console_state_smem(const char * filename,bool xwaspy){
   // save console state
   // save console state
   for (int i=start_row;i<=Last_Line;++i){
+    if (i>start_row && Line[i].type==LINE_TYPE_CONT && mi_thumb_size((const char *)Line[i-1].str,&tw,&th)){
+      while (i<Last_Line && Line[i+1].type==LINE_TYPE_CONT)
+        ++i;
+      continue;
+    }
     const line & cur=Line[i];
-    const unsigned short l=strlen((const char *)cur.str);
+    const bool thumb=mi_thumb_size((const char *)cur.str,&tw,&th);
+    const char * str=thumb?"Graphic object":(const char *)cur.str;
+    const unsigned short l=strlen(str);
     Bfile_WriteFile_OS2(hFile, l);
     const unsigned short s=cur.start_col;
     Bfile_WriteFile_OS2(hFile, s);
@@ -215,7 +229,7 @@ void save_console_state_smem(const char * filename,bool xwaspy){
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
     unsigned char buf[l+1];
     buf[l]=0;
-    strcpy((char *)buf,(const char*)cur.str); 
+    strcpy((char *)buf,str);
     unsigned char *ptr=buf,*strend=ptr+l;
     for (;ptr<strend;++ptr){
       if (*ptr==0x9c)

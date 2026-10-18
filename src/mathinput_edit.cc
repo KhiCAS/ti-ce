@@ -362,7 +362,8 @@ static const char * mie_history(){
   if (clip && clip[0])
     items[k++].text=(char *)clip;
   for (int i=0;i<nh;++i){
-    if (Line[i].type!=LINE_TYPE_CONT) // not the continuation rows of a line in 2D
+    int tw,th;
+    if (Line[i].type!=LINE_TYPE_CONT && !mi_thumb_size((const char *)Line[i].str,&tw,&th)) // not the rows of a line in 2D, nor graphs
       items[k++].text=Line[i].str?(char *)Line[i].str:(char *)"";
   }
   if (!k){

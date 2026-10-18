@@ -1524,10 +1524,30 @@ static void console_relayout(){
   Cursor.y=Last_Line-Start_Line;
 }
 
-// the text of history line s, malloc'ed; 0 if no memory
+// the result on the edit line becomes thumbnail th with the command cmd as its text (copy,
+// recall); "Graphic object" if it does not fit; console_newline2d makes it a history line
+void console_output_thumb(const char * cmd,const char * th){
+  Console_Output((const Char *)"Graphic object");
+  int lc=0;
+  for (;cmd[lc] && (unsigned char)cmd[lc]!=0xff;++lc)
+    ;
+  const int lt=th?strlen(th):0;
+  if (lt<9 || lc+lt>=EDIT_LINE_MAX || Line[Current_Line].readonly)
+    return;
+  char * e=(char *)Edit_Line;
+  memcpy(e,th,8);
+  memcpy(e+8,cmd,lc);
+  strcpy(e+8+lc,th+8);
+}
+
+// the text of history line s (a thumbnail: its command), malloc'ed; 0 if no memory
 char * console_line_text(const char * s){
-  const char * t=s;
-  const int l=strlen(s);
+  int l;
+  const char * t=mi_thumb_text(s,&l);
+  if (!t){
+    t=s;
+    l=strlen(s);
+  }
   char * r=(char *)malloc(l+1);
   if (r){
     memcpy(r,t,l);
@@ -2158,9 +2178,16 @@ int Console_GetKey(){
     }
     if (key==KEY_EQW_TEMPLATE2){ // shift+fraction: FlowCE's 2D editor (mathinput_edit.cc)
       const Char * src=Current_Line==Last_Line?Edit_Line:Line[Current_Line].str;
-      if (src && strlen((const char *)src)<GEN_PRINT_BUFSIZE){
+      int lt;
+      const char * th=src?mi_thumb_text((const char *)src,&lt):0; // a thumbnail: its command
+      if (src && (th?lt:strlen((const char *)src))<GEN_PRINT_BUFSIZE){
         char buf[GEN_PRINT_BUFSIZE];
-        strcpy(buf,(const char *)src);
+        if (th){
+          memcpy(buf,th,lt);
+          buf[lt]=0;
+        }
+        else
+          strcpy(buf,(const char *)src);
         if (mi_edit(buf,sizeof(buf))){
           // a line of the history: the result goes to the edit line
           for (int g=0;Current_Line<Last_Line && g<4000;++g)
@@ -2186,10 +2213,17 @@ int Console_GetKey(){
 #endif
     if ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT || key==KEY_EQW_TEMPLATE) && Current_Line<Last_Line){
       int l=Current_Line;
-      bool graph=strcmp((const char *)Line[l].str,"Graphic object")==0;
-      if (graph && l>0) l=console_head(l-1); // its input (and not a continuation row)
+      int lt;
+      const char * th=mi_thumb_text((const char *)Line[l].str,&lt); // a graph thumbnail: its command
+      bool graph=th || strncmp((const char *)Line[l].str,"Graphic object",14)==0;
+      if (graph && !th && l>0) l=console_head(l-1); // its input (and not a continuation row)
       char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str)+1)];
-      strcpy(buf,(const char *)Line[l].str);
+      if (th){
+        memcpy(buf,th,lt);
+        buf[lt]=0;
+      }
+      else
+        strcpy(buf,(const char *)Line[l].str);
 #ifdef WITH_EQW
       if ( (alph || key==KEY_CTRL_RIGHT) ?textedit(buf):mi_eqws(buf,graph /* eval */))
 #else
@@ -2590,7 +2624,7 @@ int Console_GetKey(){
     if (key == KEY_CTRL_EXE){
       if (Current_Line == Last_Line)
         return console_newline2d(LINE_TYPE_INPUT); // drawn in 2D in the history
-      char * t=console_line_text((const char *)Line[Current_Line].str);
+      char * t=console_line_text((const char *)Line[Current_Line].str); // a thumbnail: its command
       if (!t)
         continue;
       int x=editline_cursor;
@@ -3145,10 +3179,39 @@ void Print(const Char * s,int color,bool colorsyntax){
 
 void console_displine(int i,int redraw_mode){
   const int l=i+Start_Line;
+  int tw,th;
+  if (!console_in_block(l) && mi_thumb_size((const char *)Line[l].str,&tw,&th)){ // a graph as text
+    if ((redraw_mode & 1)==0 || i==Cursor.y)
+      drawRectangle(0,STATUS_AREA_PX+i*vfontsize,LCD_WIDTH_PX,vfontsize,_WHITE);
+    locate(COL_DISP_MAX-14+1,i+1);
+    if (l==Current_Line)
+      PrintRev((const Char *)"Graphic object");
+    else
+      Print((const Char *)"Graphic object",TEXT_COLOR_BLACK,false);
+    return;
+  }
   if (console_in_block(l)){ // a line drawn in 2D: drawn once, from its first visible row
     const int head=console_head(l);
     if (Line[head].type==LINE_TYPE_CONT || head!=l || (redraw_mode==0 && Current_Line!=head)){
-      // Orphan rows, rows drawn with their line, or an unchanged history block.
+      // orphan rows (their line scrolled out of the history), rows drawn with their line, or a
+      // minimal redraw (typing) that leaves the history as it is; the rows of a line whose first
+      // row is above the screen are left blank (not sliced), except a graph: its visible part
+      if (head<Start_Line && Line[head].type!=LINE_TYPE_CONT && mi_thumb_size((const char *)Line[head].str,&tw,&th)){
+        if (i==0){ // drawn once, from the first row of the screen
+          int k=1;
+          while (head+k<Last_Line && Line[head+k].type==LINE_TYPE_CONT)
+            ++k;
+          const int top=STATUS_AREA_PX+(head-Start_Line)*vfontsize,ymax=STATUS_AREA_PX+LINE_DISP_MAX*vfontsize;
+          int y1=top+k*vfontsize;
+          if (y1>ymax)
+            y1=ymax;
+          if (y1>STATUS_AREA_PX){
+            drawRectangle(0,STATUS_AREA_PX,LCD_WIDTH_PX,y1-STATUS_AREA_PX,_WHITE);
+            mi_hist_draw((const char *)Line[head].str,true,top,k*vfontsize,STATUS_AREA_PX,y1);
+          }
+        }
+        return;
+      }
       if (head<Start_Line && (redraw_mode & 1)==0)
         drawRectangle(0,STATUS_AREA_PX+i*vfontsize,LCD_WIDTH_PX,vfontsize,_WHITE);
       return;
@@ -3162,9 +3225,10 @@ void console_displine(int i,int redraw_mode){
     const bool output=Line[head].type==LINE_TYPE_OUTPUT;
     if (top+height>ymax || !mi_hist_draw((const char *)Line[head].str,output,top,height,top,y1)){
       // cut at the bottom of the screen, or too large: the text on the first row
-      int c=output?COL_DISP_MAX-Line[head].disp_len+1:1;
+      const bool thumb=mi_thumb_size((const char *)Line[head].str,&tw,&th);
+      int c=output?COL_DISP_MAX-(thumb?14:Line[head].disp_len)+1:1;
       locate(c<1?1:c,i+1);
-      Print(Line[head].str,TEXT_COLOR_BLACK,false);
+      Print(thumb?(const Char *)"Graphic object":Line[head].str,TEXT_COLOR_BLACK,false);
     }
     if (Current_Line==head){ // selected: a frame
       draw_line(0,top,LCD_WIDTH_PX-1,top,COLOR_BLUE);

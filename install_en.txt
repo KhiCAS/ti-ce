@@ -41,6 +41,7 @@ Press 2nd, X,T,theta,n on a TI-84 Plus CE, or the fraction template key on a TI-
 F5 (the rightmost key under the screen) evaluates the selection, or the whole expression in caret mode. ENTER accepts the edit. CLEAR undoes the last edit, then cancels when nothing remains to undo; 2nd, MODE (QUIT) discards edits immediately. 2nd, CLEAR empties the editor.
 F1/F2 and MATH provide templates for fractions, integrals, sums, limits and series. Matrices are shown as grids; comma adds a column and 2nd, ENTER adds a row. The line below the 2D display shows the Giac source text.
 Console history also displays expressions and results in 2D. Toggle MODE, "2D history" to use compact text instead. Copying and recalling an entry keeps its Giac source text; strings, programs and oversized expressions use text display.
+Leaving a graph adds a thumbnail to 2D history. Recall or copy it to recover the plot command, or open it to redisplay the graph. Saved sessions keep the command and a "Graphic object" placeholder, not the thumbnail bitmap.
 
 Interrupted calculations and low-memory handling have been improved. Recovery from memory exhaustion is best effort; save your session regularly.
 

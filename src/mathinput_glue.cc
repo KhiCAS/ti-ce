@@ -4,6 +4,7 @@
 #include "console.h"
 #include "main.h"
 #include "mathinput.h" // last: it maps std to ustl on the calculator
+#include <sys/lcd.h> // lcd_Ram: the screen, 8 bits per pixel (graph thumbnails)
 
 namespace xcas {
   void text_print(int fontsize,const char * s,int x,int y,int c,int bg,int mode); // kdisplay.cc
@@ -163,6 +164,147 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
   }
 }
 
+// ---------------------------------------------------------------- graph thumbnails
+// A graph in the history is a line: 0x80, the format 0x01 (1 bit per pixel), the width and the
+// height on 3 digits each ("160105"), the text to copy (the command) ended by 0xFF, then the
+// pixels (row by row, no 0 byte): 0x80..0xff: 7 pixels (bit 6 first, 1: black); 0x07..0x7f:
+// v-7 white pixels then a black one; 0x01..0x06: v*128 white pixels; the last white ones omitted.
+// The graph on the screen (screen rows MI_TH_Y0.. below the status area) is reduced 2x2.
+static const int MI_TH_W=160,MI_TH_H=105,MI_TH_Y0=30;
+// a pixel of the screen (rgb 3-3-2 palette) drawn black in a thumbnail: not white nor light grey
+static inline bool mi_th_dark(unsigned char c){
+  return (c&0x60)!=0x60 || (c&0x1c)<0x18 || (c&3)!=3;
+}
+// pixel p of the thumbnail dark; the row (y: screen row of row ry) moves with p, no division
+struct mi_th_scan {
+  const unsigned char * y;
+  int ry;
+};
+static bool mi_th_px(mi_th_scan & S,int p){
+  while (p>=S.ry+MI_TH_W){
+    S.ry+=MI_TH_W;
+    S.y+=2*LCD_WIDTH_PX;
+  }
+  while (p<S.ry){
+    S.ry-=MI_TH_W;
+    S.y-=2*LCD_WIDTH_PX;
+  }
+  const unsigned char * r=S.y+2*(p-S.ry);
+  return mi_th_dark(r[0]) || mi_th_dark(r[1]) || mi_th_dark(r[LCD_WIDTH_PX]) || mi_th_dark(r[LCD_WIDTH_PX+1]);
+}
+// size of the thumbnail s; false if s is not a thumbnail
+bool mi_thumb_size(const char * s,int * w,int * h){
+  const unsigned char * u=(const unsigned char *)s;
+  if (!u || u[0]!=0x80 || u[1]!=1)
+    return false;
+  for (int i=2;i<8;++i){
+    if (u[i]<'0' || u[i]>'9')
+      return false;
+  }
+  *w=(u[2]-'0')*100+(u[3]-'0')*10+(u[4]-'0');
+  *h=(u[5]-'0')*100+(u[6]-'0')*10+(u[7]-'0');
+  return *w>0 && *h>0;
+}
+// the text of the thumbnail s (its command): its start, its length in *len; 0 if not a thumbnail
+const char * mi_thumb_text(const char * s,int * len){
+  int w,h;
+  if (!mi_thumb_size(s,&w,&h))
+    return 0;
+  const char * t=s+8,* e=t;
+  while (*e && (unsigned char)*e!=0xff)
+    ++e;
+  *len=e-t;
+  return t;
+}
+// the graph on the screen as a thumbnail with no text (malloc'ed, 0 ended); 0 if no memory
+char * mi_thumb_capture(){
+  const int n=MI_TH_W*MI_TH_H;
+  unsigned char * o=(unsigned char *)malloc(n/7+14); // the worst case: 7 pixels per byte
+  if (!o)
+    return 0;
+  o[0]=0x80;
+  o[1]=1;
+  o[2]='0'+MI_TH_W/100; o[3]='0'+MI_TH_W/10%10; o[4]='0'+MI_TH_W%10;
+  o[5]='0'+MI_TH_H/100; o[6]='0'+MI_TH_H/10%10; o[7]='0'+MI_TH_H%10;
+  o[8]=0xff; // no text yet (console_output_thumb)
+  int k=9;
+  // pixel p dark: one of its 4 screen pixels
+  mi_th_scan scr={(const unsigned char *)lcd_Ram+MI_TH_Y0*LCD_WIDTH_PX,0};
+  for (int p=0;p<n;){
+    int w=0;
+    while (p+w<n && !mi_th_px(scr,p+w))
+      ++w;
+    if (p+w>=n) // the last white pixels
+      break;
+    if (w>=128){
+      const int c=w/128>6?6:w/128;
+      o[k++]=c;
+      p+=c*128;
+      continue;
+    }
+    if (w>=6 && w<=120){
+      o[k++]=7+w;
+      p+=w+1;
+      continue;
+    }
+    int v=0x80;
+    for (int j=0;j<7;++j){
+      if (p+j<n && mi_th_px(scr,p+j))
+        v|=0x40>>j;
+    }
+    o[k++]=v;
+    p+=7;
+  }
+  if (is_wchar(o[k-1])) // the console's length count steps over 2 bytes there: not past the end
+    o[k++]=0x80;
+  o[k]=0;
+  unsigned char * r=(unsigned char *)realloc(o,k+1); // the heap back
+  return (char *)(r?r:o);
+}
+// draws the thumbnail s with its top left corner at (x0,y0), its rows outside [ymin,ymax) not
+void mi_thumb_draw(const char * s,int x0,int y0,int ymin,int ymax){
+  int w,h,len;
+  if (!mi_thumb_size(s,&w,&h) || !mi_thumb_text(s,&len))
+    return;
+  const unsigned char * u=(const unsigned char *)s+8+len;
+  if (*u!=0xff)
+    return;
+  ++u;
+  // written in the screen memory (8 bits per pixel), the position followed without division
+  unsigned char * const scr=(unsigned char *)lcd_Ram;
+  const unsigned char ink=convertcolor(COLOR_BLACK);
+  int x=0,y=0; // the current pixel
+  for (;*u && y<h;++u){
+    int v=*u,k; // k: white pixels before a black one (-1: none)
+    if (v>=0x80){ // 7 pixels
+      for (int j=0;j<7;++j){
+        if (v&(0x40>>j)){
+          const int Y=y0+y,X=x0+x;
+          if (y<h && Y>=ymin && Y<ymax && X>=0 && X<LCD_WIDTH_PX)
+            scr[Y*LCD_WIDTH_PX+X]=ink;
+        }
+        if (++x==w){
+          x=0;
+          ++y;
+        }
+      }
+      continue;
+    }
+    k=v>=7?v-7:v*128;
+    for (x+=k;x>=w;x-=w)
+      ++y;
+    if (v>=7){ // the black pixel
+      const int Y=y0+y,X=x0+x;
+      if (y<h && Y>=ymin && Y<ymax && X>=0 && X<LCD_WIDTH_PX)
+        scr[Y*LCD_WIDTH_PX+X]=ink;
+      if (++x==w){
+        x=0;
+        ++y;
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- the console history in 2D
 // (console.cc): an input or a result of k rows is its line (the giac text, for copy, recall and
 // the saved session) followed by k-1 LINE_TYPE_CONT lines. Results: implicit products drawn as
@@ -178,6 +320,9 @@ static void mi_hist_metrics(mi_metrics & m,bool output){
 int mi_hist_rows(const char * s,bool output,int rowh,int maxrows){
   if (!s || !s[0] || !mi_hist2d)
     return 1;
+  int tw,th;
+  if (mi_thumb_size(s,&tw,&th)) // a graph thumbnail
+    return (th+rowh-1)/rowh<=maxrows?(th+rowh-1)/rowh:1;
   if (mi_python_mode())
     return 1;
   const int n=strlen(s);
@@ -203,6 +348,13 @@ int mi_hist_rows(const char * s,bool output,int rowh,int maxrows){
 // draws history line s in 2D in the block [top,top+height) (an input left-aligned, a result
 // right-aligned), nothing outside [ymin,ymax); false if it does not fit (drawn as text then)
 bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax){
+  int tw,th;
+  if (mi_thumb_size(s,&tw,&th)){
+    if (th>height || tw>LCD_WIDTH_PX)
+      return false;
+    mi_thumb_draw(s,LCD_WIDTH_PX-4-tw,top+(height-th)/2,ymin,ymax); // right-aligned as the results
+    return true;
+  }
   mi_metrics m;
   mi_hist_metrics(m,output);
   mi_layout L;

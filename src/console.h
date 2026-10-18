@@ -123,9 +123,15 @@ enum CONSOLE_LINE_TYPE{
 // a new history line from the edit line, of type type, followed by its continuation rows when it
 // is drawn in 2D (inputs, results); Console_NewLine's return value
 int console_newline2d(int type);
-// the history in 2D or as text (Config menu; mathinput_glue.cc)
+// the history in 2D or as text (Config menu); graph thumbnails in the history (mathinput_glue.cc)
 extern bool mi_hist2d;
-// the text of history line s in a malloc'ed string
+bool mi_thumb_size(const char * s,int * w,int * h);
+const char * mi_thumb_text(const char * s,int * len);
+char * mi_thumb_capture();
+void mi_thumb_draw(const char * s,int x0,int y0,int ymin,int ymax);
+// the result line becomes thumbnail th (mi_thumb_capture) with the command cmd as its text
+void console_output_thumb(const char * cmd,const char * th);
+// the text of history line s (a thumbnail: its command) in a malloc'ed string
 char * console_line_text(const char * s);
 
 enum CONSOLE_CASE{

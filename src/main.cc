@@ -1030,14 +1030,22 @@ void do_run(const char * s){
     g=equaltosto(g,contextptr);
     g=add_autosimplify(g,contextptr);
     do_eval(g);
+    char * thumb=0;
 #ifdef WITH_EQW
     giac::gen gs;
     int do_logo_graph_eqw=7;
+#ifdef WITH_PLOT
+    if (xcas::ispnt(g))
+      xcas::displaygraph(g,&thumb); // and its thumbnail for the history
+    else
+#endif
     xcas::check_do_graph(g,gs,do_logo_graph_eqw,contextptr);
 #endif
 #ifdef WITH_PLOT
-    if (xcas::ispnt(g))
-      Console_Output("Graphic object");
+    if (xcas::ispnt(g)){
+      console_output_thumb(s,thumb); // "Graphic object" if no thumbnail
+      free(thumb);
+    }
     else
 #endif
     if (taille(g,256)>=256)

@@ -26,7 +26,7 @@ bool mi_eval_text(const char * s,char * res,int cap){
 
 namespace xcas {
   bool ispnt(const giac::gen & g); // kdisplay.cc
-  void displaygraph(const giac::gen & ge);
+  void displaygraph(const giac::gen & ge,char ** thumb);
 }
 bool mi_edit(char * s,int cap,bool sel=false); // mathinput_edit.cc
 bool textedit(char * s); // main.cc
@@ -49,7 +49,7 @@ bool mi_eqws(char * s,bool eval){
     ge=giac::eval(ge,1,contextptr);
 #ifdef WITH_PLOT
     if (xcas::ispnt(ge)){
-      xcas::displaygraph(ge);
+      xcas::displaygraph(ge,0);
       return false;
     }
 #endif
