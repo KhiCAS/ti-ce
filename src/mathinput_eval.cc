@@ -82,3 +82,8 @@ bool mi_eqw_matrix(giac::gen & ge,bool sel){
   free(buf);
   return ok;
 }
+
+// the console is in Python mode: its lines are not drawn in 2D (mathinput_glue.cc)
+bool mi_python_mode(){
+  return giac::python_compat(contextptr)!=0;
+}

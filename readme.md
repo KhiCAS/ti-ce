@@ -11,6 +11,10 @@ integrals, sums, limits and series templates. The editor uses the FlowCE
 layout and structural editing code adapted by Bernard Parisse.
 - F5 evaluates the selected subexpression, or the whole expression in caret
 mode. Series templates default to polynomial output without a remainder term.
+- Console history displays expressions and results in 2D by default. Use
+**MODE → 2D history** to switch to compact text history. Copying and recalling
+an entry keeps its Giac source text; strings, programs and expressions that
+do not fit use text display.
 - Improved interruption and low-memory handling, plus fixes for catalog
 completion, console menus and cursor placement, reciprocal printing, and
 graph redraw after cancelling a menu.

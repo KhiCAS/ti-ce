@@ -64,13 +64,16 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
           drawRectangle(x+(o.small?1:1),top,s2,y-top,MI_INK);
           drawRectangle(x+a-1-s2-(o.small?0:1),top,s2,y-top,MI_INK);
         }
-        else { // infinity: two loops side by side
-          const int m=y-(o.small?3:4),r=o.small?1:2,h2=a/2;
-          for (int lp=0;lp<2;++lp){
-            const int xl=x+lp*h2;
-            draw_line(xl,m-r,xl+h2-1,m-r,MI_INK);
-            draw_line(xl,m+r,xl+h2-1,m+r,MI_INK);
-            draw_line(xl+(lp?h2-1:0),m-r,xl+(lp?h2-1:0),m+r,MI_INK);
+        else { // infinity: two loops crossing in the middle (7x5, small: 5x3), on the math axis
+          static const char * const big[5]={".#...#.","#.#.#.#","#..#..#","#.#.#.#",".#...#."};
+          static const char * const sml[3]={"##.##","#.#.#","##.##"};
+          const char * const * pat=o.small?sml:big;
+          const int nr=o.small?3:5,m=y-(o.small?3:4);
+          for (int r=0;r<nr;++r){
+            for (int c=0;pat[r][c];++c){
+              if (pat[r][c]=='#')
+                drawRectangle(x+c,m-nr/2+r,1,1,MI_INK);
+            }
           }
         }
         break;
@@ -158,4 +161,55 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
     if (cx>=x0 && cx+2<=x1 && cy>=y0 && cy+L.ch<=y1)
       drawRectangle(cx,cy,2,L.ch,MI_INK);
   }
+}
+
+// ---------------------------------------------------------------- the console history in 2D
+// (console.cc): an input or a result of k rows is its line (the giac text, for copy, recall and
+// the saved session) followed by k-1 LINE_TYPE_CONT lines. Results: implicit products drawn as
+// such (2*x: 2x), the user's groups around a numerator or a denominator not drawn.
+bool mi_python_mode(); // mathinput_eval.cc
+bool mi_hist2d=true; // the history drawn in 2D (Config menu, console.cc); 1D: more lines visible
+static void mi_hist_metrics(mi_metrics & m,bool output){
+  m=mi_device_metrics;
+  if (output)
+    m.flags|=MI_F_IMPLDOT|MI_F_TIDY;
+}
+// rows of rowh pixels that history line s takes in 2D, at most maxrows; 1: drawn as text
+int mi_hist_rows(const char * s,bool output,int rowh,int maxrows){
+  if (!s || !s[0] || !mi_hist2d)
+    return 1;
+  if (mi_python_mode())
+    return 1;
+  const int n=strlen(s);
+  if (n>512)
+    return 1;
+  for (int i=0;i<n;++i){
+    if (s[i]=='\n' || s[i]=='"' || s[i]==1) // programs, strings: as text
+      return 1;
+  }
+  mi_metrics m;
+  mi_hist_metrics(m,output);
+  mi_layout L;
+  mi_build(s,n,-1,m,L);
+  if (L.width>LCD_WIDTH_PX-6)
+    return 1; // too wide: the text, scrolled with the arrows
+  int k=(L.asc+L.desc+1+rowh-1)/rowh; // 1 px margin: a plain line takes one row
+  if (k<1)
+    k=1;
+  if (k>maxrows)
+    k=1;
+  return k;
+}
+// draws history line s in 2D in the block [top,top+height) (an input left-aligned, a result
+// right-aligned), nothing outside [ymin,ymax); false if it does not fit (drawn as text then)
+bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax){
+  mi_metrics m;
+  mi_hist_metrics(m,output);
+  mi_layout L;
+  mi_build(s,strlen(s),-1,m,L);
+  if (L.asc+L.desc+1>height || L.width>LCD_WIDTH_PX-4)
+    return false;
+  const int bx=output?LCD_WIDTH_PX-4-L.width:2,by=top+(height-(L.asc+L.desc))/2+L.asc;
+  mi_draw(L,s,bx,by,0,ymin,LCD_WIDTH_PX,ymax,false,-1);
+  return true;
 }

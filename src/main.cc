@@ -1056,7 +1056,7 @@ void do_run(const char * s){
         // dbg_printf("create Y2 res=%i\n",res);
       }
     }
-    Console_NewLine(LINE_TYPE_OUTPUT,1);
+    console_newline2d(LINE_TYPE_OUTPUT); // drawn in 2D in the history (console.cc)
   }
   else {
     execution_in_progress_py = 1;

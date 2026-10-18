@@ -796,7 +796,7 @@ int run_session(int start=0){
   for (int i=0;i<v.size();++i){
     Console_Output((const Char *)v[i].c_str());
     //int j=Last_Line;
-    Console_NewLine(LINE_TYPE_INPUT, 1);
+    console_newline2d(LINE_TYPE_INPUT);
     Console_Disp(1);
     sync_screen();
     // Line[j].type=LINE_TYPE_INPUT;
@@ -825,13 +825,14 @@ int run_session(int start=0){
   return 0;
 }
 
+static void console_relayout();
 void menu_setup(){
   //drawRectangle(0, 18, LCD_WIDTH_PX, LCD_HEIGHT_PX-18, SDK_WHITE);
   Menu smallmenu;
-  smallmenu.numitems=5;
+  smallmenu.numitems=6;
   MenuItem smallmenuitems[smallmenu.numitems];
   smallmenu.items=smallmenuitems;
-  smallmenu.height=5;
+  smallmenu.height=6;
   smallmenu.width=20;
   smallmenu.startY=3;
   smallmenu.scrollbar=1;
@@ -840,9 +841,12 @@ void menu_setup(){
   //smallmenuitems[0].type = MENUITEM_CHECKBOX;
   smallmenuitems[0].text = (char*)(lang?"Mise a l'heure":"Set time");
   smallmenuitems[1].text = (char*)(lang?"Effacer variables":"Clear variables");
-  smallmenuitems[2].text = (char *) (lang?"Raccourcis":"Shortcuts");
-  smallmenuitems[3].text = (char*) (lang?"A propos":"About");
-  smallmenuitems[4].text = (char*) "Quit";
+  smallmenuitems[2].text = (char*)(lang?"Historique 2D":"2D history");
+  smallmenuitems[2].type = MENUITEM_CHECKBOX;
+  smallmenuitems[2].value = mi_hist2d;
+  smallmenuitems[3].text = (char *) (lang?"Raccourcis":"Shortcuts");
+  smallmenuitems[4].text = (char*) (lang?"A propos":"About");
+  smallmenuitems[5].text = (char*) "Quit";
   while(1) {
     const int sres = doMenu(&smallmenu);
     if (sres==MENU_RETURN_EXIT)
@@ -864,14 +868,20 @@ void menu_setup(){
         run("restart");
         //break;
       }
-      if (smallmenu.selection==5)
+      if (smallmenu.selection==3){ // the history in 2D or as text (more lines visible)
+        mi_hist2d=!mi_hist2d;
+        smallmenuitems[2].value=mi_hist2d;
+        console_relayout();
+        continue;
+      }
+      if (smallmenu.selection==6)
 	break;
-      if (smallmenu.selection>=3) {
+      if (smallmenu.selection>=4) {
 	textArea text;
 	text.editable=false;
 	text.clipline=-1;
 	text.title = smallmenuitems[smallmenu.selection-1].text;
-	add(&text,smallmenu.selection==3?shortcuts_string:apropos_string);
+	add(&text,smallmenu.selection==4?shortcuts_string:apropos_string);
         text.minimini=false;
 	doTextArea(&text);
 	continue;
@@ -1413,6 +1423,119 @@ int Console_NewLine(int pre_line_type, int pre_line_readonly)
     }
 }
 
+// ---------------------------------------------------------------- history lines in 2D
+// An input or a result drawn in 2D on k rows is its line (the giac text: copy, recall, saved
+// session) followed by k-1 LINE_TYPE_CONT lines (text "\x01"): the history keeps counting rows,
+// the cursor steps over the continuation rows (a 2D line is one entry). As in FlowCE.
+int mi_hist_rows(const char * s,bool output,int rowh,int maxrows); // mathinput_glue.cc
+bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax);
+
+int console_newline2d(int type){
+  const int rows=mi_hist_rows((const char *)Edit_Line,type==LINE_TYPE_OUTPUT,15,LINE_DISP_MAX-2);
+  const int r=Console_NewLine(type,1);
+  for (int k=1;k<rows && r==CONSOLE_NEW_LINE_SET;++k){
+    Console_Output((const Char *)"\x01");
+    Console_NewLine(LINE_TYPE_CONT,1);
+  }
+  return r;
+}
+// the first line of the 2D line that line l belongs to
+static int console_head(int l){
+  while (l>0 && Line[l].type==LINE_TYPE_CONT)
+    --l;
+  return l;
+}
+// the line after the 2D line that starts at l (its continuation rows skipped)
+static int console_next(int l){
+  ++l;
+  while (l<Last_Line && Line[l].type==LINE_TYPE_CONT)
+    ++l;
+  return l;
+}
+// line l is part of a line drawn in 2D: its first line or a continuation row
+static bool console_in_block(int l){
+  if (l<0 || l>=Last_Line)
+    return false;
+  return Line[l].type==LINE_TYPE_CONT || Line[l+1].type==LINE_TYPE_CONT;
+}
+// removes history line i (not the edit line): no clipboard, no cursor change
+static void console_remove_line(int i){
+  if (Line[i].str)
+    free(Line[i].str);
+  for (;i<Last_Line;++i)
+    Line[i]=Line[i+1];
+  Line[i].readonly=0;
+  Line[i].type=LINE_TYPE_INPUT;
+  Line[i].start_col=0;
+  Line[i].disp_len=0;
+  Line[i].str=nullptr;
+  --Last_Line;
+}
+// a continuation row inserted at index i (the lines below, edit line included, move down)
+static bool console_insert_cont(int i){
+  if (Last_Line>=LINE_MAX-1)
+    return false;
+  Char * s=(Char *)malloc(2);
+  if (!s)
+    return false;
+  for (int j=Last_Line+1;j>i;--j)
+    Line[j]=Line[j-1];
+  s[0]=1;
+  s[1]=0;
+  Line[i].str=s;
+  Line[i].type=LINE_TYPE_CONT;
+  Line[i].readonly=1;
+  Line[i].start_col=0;
+  Line[i].disp_len=1;
+  ++Last_Line;
+  return true;
+}
+// history line l gets the text text, with as many continuation rows as it needs; false if it can't
+static bool console_replace_line(int l,const char * text){
+  int cur=0;
+  while (l+1+cur<Last_Line && Line[l+1+cur].type==LINE_TYPE_CONT)
+    ++cur;
+  const int rows=mi_hist_rows(text,Line[l].type==LINE_TYPE_OUTPUT,15,LINE_DISP_MAX-2);
+  if (Last_Line+(rows-1-cur)>=LINE_MAX-1)
+    return false;
+  Char * s=(Char *)malloc(strlen(text)+1);
+  if (!s)
+    return false;
+  strcpy((char *)s,text);
+  free(Line[l].str);
+  Line[l].str=s;
+  Line[l].disp_len=Console_GetDispLen(s);
+  for (;cur>rows-1;--cur)
+    console_remove_line(l+1);
+  for (;cur<rows-1;++cur)
+    console_insert_cont(l+1);
+  console_changed=1;
+  return true;
+}
+
+// the history laid out again (2D or text, mi_hist2d): the continuation rows of each line
+// recomputed, the edit line at the bottom of the screen
+static void console_relayout(){
+  while (Last_Line>0 && Line[0].type==LINE_TYPE_CONT) // rows whose line left the history
+    console_remove_line(0);
+  for (int l=0;l<Last_Line;l=console_next(l))
+    console_replace_line(l,(const char *)Line[l].str);
+  Start_Line=Last_Line>LINE_DISP_MAX-1?Last_Line-(LINE_DISP_MAX-1):0;
+  Cursor.y=Last_Line-Start_Line;
+}
+
+// the text of history line s, malloc'ed; 0 if no memory
+char * console_line_text(const char * s){
+  const char * t=s;
+  const int l=strlen(s);
+  char * r=(char *)malloc(l+1);
+  if (r){
+    memcpy(r,t,l);
+    r[l]=0;
+  }
+  return r;
+}
+
 void Console_Insert_Line(){
   if (Last_Line>=LINE_MAX-1)
     return;
@@ -1439,10 +1562,15 @@ int Console_Backspace()
   console_changed=1;
   if (Last_Line>0 && Current_Line<Last_Line){
     int i=Current_Line;
+    while (i+1<Last_Line && Line[i+1].type==LINE_TYPE_CONT) // a 2D line goes as a whole
+      console_remove_line(i+1);
     if (Edit_Line==Line[i].str)
       Edit_Line=Line[i+1].str;
     if (Line[i].str){
-      copy_clipboard((const char *)Line[i].str);
+      if (char * t=console_line_text((const char *)Line[i].str)){
+        copy_clipboard(t);
+        free(t);
+      }
       free(Line[i].str);
     }
     for (;i<Last_Line;++i){
@@ -2059,7 +2187,7 @@ int Console_GetKey(){
     if ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT || key==KEY_EQW_TEMPLATE) && Current_Line<Last_Line){
       int l=Current_Line;
       bool graph=strcmp((const char *)Line[l].str,"Graphic object")==0;
-      if (graph && l>0) --l;
+      if (graph && l>0) l=console_head(l-1); // its input (and not a continuation row)
       char buf[std::max<size_t>(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str)+1)];
       strcpy(buf,(const char *)Line[l].str);
 #ifdef WITH_EQW
@@ -2074,14 +2202,10 @@ int Console_GetKey(){
 	}
 	else {
 #if 1
-	  if (Line[l].type==LINE_TYPE_INPUT && l<Last_Line-1 && Line[l+1].type==LINE_TYPE_OUTPUT)
+	  if (Line[l].type==LINE_TYPE_INPUT && console_next(l)<Last_Line && Line[console_next(l)].type==LINE_TYPE_OUTPUT)
 	    return Console_Eval(buf);
-	  else {
-	    free(Line[l].str);
-	    Line[l].str=(Char*)malloc(strlen(buf)+1);
-	    Line[l].disp_len = Console_GetDispLen(Line[l].str);
-	    strcpy((char *)Line[l].str,buf);
-	  }
+	  else
+	    console_replace_line(l,buf); // with the rows it needs in 2D
 #else
 	  int x=editline_cursor;
  	  move_line = Last_Line - Current_Line;
@@ -2369,7 +2493,9 @@ int Console_GetKey(){
       // redraw current line without selection console_displine();
       if (Console_MoveCursor(alph?CURSOR_ALPHA_UP:CURSOR_UP)==CONSOLE_MEM_ERR)
         return CONSOLE_MEM_ERR;
-      if (Start_Line!=prevstart){
+      while (Current_Line>0 && Line[Current_Line].type==LINE_TYPE_CONT) // a 2D line is one entry
+        Console_MoveCursor(CURSOR_UP);
+      if (Start_Line!=prevstart || console_in_block(prevstart+prevcursor) || console_in_block(Current_Line)){
         Console_Disp(1); // improve: scroll area and redraw line?
       }
       else {
@@ -2391,7 +2517,9 @@ int Console_GetKey(){
       int prevcursor=Cursor.y,prevstart=Start_Line;
       if (Console_MoveCursor(alph?CURSOR_ALPHA_DOWN:CURSOR_DOWN)==CONSOLE_MEM_ERR)
         return CONSOLE_MEM_ERR;
-      if (Start_Line!=prevstart){
+      while (Current_Line<Last_Line && Line[Current_Line].type==LINE_TYPE_CONT)
+        Console_MoveCursor(CURSOR_DOWN);
+      if (Start_Line!=prevstart || console_in_block(prevstart+prevcursor) || console_in_block(Current_Line)){
         Console_Disp(1); // improve: scroll area and redraw line?
       }
       else {
@@ -2461,16 +2589,19 @@ int Console_GetKey(){
 
     if (key == KEY_CTRL_EXE){
       if (Current_Line == Last_Line)
-        return Console_NewLine(LINE_TYPE_INPUT, 1);
-      tmp = Line[Current_Line].str;
-
+        return console_newline2d(LINE_TYPE_INPUT); // drawn in 2D in the history
+      char * t=console_line_text((const char *)Line[Current_Line].str);
+      if (!t)
+        continue;
       int x=editline_cursor;
       move_line = Last_Line - Current_Line;
       for (int i = 0; i <= move_line; i++) Console_MoveCursor(CURSOR_DOWN);
       Cursor.x=x;
       if (Cursor.x>COL_DISP_MAX)
         Line[Last_Line].start_col=Cursor.x-COL_DISP_MAX;
-      return Console_Input(tmp);
+      const int r=Console_Input((const Char *)t);
+      free(t);
+      return r;
     }
 
     if (key == KEY_CTRL_DEL){
@@ -2483,7 +2614,10 @@ int Console_GetKey(){
       return 0;
     }
     if (key == KEY_CTRL_CLIP){
-      copy_clipboard((const char *)Line[Current_Line].str);
+      if (char * t=console_line_text((const char *)Line[Current_Line].str)){
+        copy_clipboard(t);
+        free(t);
+      }
     }
     if (const char * ptr=keytostring(key,keyflag,false)){
       if (ptr){
@@ -3010,6 +3144,36 @@ void Print(const Char * s,int color,bool colorsyntax){
 
 
 void console_displine(int i,int redraw_mode){
+  const int l=i+Start_Line;
+  if (console_in_block(l)){ // a line drawn in 2D: drawn once, from its first visible row
+    const int head=console_head(l);
+    if (Line[head].type==LINE_TYPE_CONT || head!=l || (redraw_mode==0 && Current_Line!=head)){
+      // Orphan rows, rows drawn with their line, or an unchanged history block.
+      if (head<Start_Line && (redraw_mode & 1)==0)
+        drawRectangle(0,STATUS_AREA_PX+i*vfontsize,LCD_WIDTH_PX,vfontsize,_WHITE);
+      return;
+    }
+    int k=1;
+    while (head+k<Last_Line && Line[head+k].type==LINE_TYPE_CONT)
+      ++k;
+    const int top=STATUS_AREA_PX+i*vfontsize,height=k*vfontsize,ymax=STATUS_AREA_PX+LINE_DISP_MAX*vfontsize;
+    const int y1=top+height<ymax?top+height:ymax;
+    drawRectangle(0,top,LCD_WIDTH_PX,y1-top,_WHITE);
+    const bool output=Line[head].type==LINE_TYPE_OUTPUT;
+    if (top+height>ymax || !mi_hist_draw((const char *)Line[head].str,output,top,height,top,y1)){
+      // cut at the bottom of the screen, or too large: the text on the first row
+      int c=output?COL_DISP_MAX-Line[head].disp_len+1:1;
+      locate(c<1?1:c,i+1);
+      Print(Line[head].str,TEXT_COLOR_BLACK,false);
+    }
+    if (Current_Line==head){ // selected: a frame
+      draw_line(0,top,LCD_WIDTH_PX-1,top,COLOR_BLUE);
+      draw_line(0,y1-1,LCD_WIDTH_PX-1,y1-1,COLOR_BLUE);
+      draw_line(0,top,0,y1-1,COLOR_BLUE);
+      draw_line(LCD_WIDTH_PX-1,top,LCD_WIDTH_PX-1,y1-1,COLOR_BLUE);
+    }
+    return;
+  }
   int print_y=i*vfontsize;
   //dbg_printf("ConsoleDisp loop i=%i\n",i);
   const line & curline=Line[i+Start_Line];
@@ -3231,12 +3395,13 @@ const Char *Console_GetLine()
   do
     {
       return_val = Console_GetKey();
-      Console_Disp(1);
+      if (return_val!=CONSOLE_NEW_LINE_SET) // an input: the history is drawn once it is evaluated
+        Console_Disp(1);
       if (return_val == CONSOLE_MEM_ERR) return nullptr;
       if (return_val == -2) return "kill";
     } while (return_val != CONSOLE_NEW_LINE_SET);
 
-  return Line[Current_Line - 1].str;
+  return Line[console_head(Current_Line - 1)].str; // the input, not its continuation rows
 }
 
 /*

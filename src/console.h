@@ -117,8 +117,16 @@ enum CONSOLE_CURSOR_DIRECTION{
 
 enum CONSOLE_LINE_TYPE{
   LINE_TYPE_INPUT=0,
-  LINE_TYPE_OUTPUT=1
+  LINE_TYPE_OUTPUT=1,
+  LINE_TYPE_CONT=2 // continuation row of a line drawn in 2D (console_displine), its text "\x01"
 };
+// a new history line from the edit line, of type type, followed by its continuation rows when it
+// is drawn in 2D (inputs, results); Console_NewLine's return value
+int console_newline2d(int type);
+// the history in 2D or as text (Config menu; mathinput_glue.cc)
+extern bool mi_hist2d;
+// the text of history line s in a malloc'ed string
+char * console_line_text(const char * s);
 
 enum CONSOLE_CASE{
   LOWER_CASE,

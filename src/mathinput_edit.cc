@@ -361,19 +361,25 @@ static const char * mie_history(){
   int k=0;
   if (clip && clip[0])
     items[k++].text=(char *)clip;
-  for (int i=0;i<nh;++i)
-    items[k++].text=Line[i].str?(char *)Line[i].str:(char *)"";
+  for (int i=0;i<nh;++i){
+    if (Line[i].type!=LINE_TYPE_CONT) // not the continuation rows of a line in 2D
+      items[k++].text=Line[i].str?(char *)Line[i].str:(char *)"";
+  }
+  if (!k){
+    delete [] items;
+    return 0;
+  }
   Menu menu;
   menu.items=items;
-  menu.numitems=n;
+  menu.numitems=k;
   menu.height=12;
   menu.scrollbar=1;
   menu.scrollout=1;
   menu.title=(char *)(lang?"Historique":"History");
-  menu.selection=n;
-  menu.scroll=n>12?n-12:0;
+  menu.selection=k;
+  menu.scroll=k>12?k-12:0;
   const char * res=0;
-  if (doMenu(&menu)==MENU_RETURN_SELECTION && menu.selection>=1 && menu.selection<=n)
+  if (doMenu(&menu)==MENU_RETURN_SELECTION && menu.selection>=1 && menu.selection<=k)
     res=items[menu.selection-1].text;
   delete [] items;
   return res;
