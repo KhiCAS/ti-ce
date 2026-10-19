@@ -38,6 +38,7 @@ Appuyez sur la touche fraction pour ouvrir l'expression courante, sélectionnée
 F5 (la touche la plus à droite sous l'écran) évalue la sélection, ou toute l'expression en mode curseur. ENTER valide la modification. Annul annule la dernière modification, puis quitte lorsqu'il n'y a plus rien à annuler ; 2nde, MODE (quitter) abandonne immédiatement les modifications. 2nde, annul vide l'éditeur.
 F1/F2 et MATH proposent des modèles de fractions, intégrales, sommes, limites et séries. Les matrices sont affichées en grille ; la virgule ajoute une colonne et 2nde, ENTER une ligne. La ligne sous l'affichage 2D montre le texte Giac correspondant.
 L'historique affiche aussi les expressions et les résultats en 2D. MODE, « Historique 2D » permet de revenir au texte compact. La copie et le rappel conservent le texte Giac ; les chaînes, programmes et expressions trop grandes restent affichés en texte.
+Les résultats qui tiennent dans l'historique 2D y sont affichés directement, sans passage obligatoire par l'éditeur d'expressions. Les résultats plus grands peuvent toujours utiliser l'éditeur.
 En quittant un graphique, une miniature est ajoutée à l'historique 2D. Son rappel ou sa copie retrouve la commande de tracé ; son ouverture réaffiche le graphique. Les sessions sauvegardées conservent la commande et la mention « Graphic object », mais pas l'image miniature.
 
 La gestion des interruptions et du manque de mémoire a été améliorée. La récupération après épuisement de la mémoire n'est pas garantie ; sauvegardez régulièrement votre session.

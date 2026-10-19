@@ -316,6 +316,29 @@ static void mi_hist_metrics(mi_metrics & m,bool output){
   if (output)
     m.flags|=MI_F_IMPLDOT|MI_F_TIDY;
 }
+// rows of rowh pixels that line s takes in 2D (at most maxrows), 0: drawn as text (Python,
+// programs, strings, too wide or too tall)
+static int mi_hist_k(const char * s,bool output,int rowh,int maxrows){
+  if (!s || !s[0] || !mi_hist2d || mi_python_mode())
+    return 0;
+  const int n=strlen(s);
+  if (n>512)
+    return 0;
+  for (int i=0;i<n;++i){
+    if (s[i]=='\n' || s[i]=='"' || s[i]==1) // programs, strings: as text
+      return 0;
+  }
+  mi_metrics m;
+  mi_hist_metrics(m,output);
+  mi_layout L;
+  mi_build(s,n,-1,m,L);
+  if (L.width>LCD_WIDTH_PX-6)
+    return 0; // too wide: the text, scrolled with the arrows
+  int k=(L.asc+L.desc+1+rowh-1)/rowh; // 1 px margin: a plain line takes one row
+  if (k<1)
+    k=1;
+  return k>maxrows?0:k;
+}
 // rows of rowh pixels that history line s takes in 2D, at most maxrows; 1: drawn as text
 int mi_hist_rows(const char * s,bool output,int rowh,int maxrows){
   if (!s || !s[0] || !mi_hist2d)
@@ -323,27 +346,12 @@ int mi_hist_rows(const char * s,bool output,int rowh,int maxrows){
   int tw,th;
   if (mi_thumb_size(s,&tw,&th)) // a graph thumbnail
     return (th+rowh-1)/rowh<=maxrows?(th+rowh-1)/rowh:1;
-  if (mi_python_mode())
-    return 1;
-  const int n=strlen(s);
-  if (n>512)
-    return 1;
-  for (int i=0;i<n;++i){
-    if (s[i]=='\n' || s[i]=='"' || s[i]==1) // programs, strings: as text
-      return 1;
-  }
-  mi_metrics m;
-  mi_hist_metrics(m,output);
-  mi_layout L;
-  mi_build(s,n,-1,m,L);
-  if (L.width>LCD_WIDTH_PX-6)
-    return 1; // too wide: the text, scrolled with the arrows
-  int k=(L.asc+L.desc+1+rowh-1)/rowh; // 1 px margin: a plain line takes one row
-  if (k<1)
-    k=1;
-  if (k>maxrows)
-    k=1;
-  return k;
+  const int k=mi_hist_k(s,output,rowh,maxrows);
+  return k?k:1;
+}
+// result s is drawn in 2D in the history (check_do_graph: the 2D editor need not show it)
+bool mi_hist_shows(const char * s,int rowh,int maxrows){
+  return mi_hist_k(s,true,rowh,maxrows)>0;
 }
 // draws history line s in 2D in the block [top,top+height) (an input left-aligned, a result
 // right-aligned), nothing outside [ymin,ymax); false if it does not fit (drawn as text then)

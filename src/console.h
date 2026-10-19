@@ -123,6 +123,8 @@ enum CONSOLE_LINE_TYPE{
 // a new history line from the edit line, of type type, followed by its continuation rows when it
 // is drawn in 2D (inputs, results); Console_NewLine's return value
 int console_newline2d(int type);
+// result s is drawn in 2D in the history, on rows of rowh px, at most maxrows (mathinput_glue.cc)
+bool mi_hist_shows(const char * s,int rowh,int maxrows);
 // the history in 2D or as text (Config menu); graph thumbnails in the history (mathinput_glue.cc)
 extern bool mi_hist2d;
 bool mi_thumb_size(const char * s,int * w,int * h);
