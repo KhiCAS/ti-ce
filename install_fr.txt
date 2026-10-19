@@ -34,6 +34,7 @@ Pour quitter KhiCAS, taper la touche [2nde] [quit]
 Pour saisir une commande, vous pouvez vous aider des menus rapides (touches en-dessous de l'écran, F1 à F5), du menu maths (commandes par catégories), et du catalog. Le menu Fichier permet en particulier de sauvegarder une session.
 
 Éditeur 2D natif :
+Avec l’historique 2D activé, saisir sur une ligne de commande vide ouvre automatiquement l’éditeur, sauf en mode Python. Le bas de l’historique reste visible au-dessus. ENTER remet l’expression sur la ligne de commande ; appuyez à nouveau sur ENTER pour l’évaluer. Désactivez MODE, « Historique 2D » pour saisir directement en texte.
 Appuyez sur la touche fraction pour ouvrir l'expression courante, sélectionnée, dans l'éditeur 2D. 2nde, fraction ouvre directement avec le curseur en fin d'expression. MODE alterne entre le curseur et la sélection d'une sous-expression. En mode sélection, gauche/droite sélectionnent les expressions voisines et haut/bas le parent ou un élément enfant.
 F5 (la touche la plus à droite sous l'écran) évalue la sélection, ou toute l'expression en mode curseur. ENTER valide la modification. Annul annule la dernière modification, puis quitte lorsqu'il n'y a plus rien à annuler ; 2nde, MODE (quitter) abandonne immédiatement les modifications. 2nde, annul vide l'éditeur.
 F1/F2 et MATH proposent des modèles de fractions, intégrales, sommes, limites et séries. Les matrices sont affichées en grille ; la virgule ajoute une colonne et 2nde, ENTER une ligne. La ligne sous l'affichage 2D montre le texte Giac correspondant.

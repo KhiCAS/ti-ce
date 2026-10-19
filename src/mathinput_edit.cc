@@ -44,6 +44,9 @@ bool mi_eval_text(const char * s,char * res,int cap); // mathinput_eval.cc
 // Screen coordinates: the text functions (os_draw_string*, Printmini) add STATUS_AREA_PX to y,
 // the menu line (Printmini at C58) is at C58+STATUS_AREA_PX on the screen.
 static const int MIE_X0=0,MIE_X1=LCD_WIDTH_PX,MIE_Y0=STATUS_AREA_PX+2,MIE_Y1=C58,MIE_TXT=C58+3,MIE_BOT=C58+STATUS_AREA_PX;
+// the end of the history is shown above the edit area (console.cc), on rows of MIE_ROWH px
+static const int MIE_ROWH=15;
+void console_disp_tail(int rows);
 
 // inserts t at *p, the caret ends back chars before the end of t; false if it does not fit
 static bool mie_insert(char * s,int cap,int * p,const char * t,int back){
@@ -127,8 +130,22 @@ static void mie_series_fill(char * s,int cap){
 
 static void mie_clean(char * s,int cap){
   mie_series_fill(s,cap);
-  for (char * q;(q=strstr(s,",,)"));)
-    memmove(q,q+2,strlen(q+2)+1);
+  // empty last arguments of a call dropped: f(a,x,,) -> f(a,x), f(a, ) -> f(a) (blanks allowed)
+  for (bool again=true;again;){
+    again=false;
+    for (int i=0;s[i];++i){
+      if (s[i]!=')')
+        continue;
+      int j=i-1;
+      while (j>=0 && s[j]==' ')
+        --j;
+      if (j>0 && s[j]==','){
+        memmove(s+j,s+i,strlen(s+i)+1);
+        again=true;
+        break;
+      }
+    }
+  }
   // an empty element of a list or a matrix cell gets 0: [[1,],[,2]] -> [[1,0],[0,2]] ([] stays)
   char st[32];
   int d=0;
@@ -571,14 +588,30 @@ static int mie_sel_key(char * s,int cap,int * a,int * b,int slv,int key,const ch
 }
 
 // draws the 2D layout, scrolled so that the caret (or the selection) is visible, and the giac
-// text below
-static void mie_draw(const char * s,int p,int sa,int sb,int & scrollx,int & scrolly){
+// text below; above it, the end of the history on hrows rows (as many as the expression leaves,
+// never more than before: the area does not jump back; -1: not drawn yet), drawn again if full
+static void mie_draw(const char * s,int p,int sa,int sb,int & scrollx,int & scrolly,int & hrows,bool full){
   mi_layout L;
   const int len=strlen(s);
   const bool sel=sa<sb;
   mi_build(s,len,sel?-1:p,mi_device_metrics,L,sel?sa:-1,sel?sb:-1);
-  drawRectangle(0,STATUS_AREA_PX,LCD_WIDTH_PX,MIE_BOT-STATUS_AREA_PX,COLOR_WHITE);
-  const int w=MIE_X1-MIE_X0-8,h=MIE_Y1-MIE_Y0-4,th=L.asc+L.desc;
+  const int th=L.asc+L.desc;
+  int need=th+10;
+  if (need<2*MIE_ROWH)
+    need=2*MIE_ROWH;
+  int r=(MIE_Y1-STATUS_AREA_PX-need)/MIE_ROWH;
+  if (r<0)
+    r=0;
+  if (hrows>=0 && r>hrows)
+    r=hrows;
+  if (r!=hrows || full)
+    console_disp_tail(r);
+  hrows=r;
+  const int Y0=STATUS_AREA_PX+r*MIE_ROWH,ya=Y0+2; // the edit area: [ya,MIE_Y1)
+  drawRectangle(0,Y0,LCD_WIDTH_PX,MIE_BOT-Y0,COLOR_WHITE);
+  if (r)
+    draw_line(0,Y0,LCD_WIDTH_PX-1,Y0,COLOR_BLACK);
+  const int w=MIE_X1-MIE_X0-8,h=MIE_Y1-ya-4;
   // what is kept visible (layout coordinates, from its left / top): the caret and 16 px around
   // it, or the whole selection (its beginning when it is too large)
   int x0=L.cx-16,x1=L.cx+18,y0=L.cy+L.asc-4,y1=L.cy+L.asc+L.ch+4;
@@ -608,7 +641,7 @@ static void mie_draw(const char * s,int p,int sa,int sb,int & scrollx,int & scro
   // vertical: the same
   int top;
   if (th<=h){
-    top=MIE_Y0+2+(h-th)/2;
+    top=ya+2+(h-th)/2;
     scrolly=0;
   }
   else {
@@ -620,9 +653,9 @@ static void mie_draw(const char * s,int p,int sa,int sb,int & scrollx,int & scro
       scrolly=th-h;
     if (scrolly<0)
       scrolly=0;
-    top=MIE_Y0+2-scrolly;
+    top=ya+2-scrolly;
   }
-  mi_draw(L,s,MIE_X0+4-scrollx,top+L.asc,MIE_X0,MIE_Y0,MIE_X1,MIE_Y1,!sel,sel?COLOR_SELECTED:-1);
+  mi_draw(L,s,MIE_X0+4-scrollx,top+L.asc,MIE_X0,ya,MIE_X1,MIE_Y1,!sel,sel?COLOR_SELECTED:-1);
   draw_line(0,MIE_Y1,LCD_WIDTH_PX-1,MIE_Y1,COLOR_BLACK);
   // the giac text (small font, 5 px per char), a window around the caret (the selection
   // underlined)
@@ -681,10 +714,21 @@ static void mie_undo_push(mie_state & u){ // takes u (the oldest state goes when
 
 // edits s (0-terminated, capacity cap) in 2D; true if accepted (EXE), false if cancelled
 // (shift QUIT, or ANNUL with nothing to undo)
-static bool mie_run(char * s,int cap,bool sel){
-  int p=strlen(s),sa=0,sb=0,slv=9,scrollx=0,scrolly=0,oldkeyflag=-1; // sa<sb: a selection
+// keys that change only the edit area (the history above it is not drawn again)
+static bool mie_simple_key(int key){
+  return (key>=' ' && key<=126) || key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN || key==KEY_CTRL_DEL || key==KEY_CTRL_SETUP || key==KEY_CTRL_UNDO || key==KEY_CTRL_AC || key==KEY_EQW_TEMPLATE || key==KEY_EQW_TEMPLATE2 || key==KEY_CHAR_POW || key==KEY_CHAR_SQUARE || key==KEY_CHAR_RECIP || key==KEY_CHAR_PMINUS || key==KEY_SHIFT_LEFT || key==KEY_SHIFT_RIGHT;
+}
+
+// firstkey (not 0): the key that opened the editor, handled first (the console's empty line, or
+// DOWN for a result too large for the history: its first part selected); firsttext (not 0): a
+// command chosen in a menu of the console, inserted first (integrate( as its template)
+static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttext){
+  int p=strlen(s),sa=0,sb=0,slv=9,scrollx=0,scrolly=0,oldkeyflag=-1,hrows=-1; // sa<sb: a selection
+  bool full=true; // the history above the edit area drawn again
   mie_state pend={0,0,0,0}; // the state before the last key, kept if the key changed the text
   mie_undo_clear();
+  if (firsttext)
+    mie_insert_key_text(s,cap,&p,firsttext);
   if (sel && p){ // the whole expression selected, as in the equation editor
     sa=0;
     sb=p;
@@ -702,9 +746,16 @@ static bool mie_run(char * s,int cap,bool sel){
     if (oldkeyflag!=keyflag)
       console_disp_status(keyflag,6); // the console's menu line, F5: eval
     oldkeyflag=keyflag;
-    mie_draw(s,p,sa,sb,scrollx,scrolly);
     int key;
-    ck_getkey(&key);
+    if (firstkey){
+      key=firstkey;
+      firstkey=0;
+    }
+    else {
+      mie_draw(s,p,sa,sb,scrollx,scrolly,hrows,full);
+      ck_getkey(&key);
+    }
+    full=!mie_simple_key(key);
     if (key==KEY_CTRL_SHIFT || key==KEY_CTRL_ALPHA)
       continue;
     if (key==KEY_CHAR_MAT) // the matrix menu, as in the console (matrix(: a 2x2 matrix)
@@ -961,10 +1012,26 @@ static bool mie_run(char * s,int cap,bool sel){
 }
 
 // sel: starts in selection mode, the whole expression selected (else the caret at the end)
-bool mi_edit(char * s,int cap,bool sel){
+static bool mie_edit(char * s,int cap,bool sel,int firstkey,const char * firsttext){
   mie_Mp=(mi_matrix *)malloc(sizeof(mi_matrix)); // 0: no matrix structure keys
-  const bool r=mie_run(s,cap,sel);
+  const bool r=mie_run(s,cap,sel,firstkey,firsttext);
   free(mie_Mp);
   mie_Mp=0;
   return r;
+}
+bool mi_edit(char * s,int cap,bool sel){
+  return mie_edit(s,cap,sel,0,0);
+}
+// the console's empty line in 2D (console.cc): key starts the expression in the 2D editor
+bool mi_edit_key(char * s,int cap,int key){
+  return mie_edit(s,cap,false,key,0);
+}
+// the console's empty line in 2D: text (a command chosen in a quick menu) starts the expression
+bool mi_edit_text(char * s,int cap,const char * text){
+  return mie_edit(s,cap,false,0,text);
+}
+// a result in the editor (check_do_graph: too large for the history, or the history in 1D):
+// selected, then its first part (DOWN), as the former equation editor
+bool mi_edit_result(char * s,int cap){
+  return mie_edit(s,cap,true,KEY_CTRL_DOWN,0);
 }

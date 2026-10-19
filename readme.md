@@ -27,7 +27,13 @@ graph redraw after cancelling a menu.
 
 ## Using the 2D editor
 
-Open the editor from the console with the **fraction template key** on a
+With 2D history enabled, typing on an empty command line opens the editor
+automatically (except in Python mode). Recent history stays visible above
+the editing area. Press **ENTER** to return the expression to the command
+line, then **ENTER** again to evaluate it. Disable **MODE → 2D history**
+to keep plain command-line entry.
+
+You can also open the editor with the **fraction template key** on a
 TI-83 Premium CE, or **2nd, X,T,theta,n** on a TI-84 Plus CE. The current
 expression starts selected. On the TI-83 Premium CE, **2nd, fraction** starts
 with the caret at the end instead.

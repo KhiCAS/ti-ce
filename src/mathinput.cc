@@ -34,7 +34,7 @@
 //  name(args): name, parens, args separated by ", ". Special calls (exact arg count;
 //  their parentheses and commas are hidden structure):
 //   sqrt(a) radical; surd(a,n) radical with small index n; abs(a) bars;
-//   integrate|int(f,x[,a,b]) sign (content+4 tall, 6 wide), bounds small at the top/bottom
+//   integrate|int(f[,x[,a,b]]) sign (content+4 tall, 6 wide), bounds small at the top/bottom
 //   right, f, 2 px, "d", x; diff(f,x) d/(d x) then f (in parens if f is a sum/relation);
 //   sum(f,k,a,b) sigma (2*asc) with k=a below, b above, then f;
 //   limit(f,x,a) "lim" over x ->a (small), then f;  exp(a) "e" with exponent a.
@@ -332,7 +332,7 @@ static int pgroup() { // ( [ { : content to the matching closer or the end
 }
 
 static const struct { const char * nm; unsigned char na, k; } spec[] = {
-  {"sqrt", 1, K_SQRT}, {"surd", 2, K_SURD}, {"abs", 1, K_ABS}, {"integrate", 2, K_INT},
+  {"sqrt", 1, K_SQRT}, {"surd", 2, K_SURD}, {"abs", 1, K_ABS}, {"integrate", 1, K_INT}, {"integrate", 2, K_INT},
   {"integrate", 4, K_DEFINT}, {"int", 2, K_INT}, {"int", 4, K_DEFINT}, {"diff", 2, K_DIFF},
   {"sum", 4, K_SUM}, {"limit", 3, K_LIM}, {"exp", 1, K_EXP}, {"series", 4, K_SER}, {"series", 5, K_SER}};
 
@@ -665,8 +665,9 @@ static void cons(int n, int x, int y, int sm) {
     if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
     t += A.w + 2 * g; // a gap before the d of dx
     dtext("d", 1, sm, t, 0);
-    sl(1, t + dw, 0, sm);
-    cw = t + dw + B.w + 2; // trailing gap: "after the construct" differs from "end of x"
+    if (sn[1]) sl(1, t + dw, 0, sm);
+    else dtext("x", 1, sm, t + dw, 0); // integrate(f): giac's variable x
+    cw = t + dw + (sn[1] ? B.w : lw("x", 1, sm)) + 2; // trailing gap: "after the construct" differs from "end of x"
   } break;
   case K_DIFF: { // d/(d x) then f, in parens if it is a sum or a factor follows (d/dx(u) v)
     int g = GAP, b = BAR, dw = lw("d", 1, sm);

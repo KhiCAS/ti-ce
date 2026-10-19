@@ -29,6 +29,7 @@ namespace xcas {
   void displaygraph(const giac::gen & ge,char ** thumb);
 }
 bool mi_edit(char * s,int cap,bool sel=false); // mathinput_edit.cc
+bool mi_edit_result(char * s,int cap);
 bool textedit(char * s); // main.cc
 
 // the equation editor's entry point (xcas::eqws) with the 2D editor: edits s in place (at least
@@ -68,7 +69,7 @@ bool mi_eqws(char * s,bool eval){
 // a matrix or a list edited in 2D (input_matrix in main.cc), or a result (check_do_graph in
 // kdisplay.cc, sel: selected, as the equation editor showed it): ge printed, edited, parsed
 // back; false if cancelled
-bool mi_eqw_matrix(giac::gen & ge,bool sel){
+static bool mi_eqw_(giac::gen & ge,int mode){
   std::string r=ge.print(contextptr);
   if (int(r.size())>=GEN_PRINT_BUFSIZE)
     return false;
@@ -76,11 +77,18 @@ bool mi_eqw_matrix(giac::gen & ge,bool sel){
   if (!buf)
     return false;
   strcpy(buf,r.c_str());
-  const bool ok=mi_edit(buf,GEN_PRINT_BUFSIZE,sel);
+  const bool ok=mode==2?mi_edit_result(buf,GEN_PRINT_BUFSIZE):mi_edit(buf,GEN_PRINT_BUFSIZE,mode!=0);
   if (ok)
     ge=giac::gen(std::string(buf),contextptr);
   free(buf);
   return ok;
+}
+bool mi_eqw_matrix(giac::gen & ge,bool sel){
+  return mi_eqw_(ge,sel?1:0);
+}
+// a result in the 2D editor (check_do_graph): too large for the history, its first part selected
+bool mi_eqw_result(giac::gen & ge){
+  return mi_eqw_(ge,2);
 }
 
 // the console is in Python mode: its lines are not drawn in 2D (mathinput_glue.cc)

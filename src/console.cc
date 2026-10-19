@@ -2108,6 +2108,9 @@ string run_periodic_table(){
 #endif
 
 bool mi_edit(char * s,int cap,bool sel=false); // mathinput_edit.cc
+bool mi_edit_key(char * s,int cap,int key);
+bool mi_edit_text(char * s,int cap,const char * text);
+bool mi_python_mode(); // mathinput_eval.cc
 bool mi_eqws(char * s,bool eval); // mathinput_eval.cc: the 2D editor in place of xcas::eqws
 
 int Console_GetKey(){
@@ -2130,6 +2133,19 @@ int Console_GetKey(){
       return -2;
     if (key==KEY_CTRL_SHIFT || key==KEY_CTRL_ALPHA)
       continue;
+    // the history in 2D, the edit line empty: a key that starts an expression (a char: not the
+    // arrows, OK and EXIT, codes 0..5 here) opens the 2D
+    // editor with it, its EXE puts the expression on the edit line (not sto: =>, then EXE, saves
+    // the session)
+    if (mi_hist2d && !mi_python_mode() && Current_Line==Last_Line && !Edit_Line[0] && ((key>KEY_CTRL_EXIT && key<30000 && key!=KEY_CHAR_CR && key!=KEY_CHAR_FRAC && key!=KEY_CHAR_STORE) || key==KEY_CHAR_PMINUS || key==KEY_CHAR_IMGNRY || key==KEY_CHAR_ANGLE || key==KEY_CTRL_XTT)){
+      char buf[GEN_PRINT_BUFSIZE];
+      buf[0]=0;
+      if (mi_edit_key(buf,sizeof(buf),key) && buf[0])
+        return Console_Input((const Char *)buf); // on the edit line: EXE there evaluates
+      Console_Disp(1);
+      oldkeyflag=-1;
+      continue;
+    }
     //if (1){ char buf1[32],buf2[32]; sprint_double(buf1,key),sprint_double(buf2,KEY_CTRL_F7); confirm(buf1,buf2); }
     if (key==KEY_CHAR_MAT) key=KEY_CTRL_F10;
     if (key==KEY_CTRL_STATS) {
@@ -2679,6 +2695,15 @@ int Console_FMenu(int key){
     s=ptr;
   if (strcmp("makelist(",s)==0 && (ptr=input_matrix(true)) )
     s=ptr;
+  else if (!ptr && mi_hist2d && !mi_python_mode() && Current_Line==Last_Line && !Edit_Line[0] && strcmp("matrix(",s) && strcmp("makelist(",s)){
+    // the history in 2D, the edit line empty: the command starts an expression in the 2D editor
+    // (integrate( as its template); its EXE puts it on the edit line
+    char buf[GEN_PRINT_BUFSIZE];
+    buf[0]=0;
+    if (mi_edit_text(buf,sizeof(buf),s) && buf[0])
+      return Console_Input((const Char *)buf);
+    return CONSOLE_SUCCEEDED;
+  }
   return Console_Input((const Char *)s);
 }
 
@@ -3419,6 +3444,22 @@ void console_displine(int i,int redraw_mode){
 }
 
 // redraw_mode bit0=1 means redraw all
+// the end of the history on the first rows rows below the status line (the 2D editor below
+// them, mathinput_edit.cc): its last line on the last row, the edit line not shown
+void console_disp_tail(int rows){
+  const int sl=Start_Line,cy=Cursor.y;
+  const Char c0=Edit_Line[0];
+  Edit_Line[0]=0;
+  Start_Line=Last_Line>rows?Last_Line-rows:0;
+  Cursor.y=Last_Line-Start_Line; // the edit line: no history line selected
+  os_fill_rect(0,STATUS_AREA_PX,LCD_WIDTH_PX,rows*vfontsize,SDK_WHITE);
+  for (int i=0;i<rows && i+Start_Line<Last_Line;++i)
+    console_displine(i,1);
+  Start_Line=sl;
+  Cursor.y=cy;
+  Edit_Line[0]=c0;
+}
+
 int Console_Disp(int redraw_mode){
   if (redraw_mode & 1)
     os_fill_rect(0,STATUS_AREA_PX,LCD_WIDTH_PX,LCD_HEIGHT_PX-STATUS_AREA_PX,SDK_WHITE); // Bdisp_AllClr_VRAM();
