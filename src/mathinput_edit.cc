@@ -83,18 +83,41 @@ static int mie_tpl_find(const char * name){
   return -1;
 }
 
+// Closing quote, or the terminator for an unfinished string; escaped quotes stay inside it.
+static int mie_string_end(const char * s,int i){
+  for (++i;s[i] && s[i]!='"';++i){
+    if (s[i]=='\\' && s[i+1])
+      ++i;
+  }
+  return i;
+}
+
 // empty bounds dropped: integrate(f,x,,) -> integrate(f,x), sum(f,k,,) -> sum(f,k) (,,) is never
 // valid giac)
 // series(f,x,a,n,polynom) with a or n left empty: 0 and 5 (giac's defaults), the boxes drawn in
 // place of the point and the order cannot be dropped as the bounds are (polynom follows them)
 static void mie_series_fill(char * s,int cap){
-  for (char * q=s;(q=strstr(q,"series("));q+=7){
+  for (char * q=s;*q;++q){
+    if (*q=='"'){
+      q=s+mie_string_end(s,q-s);
+      if (!*q)
+        break;
+      continue;
+    }
+    if (strncmp(q,"series(",7))
+      continue;
     if (q>s && ((q[-1]>='a' && q[-1]<='z') || (q[-1]>='A' && q[-1]<='Z') || q[-1]=='_'))
       continue;
     int d=0,na=0,i=q+7-s;
     int st[5]={i,0,0,0,0},en[5]={0,0,0,0,0};
     for (;s[i];++i){
       const char c=s[i];
+      if (c=='"'){
+        i=mie_string_end(s,i);
+        if (!s[i])
+          break;
+        continue;
+      }
       if (c=='(' || c=='[' || c=='{')
         ++d;
       else if (c==')' || c==']' || c=='}'){
@@ -134,6 +157,12 @@ static void mie_clean(char * s,int cap){
   for (bool again=true;again;){
     again=false;
     for (int i=0;s[i];++i){
+      if (s[i]=='"'){
+        i=mie_string_end(s,i);
+        if (!s[i])
+          break;
+        continue;
+      }
       if (s[i]!=')')
         continue;
       int j=i-1;
@@ -152,10 +181,7 @@ static void mie_clean(char * s,int cap){
   for (int i=0;s[i];++i){
     const char c=s[i];
     if (c=='"'){ // a string as is
-      for (++i;s[i] && s[i]!='"';++i){
-        if (s[i]=='\\' && s[i+1])
-          ++i;
-      }
+      i=mie_string_end(s,i);
       if (!s[i])
         break;
       continue;
