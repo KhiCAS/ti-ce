@@ -920,6 +920,9 @@ void display_flags(){
   os_draw_string_medium(220,-STATUS_AREA_PX,statuscolor,SDK_BLACK,msg,false);
 }  
 
+// boot_GetBatteryStatus takes about 160 ms: the level is read again when the minute changes
+static uint8_t battery_level=0xff,battery_minute;
+
 void statusflags(){
   os_fill_rect(150,0,LCD_WIDTH_PX-150,16,SDK_BLACK);
   display_flags();
@@ -933,7 +936,12 @@ void statusflags(){
   os_fill_rect(x0,STATUS_AREA_PX-5,w,2,COLOR_RED);
   os_fill_rect(x0,0,2,STATUS_AREA_PX-4,COLOR_RED);
   os_fill_rect(x0+w,0,2,STATUS_AREA_PX-4,COLOR_RED);
-  const uint8_t i=boot_GetBatteryStatus(); int color=statuscolor;
+  const uint8_t mn=rtc_Minutes;
+  if (battery_level==0xff || mn!=battery_minute){
+    battery_level=boot_GetBatteryStatus();
+    battery_minute=mn;
+  }
+  const uint8_t i=battery_level; int color=statuscolor;
   //i=0; // emu check colors
   switch (i){
   case 4:
