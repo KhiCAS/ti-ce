@@ -786,7 +786,8 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       continue;
     if (key==KEY_CHAR_MAT) // the matrix menu, as in the console (matrix(: a 2x2 matrix)
       key=KEY_CTRL_F10;
-    oldkeyflag=-1; // the menu line is drawn again after each key (a menu may have covered it)
+    if (full)
+      oldkeyflag=-1; // the menu line is drawn again after a key that may have opened a menu over it
     if (key==KEY_CTRL_EXE){
       mie_clean(s,cap);
       mie_undo_clear();
