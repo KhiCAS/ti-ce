@@ -86,15 +86,31 @@ with its Flash relocations applied and removed. `bin/_KhiCAS.8ek` and the
 `AppIns*.8xv` files contain this smaller app. The distribution scripts copy the
 pre-relocated 8ek to `shared/ti/KhiCAS.8ek`.
 
-The LTO step enables function merging and uses an inline threshold of `-10`
-to reduce app size. Set `LTOFLAGS` on the make command line to override these
-options; for example, `LTOFLAGS=-Oz` uses the compiler's default size tuning.
+The LTO step enables function merging. `LTO_TUNING=AUTO` selects the measured
+eZ80 size/speed policy when the compiler exposes the necessary controls: inline
+threshold `0`, an 11-byte minimum machine-outliner sequence and register
+arguments for eligible internal functions in merged IR. Older compilers retain
+the original inline-threshold `-10` policy. `LTO_TUNING=YES` requires these
+controls; `LTO_TUNING=NO` selects the original policy.
+
+`LTO_INLINE_THRESHOLD` and `LTO_OUTLINE_MIN_BYTES` adjust the default policy;
+`LTOFLAGS` replaces the complete LTO flag list. Changing the effective LTO flags
+rebuilds the app automatically. [Build regression tests](tests/README.md) check
+global flag changes and compiler capability fallback.
+
+The balanced policy requires the eZ80 backend extensions from
+[`codex/ez80-opts`](https://github.com/CE-Programming/llvm-project/tree/codex/ez80-opts).
+Stock toolchain v15.0's Clang 19 lacks these controls; a newer compiler or nightly
+must contain those patches to enable them. `AUTO` checks the options rather than
+the compiler version.
+
 CI prints the compiler version, pre-relocated app size and installer AppVar
 count. CI follows the nightly toolchain release; CEdev v15.0 ships Clang 19.
 
 This pre-relocation assumes KhiCAS is the first installed app: delete all apps
 before installing it with `INST`, as described in the installation instructions.
-See [app_tools/readme.md](app_tools/readme.md) for the address calculation and tests.
+See [app_tools/readme.md](app_tools/readme.md) for the address calculation, and
+[tests/README.md](tests/README.md) for tests.
 
 ## Installation on calculator:
 See [install_en.txt](install_en.txt) or [install_fr.txt](install_fr.txt).

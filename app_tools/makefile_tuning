@@ -1,0 +1,22 @@
+# Older nightly compilers may lack the eZ80 backend controls. Preserve the
+# original -10 policy there; explicit LTOFLAGS always replace this default.
+LTO_TUNING_ENABLED :=
+ifeq ($(filter $(LTO_TUNING),AUTO YES NO),)
+$(error LTO_TUNING must be AUTO, YES or NO)
+endif
+
+ifeq ($(origin LTOFLAGS),file)
+ifneq ($(LTO_TUNING),NO)
+LTO_HELP_STDERR := $(if $(filter Windows_NT,$(OS)),NUL,/dev/null)
+LTO_COMPILER_HELP := $(shell $(call QUOTE_ARG,$(CC)) -cc1 -mllvm --help-hidden 2>$(LTO_HELP_STDERR))
+LTO_TUNING_AVAILABLE := $(and $(findstring z80-machine-outliner-min-sequence-bytes,$(LTO_COMPILER_HELP)),$(findstring z80-internal-regargs-on-merged-ir,$(LTO_COMPILER_HELP)))
+ifeq ($(LTO_TUNING),YES)
+ifeq ($(LTO_TUNING_AVAILABLE),)
+$(error This compiler lacks the eZ80 outliner/register-argument controls required by LTO_TUNING=YES)
+endif
+endif
+LTO_TUNING_ENABLED := $(if $(LTO_TUNING_AVAILABLE),YES)
+endif
+endif
+
+LTO_BACKEND_FLAGS = $(if $(LTO_TUNING_ENABLED),-mllvm -z80-machine-outliner-min-sequence-bytes=$(LTO_OUTLINE_MIN_BYTES) -mllvm -z80-internal-regargs-on-merged-ir)

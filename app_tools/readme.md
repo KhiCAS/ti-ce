@@ -1,8 +1,8 @@
 # KhiCAS app packaging
 
 The root makefile includes the installed toolchain makefile followed by
-`makefile_elf`. Run `make app` (the default target) to build KhiCAS, the split
-`AppIns*` AppVars and `INST.8xp` in `bin/`. The pipeline is:
+`makefile_tuning` and `makefile_elf`. Run `make app` (the default target) to build
+KhiCAS, the split `AppIns*` AppVars and `INST.8xp` in `bin/`. The pipeline is:
 
 ```
 KhiCAS.obj (ELF with --emit-relocs)
@@ -29,9 +29,9 @@ the bit clear; French and French L2 set it (`0x00` -> `0x08`). Language and L2
 code differences come from `FRANCAIS` and `WITH_QUAD`/`WITH_PERIODIC` compiler
 defines in the root makefile.
 
-`obj/.khicas-build-config` tracks `APPLANG` and `VARIANT` for the compiler,
-linker and relocator. Switching variants in the same build directory rebuilds
-the code and final installer files without requiring `make clean`. A changed
+`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT` and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
+in the same build directory rebuilds the code and final installer files without
+requiring `make clean`. A changed
 configuration forces the complete build, including LTO and packaging, so this
 also works with macOS Make 3.81's one-second timestamp resolution. Repeating
 the same configuration preserves the stamp and output timestamps.
@@ -59,20 +59,4 @@ data offsets (zero) and the default description offset (3). The splitter reports
 conversion failures and removes surplus segments when a smaller app replaces a
 larger one.
 
-To check against a second GNU ld link at the calculated Flash address, run:
-
-```
-python3 -m unittest discover -s app_tools -p 'test_*.py' -v
-```
-
-These tests require the binutils-based toolchain on PATH (or set
-`CEDEV_TOOLCHAIN` to its installation). They cover Flash pointers, RAM and BSS
-pointers, initialized-data LMA references, addends, relative branches, grouped
-byte relocations, descriptions, malformed input, appvar checksums and complete
-segment reassembly including the trailer. A small compiled fixture uses the
-real makefiles to check English -> French -> French L2 -> English switches
-without cleaning, with and without LTO, including compiled feature selection,
-metadata, final app bytes, installer segments and an unchanged incremental
-build. The same-input metadata test checks that setting the French bit preserves
-all other app bytes and the relocation base. Physical-calculator behavior
-requires an installation test.
+For build regression checks, see [the test instructions](../tests/README.md).

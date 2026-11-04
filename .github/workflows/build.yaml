@@ -44,6 +44,7 @@ jobs:
         run: |
           export PATH=~/CEdev/bin:$PATH
           ez80-clang --version
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
           make clean && ./${{ matrix.buildscript }}
           python3 - <<'PY'
           from pathlib import Path

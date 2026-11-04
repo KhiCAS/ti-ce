@@ -38,8 +38,10 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -Oz -Iustl -Isrc/tommath -DMP_16BIT -DTICE -
     -Wno-deprecated-copy-with-user-provided-copy $(LANG_DEF) $(FEATURE_DEFS)
 
 # Tune the whole-program optimization step for app size.
-LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=-10
-
+LTO_TUNING ?= AUTO
+LTO_OUTLINE_MIN_BYTES ?= 11
+LTO_INLINE_THRESHOLD ?= $(if $(LTO_TUNING_ENABLED),0,-10)
+LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=$(LTO_INLINE_THRESHOLD) $(LTO_BACKEND_FLAGS)
 CPP_EXTENSION = cc
 DESCRIPTION =
 
@@ -60,4 +62,5 @@ LIBLOAD_OPTIONAL = fileioc
 DEPS += $(OBJDIR)/.khicas-build-config
 
 include $(shell cedev-config --makefile)
+include app_tools/makefile_tuning
 include app_tools/makefile_elf
