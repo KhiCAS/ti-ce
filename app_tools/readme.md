@@ -1,7 +1,7 @@
 # KhiCAS app packaging
 
 The root makefile includes the installed toolchain makefile followed by
-`makefile_tuning` and `makefile_elf`. Run `make app` (the default target) to build
+`makefile_tuning`, `makefile_inline` and `makefile_elf`. Run `make app` (the default target) to build
 KhiCAS, the split `AppIns*` AppVars and `INST.8xp` in `bin/`. The pipeline is:
 
 ```
@@ -29,7 +29,8 @@ the bit clear; French and French L2 set it (`0x00` -> `0x08`). Language and L2
 code differences come from `FRANCAIS` and `WITH_QUAD`/`WITH_PERIODIC` compiler
 defines in the root makefile.
 
-`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT` and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
+`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT`, `INLINE_THRESHOLDS`
+and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
 in the same build directory rebuilds the code and final installer files without
 requiring `make clean`. A changed
 configuration forces the complete build, including LTO and packaging, so this
@@ -60,3 +61,21 @@ conversion failures and removes surplus segments when a smaller app replaces a
 larger one.
 
 For build regression checks, see [the test instructions](../tests/README.md).
+
+## Per-source inlining
+
+`INLINE_THRESHOLDS` takes a space-separated list of `source=integer` pairs.
+The makefile assumes valid input and passes the thresholds to LLVM. Overrides attach
+LLVM's `function-inline-threshold` attribute to functions and call sites emitted
+from each selected source. Call-site attributes take priority over the callee's
+attribute; otherwise the callee's override can affect calls from other sources.
+Header/template definitions emitted in that source receive the setting too.
+
+These attributes replace the final cost threshold; the global flag sets a base
+threshold before heuristic adjustments. LLVM clamps the final comparison to at
+least `1`, so negative attribute values do not further suppress ordinary inlining.
+Overrides enable `-inline-cost-full` at both optimization stages so LLVM consults
+the attribute before stopping its cost analysis. This can increase build time.
+A plain per-source `-mllvm -inline-threshold=...` only controls initial compilation
+and does not survive the bitcode merge. Smaller thresholds do not guarantee
+smaller final apps, and mandatory inlining remains possible.

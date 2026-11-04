@@ -42,6 +42,11 @@ LTO_TUNING ?= AUTO
 LTO_OUTLINE_MIN_BYTES ?= 11
 LTO_INLINE_THRESHOLD ?= $(if $(LTO_TUNING_ENABLED),0,-10)
 LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=$(LTO_INLINE_THRESHOLD) $(LTO_BACKEND_FLAGS)
+# Per-source experiments remain available, but the measured balanced policy
+# preserves normal inlining heuristics.
+# Override with a space-separated list of source=threshold pairs, or clear it.
+INLINE_THRESHOLDS ?=
+
 CPP_EXTENSION = cc
 DESCRIPTION =
 
@@ -63,4 +68,5 @@ DEPS += $(OBJDIR)/.khicas-build-config
 
 include $(shell cedev-config --makefile)
 include app_tools/makefile_tuning
+include app_tools/makefile_inline
 include app_tools/makefile_elf

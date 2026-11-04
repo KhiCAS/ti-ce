@@ -1,0 +1,17 @@
+# Per-source inlining policy that survives CEdev's bitcode merge. A plain
+# per-source -mllvm -inline-threshold only affects the initial compilation.
+ifneq ($(strip $(INLINE_THRESHOLDS)),)
+inline_source = $(word 1,$(subst =, ,$1))
+inline_threshold = $(word 2,$(subst =, ,$1))
+
+# LLVM otherwise may stop at the global threshold before consulting the
+# function-inline-threshold attribute. Apply this to both optimization stages.
+EZLTOFLAGS += -mllvm -inline-cost-full
+
+define source_inline_threshold
+$(OBJDIR)/$(call UPDIR_ADD,$1).bc $(OBJDIR)/$(call UPDIR_ADD,$1).s: EZCFLAGS += -mllvm -inline-cost-full -Xclang -default-function-attr -Xclang function-inline-threshold=$2
+$(OBJDIR)/$(call UPDIR_ADD,$1).bc $(OBJDIR)/$(call UPDIR_ADD,$1).s: EZCXXFLAGS += -mllvm -inline-cost-full -Xclang -default-function-attr -Xclang function-inline-threshold=$2
+endef
+
+$(foreach setting,$(INLINE_THRESHOLDS),$(eval $(call source_inline_threshold,$(call inline_source,$(setting)),$(call inline_threshold,$(setting)))))
+endif

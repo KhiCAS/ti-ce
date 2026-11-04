@@ -94,9 +94,12 @@ the original inline-threshold `-10` policy. `LTO_TUNING=YES` requires these
 controls; `LTO_TUNING=NO` selects the original policy.
 
 `LTO_INLINE_THRESHOLD` and `LTO_OUTLINE_MIN_BYTES` adjust the default policy;
-`LTOFLAGS` replaces the complete LTO flag list. Changing the effective LTO flags
-rebuilds the app automatically. [Build regression tests](tests/README.md) check
-global flag changes and compiler capability fallback.
+`LTOFLAGS` replaces the complete LTO flag list. `INLINE_THRESHOLDS` accepts
+space-separated `source=integer` pairs for per-source experiments. These use
+LLVM attributes that survive the bitcode merge; see the
+[build tuning notes](app_tools/readme.md#per-source-inlining) for their scope.
+Changing the effective LTO flags or per-source settings rebuilds the app.
+[Build regression tests](tests/README.md) exercise both optimization stages.
 
 The balanced policy requires the eZ80 backend extensions from
 [`codex/ez80-opts`](https://github.com/CE-Programming/llvm-project/tree/codex/ez80-opts).
