@@ -232,7 +232,7 @@ static void mie_insert_key_text(char * s,int cap,int * p,const char * t){
       return;
     }
   }
-  if (!strcmp(t,"^")){
+  if (!strcmp(t,"^") || !strcmp(t,"**")){ // ** in Python syntax: the exponent in its own group too
     strcat(buf,"()");
     mie_insert(s,cap,p,buf,1);
     return;
