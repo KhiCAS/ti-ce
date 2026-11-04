@@ -29,7 +29,7 @@ the bit clear; French and French L2 set it (`0x00` -> `0x08`). Language and L2
 code differences come from `FRANCAIS` and `WITH_QUAD`/`WITH_PERIODIC` compiler
 defines in the root makefile.
 
-`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT`, `INLINE_THRESHOLDS`
+`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT`, `BENCHMARK`, `INLINE_THRESHOLDS`
 and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
 in the same build directory rebuilds the code and final installer files without
 requiring `make clean`. A changed
@@ -60,9 +60,10 @@ data offsets (zero) and the default description offset (3). The splitter reports
 conversion failures and removes surplus segments when a smaller app replaces a
 larger one.
 
-For build regression checks, see [the test instructions](../tests/README.md).
+For build and benchmark regression checks, see [the test instructions](../tests/README.md).
 
 ## Per-source inlining
+
 
 `INLINE_THRESHOLDS` takes a space-separated list of `source=integer` pairs.
 The makefile assumes valid input and passes the thresholds to LLVM. Overrides attach

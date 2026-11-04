@@ -86,20 +86,52 @@ with its Flash relocations applied and removed. `bin/_KhiCAS.8ek` and the
 `AppIns*.8xv` files contain this smaller app. The distribution scripts copy the
 pre-relocated 8ek to `shared/ti/KhiCAS.8ek`.
 
-The LTO step enables function merging. `LTO_TUNING=AUTO` selects the measured
-eZ80 size/speed policy when the compiler exposes the necessary controls: inline
-threshold `0`, an 11-byte minimum machine-outliner sequence and register
-arguments for eligible internal functions in merged IR. Older compilers retain
-the original inline-threshold `-10` policy. `LTO_TUNING=YES` requires these
-controls; `LTO_TUNING=NO` selects the original policy.
+The default `LTO_TUNING=AUTO` selects a measured size/speed balance when the
+compiler supports the required eZ80 controls: function merging, inline threshold
+`0`, an 11-byte machine-outliner minimum sequence, and register arguments for
+eligible internal functions in merged IR. Older compilers keep the original
+function-merging / inline-threshold `-10` policy. `LTO_TUNING=YES` requires the
+new controls; `LTO_TUNING=NO` reproduces the original policy.
 
-`LTO_INLINE_THRESHOLD` and `LTO_OUTLINE_MIN_BYTES` adjust the default policy;
-`LTOFLAGS` replaces the complete LTO flag list. `INLINE_THRESHOLDS` accepts
-space-separated `source=integer` pairs for per-source experiments. These use
-LLVM attributes that survive the bitcode merge; see the
-[build tuning notes](app_tools/readme.md#per-source-inlining) for their scope.
-Changing the effective LTO flags or per-source settings rebuilds the app.
-[Build regression tests](tests/README.md) exercise both optimization stages.
+`LTO_INLINE_THRESHOLD` and `LTO_OUTLINE_MIN_BYTES` adjust these defaults;
+`LTOFLAGS` replaces the complete LTO flag list. The former is an LLVM cost
+threshold; the latter counts native instruction bytes. `INLINE_THRESHOLDS`
+accepts source/threshold pairs for experiments, for example
+`INLINE_THRESHOLDS='src/giac/kmodpoly.cc=0'`. The balanced default leaves that list
+empty: the earlier `console.cc=25 kgen.cc=0` example increased size, while the
+later `-20` / `kmodpoly=0 kmoyal=0` policy slowed the calculation suite by 6.4%.
+Per-source settings use LLVM attributes that survive the bitcode merge; see
+[the tuning notes](app_tools/readme.md#per-source-inlining) for their scope.
+Changing the settings rebuilds the app automatically.
+
+Clean builds with the tested ez80 Clang 22.1.8 (opts branch) binary on 2026-11-04 produced:
+
+| Build           | Original bytes | Balanced bytes | Saved bytes | Installer AppVars, old → new |
+|-----------------|---------------:|---------------:|------------:|-----------------------------:|
+| English, normal |      2,481,035 |      2,299,572 |     181,463 |                      39 → 36 |
+| French, normal  |      2,482,915 |      2,301,439 |     181,476 |                      39 → 36 |
+| English, L2     |      2,477,329 |      2,297,347 |     179,982 |                      38 → 36 |
+| French, L2      |      2,478,925 |      2,298,930 |     179,995 |                      39 → 36 |
+
+In CEmu, 12 CAS workloads (three measured repetitions after a warmup) had a
+2.7% aggregate evaluation slowdown; including parsing and result formatting,
+the total was 3.0%. The largest individual evaluation slowdown was 4.3%
+(6.9 ms on a polynomial integral). Every result matched the original build,
+and 32 exact-zero factoring/integration identities passed. These are emulator
+measurements, not physical-calculator timings. The balanced policy was selected
+from 46 runtime-tested configurations, following a 76-candidate size-only sweep.
+Generated measurements and emulator artifacts are local outputs under the ignored
+`tests/results/` directory; the commands below reproduce the comparisons.
+Broader inlining, IR outlining and more aggressive native outlining did not offer
+a better balance on this suite. No math or UI feature was removed.
+
+[Reproduce the benchmarks](tests/README.md#cas-benchmarks) with
+`BENCHMARK=YES`; return to `BENCHMARK=NO` for a normal app. This optional mode
+retains the normal UI code during LTO, times parsing/evaluation/formatting on the
+calculator's 32,768 Hz clock and emits results through CEmu's software console.
+The runner prepares a disposable copy of the supplied ROM with existing apps
+(including language packs) removed, ensuring the required first-app placement.
+The original ROM is left untouched.
 
 The balanced policy requires the eZ80 backend extensions from
 [`codex/ez80-opts`](https://github.com/CE-Programming/llvm-project/tree/codex/ez80-opts).

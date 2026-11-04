@@ -8,7 +8,7 @@ STATIC_APP_8EK := $(BINDIR)/_$(NAME).8ek
 APP_SEGMENTS_STAMP := $(BINDIR)/.AppIns.stamp
 APP_LANGUAGE_FLAG := $(if $(filter fr,$(APPLANG)),--french,)
 APP_CONFIG_STAMP := $(OBJDIR)/.khicas-build-config
-APP_CONFIG := APPLANG=$(APPLANG) VARIANT=$(VARIANT) INLINE_THRESHOLDS=$(strip $(INLINE_THRESHOLDS)) LTOFLAGS=$(strip $(LTOFLAGS))
+APP_CONFIG := APPLANG=$(APPLANG) VARIANT=$(VARIANT) BENCHMARK=$(BENCHMARK) INLINE_THRESHOLDS=$(strip $(INLINE_THRESHOLDS)) LTOFLAGS=$(strip $(LTOFLAGS))
 APP_CONFIG_CURRENT := $(shell python3 -c "from pathlib import Path; import sys; p = Path(sys.argv[1]); print(p.read_text() if p.exists() else '')" $(call QUOTE_ARG,$(APP_CONFIG_STAMP)))
 
 .PHONY: app install_prog
@@ -23,7 +23,7 @@ endif
 
 $(APP_CONFIG_STAMP):
 	$(Q)$(call MKDIR,$(@D))
-	$(Q)python3 -c "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('\n'.join(sys.argv[2:]) + '\n')" $(call QUOTE_ARG,$@) $(call QUOTE_ARG,APPLANG=$(APPLANG)) $(call QUOTE_ARG,VARIANT=$(VARIANT)) $(call QUOTE_ARG,INLINE_THRESHOLDS=$(strip $(INLINE_THRESHOLDS))) $(call QUOTE_ARG,LTOFLAGS=$(strip $(LTOFLAGS)))
+	$(Q)python3 -c "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('\n'.join(sys.argv[2:]) + '\n')" $(call QUOTE_ARG,$@) $(call QUOTE_ARG,APPLANG=$(APPLANG)) $(call QUOTE_ARG,VARIANT=$(VARIANT)) $(call QUOTE_ARG,BENCHMARK=$(BENCHMARK)) $(call QUOTE_ARG,INLINE_THRESHOLDS=$(strip $(INLINE_THRESHOLDS))) $(call QUOTE_ARG,LTOFLAGS=$(strip $(LTOFLAGS)))
 
 $(STATIC_APP_BIN): $(BINDIR)/$(TARGET) $(APP_TOOLS_DIR)relocate_app.py $(APP_CONFIG_STAMP)
 	python3 $(APP_TOOLS_DIR)relocate_app.py $(call QUOTE_ARG,$<) $(call QUOTE_ARG,$@) $(APP_LANGUAGE_FLAG)

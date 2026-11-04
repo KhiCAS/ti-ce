@@ -1199,6 +1199,13 @@ int main1(){
   oom_rearm();
   if (oom.type==0)
     return 99;
+#ifdef KHICAS_BENCHMARK
+  // Volatile selection retains the ordinary UI and evaluation paths in LTO.
+  extern volatile unsigned char khicas_benchmark_mode;
+  extern int khicas_run_benchmarks(giac::context *);
+  if (khicas_benchmark_mode)
+    return khicas_run_benchmarks(contextptr);
+#endif
   SetQuitHandler(save_session); // automatically save session when exiting
   // FIXME turtle
   turtle(); 

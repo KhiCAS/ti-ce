@@ -10,6 +10,11 @@
 
 APPLANG ?= en
 VARIANT ?= normal
+BENCHMARK ?= NO
+
+ifeq ($(filter $(BENCHMARK),YES NO),)
+    $(error BENCHMARK must be YES or NO)
+endif
 
 FEATURE_DEFS = -DWITH_UNITS -DWITH_LAPLACE -DWITH_DESOLVE -DWITH_EQW -DWITH_PLOT -DWITH_SHEET -DWITH_TABVAR
 
@@ -43,7 +48,7 @@ LTO_OUTLINE_MIN_BYTES ?= 11
 LTO_INLINE_THRESHOLD ?= $(if $(LTO_TUNING_ENABLED),0,-10)
 LTOFLAGS ?= $(CFLAGS) -Xclang -fmerge-functions -mllvm -inline-threshold=$(LTO_INLINE_THRESHOLD) $(LTO_BACKEND_FLAGS)
 # Per-source experiments remain available, but the measured balanced policy
-# preserves normal inlining heuristics.
+# preserves normal inlining heuristics. See readme.md for the measured tradeoff.
 # Override with a space-separated list of source=threshold pairs, or clear it.
 INLINE_THRESHOLDS ?=
 
@@ -66,7 +71,14 @@ LIBLOAD_OPTIONAL = fileioc
 # Track variant changes even when no source or makefile has changed.
 DEPS += $(OBJDIR)/.khicas-build-config
 
+ifeq ($(BENCHMARK),YES)
+EXTRA_CXX_SOURCES += tests/benchmark.cc
+endif
+
 include $(shell cedev-config --makefile)
 include app_tools/makefile_tuning
+ifeq ($(BENCHMARK),YES)
+EZCXXFLAGS += -DKHICAS_BENCHMARK
+endif
 include app_tools/makefile_inline
 include app_tools/makefile_elf

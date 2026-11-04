@@ -132,3 +132,6 @@ flycheck_*.el
 .idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,emacs
+
+# Local benchmark measurements, screenshots, emulator states and ROM copies
+/tests/results/
