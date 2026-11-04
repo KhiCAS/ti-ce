@@ -2872,11 +2872,13 @@ const char * Console_Draw_FMenu(int key, struct FMenu* menu,Char * cfg,int activ
 
     input_key=translate_fkey(input_key);
 
-    if ( active_app==0 &&
+    if ( (active_app==0 || active_app==6) &&
 	 ((input_key >= KEY_CTRL_F1 && input_key <= KEY_CTRL_F6) ||
 	  (input_key >= KEY_CTRL_F7 && input_key <= KEY_CTRL_F12) )
 	 ){
       Console_Disp(1);
+      // The full console redraw also clears the softkey labels below the popup.
+      console_disp_status(Setup_GetEntry(0x14),active_app);
       key=input_key;
       return console_menu(key,cfg,active_app);
     }

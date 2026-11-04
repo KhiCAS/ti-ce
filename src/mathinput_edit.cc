@@ -889,7 +889,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       else if (key==KEY_CTRL_F5) // eval: the selection replaced by its value
         t="eval(";
       else if ((key>=KEY_CTRL_F1 && key<=KEY_CTRL_F6) || (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20))
-        t=key==KEY_CTRL_F4?0:console_menu(key,0);
+        t=key==KEY_CTRL_F4?0:console_menu(key,6);
       else if (key!=KEY_CHAR_POW && key!=KEY_CHAR_SQUARE && key!=KEY_CHAR_RECIP && key!=KEY_EQW_TEMPLATE && key!=KEY_EQW_TEMPLATE2 && key!=KEY_CHAR_PMINUS)
         t=keytostring(key,keyflag,false);
       if ((key==KEY_CHAR_COMMA || key==KEY_CHAR_CR) && mie_in_cell(s,sa) && mie_M.ca[mie_M.r*mie_M.nc+mie_M.c]==sa && mie_M.cb[mie_M.r*mie_M.nc+mie_M.c]==sb){
@@ -1030,7 +1030,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
     else if (key==KEY_CTRL_SYMB)
       t=catbuf;
     else if ((key>=KEY_CTRL_F1 && key<=KEY_CTRL_F6) || (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20))
-      t=console_menu(key,0);
+      t=console_menu(key,6);
     else
       t=keytostring(key,keyflag,false);
     if (t && t[0])
