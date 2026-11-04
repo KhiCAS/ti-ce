@@ -41,6 +41,8 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
   if(menu->selection-1 < menu->scroll)
     menu->scroll = menu->selection -1;
 
+  int drawnSelection=0, drawnScroll=-1;
+  bool keywordChanged=true;
   while(1) {
 #ifdef CURSOR
     Cursor_SetFlashOff();
@@ -51,9 +53,10 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
       menu->scroll = menu->selection -(menu->numitems>itemsHeight ? itemsHeight : menu->numitems);
     if (menu->selection-1 < menu->scroll)
       menu->scroll = menu->selection -1;
+    const bool fullRedraw = drawnScroll != menu->scroll;
     //if(menu->statusText != NULL) DefineStatusMessage(menu->statusText, 1, 0, 0);
     // Clear the area of the screen we are going to draw on
-    if (0 == menu->pBaRtR){
+    if (fullRedraw && 0 == menu->pBaRtR){
       const int x=fontwidth*(menu->startX-2), y=C10*(menu->miniMiniTitle ? itemsStartY:menu->startY)+STATUS_AREA_PX, w=fontwidth*(menu->width+2)+((menu->scrollbar && menu->scrollout)?C6:0), h=C10*menu->height-(menu->miniMiniTitle ? C10:0);
       //dbg_printf("menu clear area x=%i y=%i w=%i h=%i\n",x,y,w,h);
       int ybot=y+h;
@@ -68,7 +71,11 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
       draw_line(x+w,y,x+w,ybot,_BLACK);
     }
     if (menu->numitems>0) {
-      for(int curitem=0; curitem < menu->numitems; curitem++) {
+      for(int curitem=menu->scroll; curitem < menu->numitems && curitem < menu->scroll+itemsHeight; curitem++) {
+        // Without scrolling, only the old and new highlighted rows change.
+        if (!fullRedraw && (drawnSelection == menu->selection ||
+            (curitem+1 != drawnSelection && curitem+1 != menu->selection)))
+          continue;
         // print the menu item only when appropriate
         if (menu->scroll < curitem+1 && menu->scroll > curitem-itemsHeight) {
           char menuitem[256] = "";
@@ -125,7 +132,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
           }
         }
       }
-      if (menu->scrollbar) {
+      if (fullRedraw && menu->scrollbar) {
 #ifdef SCROLLBAR
         TScrollbar sb;
         sb.I1 = 0;
@@ -141,24 +148,29 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
 #endif
       }
       //if(menu->type==MENUTYPE_MULTISELECT && menu->fkeypage == 0) drawFkeyLabels(0x0037); // SELECT (white)
-    } else {
+    } else if (fullRedraw) {
       printCentered(menu->nodatamsg, (itemsStartY*C10)+(itemsHeight*C10)/2-12);
     }
-    if (showtitle){
+    if (showtitle && (fullRedraw || keywordChanged)){
       const int textX = fontwidth*menu->startX, textY=(menu->startY-1)*C10;
-      if (menu->miniMiniTitle){
-        Printmini( textX+1, textY+1, menu->title, 0 );
-      } else
-        Printxy(C6*menu->startX+1, C10*menu->startY+1, menu->title, TEXT_MODE_NORMAL);
-      if (menu->subtitle != nullptr){
-        const int subtitleX = (MB_ElementCount(menu->title)+menu->startX-1)*fontwidth+C10;
-        const int subtitleY = C6;
-        Printmini(subtitleX + 1, subtitleY + 1, menu->subtitle, 0);
+      if (fullRedraw){
+        if (menu->miniMiniTitle){
+          Printmini( textX+1, textY+1, menu->title, 0 );
+        } else
+          Printxy(C6*menu->startX+1, C10*menu->startY+1, menu->title, TEXT_MODE_NORMAL);
+        if (menu->subtitle != nullptr){
+          const int subtitleX = (MB_ElementCount(menu->title)+menu->startX-1)*fontwidth+C10;
+          const int subtitleY = C6;
+          Printmini(subtitleX + 1, subtitleY + 1, menu->subtitle, 0);
+        }
       }
       const int x=fontwidth*(menu->startX+menu->width-6);
       Printxy(x, textY+C10+1, "____", 0);
       Printxy(x, textY+C10+1, keyword, 0);
     }
+    drawnSelection=menu->selection;
+    drawnScroll=menu->scroll;
+    keywordChanged=false;
     /*if(menu->darken) {
       DrawFrame(_BLACK);
       VRAMInvertArea(menu->startX*fontwidth-fontwidth, menu->startY*C10, menu->width*fontwidth-(menu->scrollout || !menu->scrollbar ? 0 : 5), menu->height*C10);
@@ -176,6 +188,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
 	pos=0;
       keyword[pos]=key;
       keyword[pos+1]=0;
+      keywordChanged=true;
       int cur=0;
       for (;cur<menu->numitems;++cur){
 #if 1
@@ -298,8 +311,10 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
       if(menu->type != MENUTYPE_MULTISELECT) break;
       // else fallthrough
     case KEY_CTRL_DEL:
-      if (strlen(keyword))
-	keyword[strlen(keyword)-1]=0;
+      if (strlen(keyword)){
+        keyword[strlen(keyword)-1]=0;
+        keywordChanged=true;
+      }
       else {
 	if (strncmp(menu->title,"VARS",4)==0)
 	  return key;
@@ -308,6 +323,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     case KEY_CTRL_AC:
       if (strlen(keyword)){
 	keyword[0]=0;
+	keywordChanged=true;
 	lock_alpha(); //
 	//DisplayStatusArea();
 	break;
