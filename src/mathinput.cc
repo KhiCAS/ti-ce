@@ -61,14 +61,28 @@
 //
 // Not reentrant: one static node pool (MAXN nodes of 16 bytes) and static state.
 
+#include <stdlib.h>
 #include "mathinput.h"
 
 // node pool, parser nesting, display ops budget, layout recursion, construct chain
-enum { MAXN = 192, MAXD = 24, MAXOPS = 400, RMAX = 2 * MAXD + 4, MAXC = 64, MAXMC = 16 };
+#if defined(TICE) || defined(NUMWORKS) || defined(GINT_MALLOC) // little RAM: TI, Numworks, Casio
+enum { MAXN = 192, MAXOPS = 400 };
+#else // HP Prime, PC, wasm: a large expression edited in 2D (tabvar([cos(x),sin(3x)])'s table:
+enum { MAXN = 1024, MAXOPS = 2048 }; // about 450 nodes, 500 ops); 18 KB of nodes + 10 KB (mi_select)
+#endif
+enum { MAXD = 24, RMAX = 2 * MAXD + 4, MAXC = 64, MAXMC = 16 };
+// the pool and op budget for a large result (MI_F_TIDY), taken from the heap by mi_build
+#if defined(TICE) || defined(NUMWORKS) // little RAM: enough for tabvar's 5-row parametric table
+enum { MAXNB = 400, MAXOPSB = 512 }; // (376 nodes, 451 ops): 7 KB + 7 KB (TI) / 10 KB (Numworks)
+#elif defined(GINT_MALLOC) // Casio
+enum { MAXNB = 512, MAXOPSB = 1024 }; // 9 KB + 20 KB
+#else // the static pool is already large: for the very large results
+enum { MAXNB = 4096, MAXOPSB = 8192 };
+#endif
 
 // token types: TK_* or the punctuation char itself
 enum { TK_END, TK_NUM, TK_NAME, TK_STR, OP_DEF, OP_IMP, OP_ARR, OP_EQ, OP_NE, OP_LE, OP_GE,
-       OP_POW, TK_OTHER = 31 };
+       OP_POW, OP_RAD, TK_OTHER = 31 }; // OP_RAD: a radical sign (giac's sqrt printed as √ on the HP)
 
 // node kinds; leaves first
 enum { K_TEXT, K_OP, K_OPU, K_SEP, K_DOT, K_BLANK, K_FLAT, K_PI, K_INF, K_THETA,
@@ -79,18 +93,22 @@ enum { F_IMPL = 1, F_HID = 2, F_CLOSED = 4, F_NOBOX = 8, F_ARGSEP = 16, F_NAME =
 struct mi_node {
   unsigned char k, f;     // kind, flags
   short a, b, c;          // buffer span [a,b); c: core start after leading blanks
-  unsigned char kid, nx;  // first child, next sibling (0: none)
+  unsigned short kid, nx; // first child, next sibling (0: none); short: MAXNB > 255
   short w, as, ds;        // measured width, ascent, descent
 };
 
-static mi_node T[MAXN + 1];  // T[0] = nil, T[MAXN] = overflow sink (never used in practice)
+static mi_node T0[MAXN + 1]; // T[0] = nil, T[cap] = overflow sink (never used in practice)
+// the pool: T0, or for a result too large for it (MI_F_TIDY, the history) a bigger one taken
+// from the heap for the time of one mi_build (MAXNB nodes; RAM is scarce on the TI)
+static mi_node * T = T0;
+static int cap = MAXN, maxops = MAXOPS;
 int (*mi_arg_label)(const char * name, int nlen, int i, const char ** label);
 enum { MAXLB = 12 };         // MI_F_HINTS: the empty boxes (F_LABEL) and the names they show
 static short lbn[MAXLB];
 static const char * lbs[MAXLB];
 static unsigned char lbl[MAXLB];
 static int nlb;
-static int nn, nops, dep, broken, rtail, ftail;
+static int nn, nops, dep, broken, ovf, rtail, ftail; // ovf: the node or op budget ran out
 static unsigned char nopen[3];   // open ( [ { groups
 static const char * S;
 static int L;
@@ -140,7 +158,10 @@ static void lex(int i) {
   tc = i;
   if (i >= L) { tt = TK_END; tb = L; return; }
   int c = ch(i), d = i + 1 < L ? ch(i + 1) : 0;
-  if (digit(c) || (c == '.' && digit(d))) {
+  if (c == 0x1a || (c == 0xe2 && d == 0x88 && i + 2 < L && ch(i + 2) == 0x9a)) {
+    i += c == 0x1a ? 1 : 3; // √ in UTF-8, or the HP font's char 0x1a it is stored as
+    tt = OP_RAD;
+  } else if (digit(c) || (c == '.' && digit(d))) {
     i = digits(i);
     if (i < L && S[i] == '.') i = digits(i + 1);
     if (i < L && (S[i] | 32) == 'e') { // exponent only if digits follow
@@ -158,8 +179,9 @@ static void lex(int i) {
       i = tc + 2;
     tt = TK_NAME;
   } else if (c == '"') {
+    // a result (MI_F_TIDY, printed by giac) has no escapes: "\" is the 1-char string \ (tabvar arrows)
     for (++i; i < L && S[i] != '"'; ++i)
-      if (S[i] == '\\' && i + 1 < L) ++i;
+      if (S[i] == '\\' && i + 1 < L && !(M->flags & MI_F_TIDY)) ++i;
     if (i < L) ++i;
     tt = TK_STR;
   } else {
@@ -182,7 +204,7 @@ static int binlev(int t) { // binary operator precedence level, 0: none
   }
   return 0;
 }
-static int prim(int t) { return t == TK_NUM || t == TK_NAME || t == TK_STR || t == '(' || t == '[' || t == '{'; }
+static int prim(int t) { return t == TK_NUM || t == TK_NAME || t == TK_STR || t == '(' || t == '[' || t == '{' || t == OP_RAD; }
 static int prefix(int t) { return t == '-' || t == '+' || t == '!' || t == '\''; }
 static int powop(int t) { return t == '^' || t == OP_POW; }
 static int otype(int t) { return t == '(' ? 0 : t == '[' ? 1 : t == '{' ? 2 : -1; }
@@ -191,7 +213,7 @@ static int ctype(int t) { return t == ')' ? 0 : t == ']' ? 1 : t == '}' ? 2 : -1
 // ---------------------------------------------------------------- parser
 static int newnode(int k, int a, int b, int ops) {
   int n = nn;
-  if (n < MAXN) ++nn; else { n = MAXN; broken = 1; MI_ERR(); }
+  if (n < cap) ++nn; else { n = cap; broken = 1; MI_ERR(); }
   mi_node & d = T[n];
   d.k = k; d.f = 0; d.a = a; d.b = b; d.c = a; d.kid = d.nx = 0; d.w = d.as = d.ds = 0;
   nops += ops; // upper bound of the display ops this node will produce
@@ -201,8 +223,12 @@ static int leaf(int k) { int n = newnode(k, ta, tb, 1); T[n].c = tc; return n; }
 static int box(int p) { return newnode(K_EMPTY, p, p, 1); }
 // the symbol drawn for a name (ui_math maps these literals to glyphs)
 static const char * symlit(int k) { return k == K_PI ? "pi" : k == K_INF ? "oo" : "theta"; }
+// a result (MI_F_TIDY): a string "..." drawn without its quotes (tabvar cells: " ", "-", "\\")
+static int unq(int n, int k, int c) {
+  return k == K_TEXT && (M->flags & MI_F_TIDY) && T[n].b - c >= 3 && ch(c) == '"' && ch(T[n].b - 1) == '"';
+}
 // budget exhausted: keep a reserve for the nodes created while unwinding (<= 2 per level)
-static int over() { return nops > MAXOPS - 16 || nn + 2 * dep + 16 > MAXN; }
+static int over() { const int o = nops > maxops - 16 || nn + 2 * dep + 16 > cap; if (o) ovf = 1; return o; }
 static int flat() { // the rest of the buffer as plain text
   if (tt == TK_END) return 0;
   int n = newnode(K_FLAT, ta, L, 1);
@@ -417,6 +443,24 @@ static int primary() {
     if (tt == '^' && fnpow(n)) T[n].f |= F_FN; // sin^2(x): sin is a function, upright
     return tt == '(' ? pcall(n) : n;
   }
+  if (k == OP_RAD) { // √a, √(a): sqrt(a)
+    int r = newnode(K_SQRT, ta, 0, 4), a;
+    T[r].c = tc;
+    lex(tb);
+    if (tt == '(') { // its parentheses not drawn (the radical's overbar groups)
+      const int g = pgroup();
+      a = T[g].kid;
+      T[r].b = T[g].b;
+    }
+    else {
+      a = primary();
+      if (!a) a = box(ta);
+      T[r].b = T[a].b;
+    }
+    T[r].kid = a;
+    T[r].f |= F_CLOSED;
+    return r;
+  }
   return otype(k) >= 0 ? pgroup() : 0;
 }
 
@@ -513,7 +557,7 @@ static int pseq(int stopc) {
 }
 
 static int parse() {
-  nn = 1; nops = dep = broken = nlb = 0;
+  nn = 1; nops = dep = broken = ovf = nlb = 0;
   nopen[0] = nopen[1] = nopen[2] = 0;
   lex(0);
   int r = pseq(0);
@@ -599,7 +643,7 @@ static void cons(int n, int x, int y, int sm) {
   switch (k) {
   case K_FRAC: { // bar at the axis, parts centered, gaps g (classic: 1 px bar, 2 px gaps)
     int g = GAP, b = BAR;
-    if (sm && M->wf) { // proportional fonts: a fraction in an exponent is inline, a/b; a sum in
+    if (sm && M->wf && !(M->flags & MI_F_SMALL)) { // proportional fonts: a fraction in an exponent is inline, a/b (not in a result all small: MI_F_SMALL); a sum in
       const int sw = lw("/", 1, sm), q = lw("(", 1, sm), pa = needp(sn[0]) ? q : 0, pb = needp(sn[1]) ? q : 0;
       if (pa) { dtext("(", 1, sm, 0, 0); dtext(")", 1, sm, pa + A.w, 0); } // parentheses: 1/(N+1), not 1/N+1
       sl(0, pa, 0, sm);
@@ -781,7 +825,7 @@ static void measure(int n, int sm) {
     else if (k == K_PI || k == K_INF || k == K_THETA) w += lw(symlit(k), 1, sm);
     else if (k != K_BLANK) {
       const char * dn = dname(n);
-      w += dn ? dw(dn, sm) : tw(c, d.b - c, sm, style(n, k));
+      w += dn ? dw(dn, sm) : unq(n, k, c) ? tw(c + 1, d.b - c - 2, sm, style(n, k)) : tw(c, d.b - c, sm, style(n, k));
       if (k == K_OP) w += 2 * M->opgap;
       if (k == K_SEP) w += h;
     }
@@ -916,10 +960,11 @@ static void place(int n, int x, int y, int dp, int sm) {
       else {
         int st = style(n, k), sy = k == K_PI || k == K_INF || k == K_THETA;
         const char * dn = sy ? 0 : dname(n);
-        op(MI_TEXT, sm, gx, y, sy ? lw(symlit(k), 1, sm) : dn ? dw(dn, sm) : tw(c, d.b - c, sm, st),
-           f.asc + f.desc, c, d.b - c, sy ? symlit(k) : dn, sy ? (int)MI_SYM : st);
+        const int q = !sy && !dn && unq(n, k, c); // a result's string: its text without the quotes
+        op(MI_TEXT, sm, gx, y, sy ? lw(symlit(k), 1, sm) : dn ? dw(dn, sm) : tw(c + q, d.b - c - 2 * q, sm, st),
+           f.asc + f.desc, c + q, d.b - c - 2 * q, sy ? symlit(k) : dn, sy ? (int)MI_SYM : st);
         for (p = c + 1; p < d.b; ++p) // inside a glyph or a built-in function's name (sin is one
-          if (k < K_PI && k != K_OP && !kfn(n) && gstart(p)) P(p, gx + tw(c, p - c, sm, st), y, sm, dp);
+          if (!q && k < K_PI && k != K_OP && !kfn(n) && gstart(p)) P(p, gx + tw(c, p - c, sm, st), y, sm, dp);
           else alias(p, p + 1);         // unit: the arrows stepped into it, s0in(x) was typed; <= is one glyph)
       }
     }
@@ -1020,18 +1065,19 @@ static int prep(const char * s, int len, const mi_metrics & m) {
   S = s; L = s && len > 0 ? mn(len, 30000) : 0; M = &m;
   int r = parse();
   rd = 0;
-  if (r) measure(r, 0);
+  if (r) measure(r, (m.flags & MI_F_SMALL) ? 1 : 0); // MI_F_SMALL: the whole layout small
   return r;
 }
 static void run(int r, int mode, int target) { // one place pass
   md = mode; tgt = target; pp = -1; ckn = rd = cp = 0; bl = -1;
-  P(0, 0, 0, 0, 0);
-  if (r) place(r, 0, 0, 0, 0);
+  const int sm0 = (M->flags & MI_F_SMALL) ? 1 : 0;
+  P(0, 0, 0, 0, sm0);
+  if (r) place(r, 0, 0, 0, sm0);
   if (pp >= 0) deliver(pp, px, py, ph, pc);
 }
 static int clampc(int c) { return c < 0 ? 0 : c > L ? L : c; }
 
-void mi_build(const char * s, int len, int caret, const mi_metrics & m, mi_layout & out, int sa, int sb) {
+static void build1(const char * s, int len, int caret, const mi_metrics & m, mi_layout & out, int sa, int sb) {
   int r = prep(s, len, m);
   out.ops.clear();
   out.ops.reserve(nops + 1);
@@ -1043,9 +1089,30 @@ void mi_build(const char * s, int len, int caret, const mi_metrics & m, mi_layou
   if (selA < selB && sx0 < sx1) { out.sx = sx0; out.sy = sy0; out.sw = sx1 - sx0; out.sh = sy1 - sy0; }
   selA = selB = -1;
   out.width = r ? T[r].w : 0;
-  out.asc = mx(m.big.asc, r ? T[r].as : 0);
-  out.desc = mx(m.big.desc, r ? T[r].ds : 0);
+  const mi_font & bf = (m.flags & MI_F_SMALL) ? m.small : m.big;
+  out.asc = mx(bf.asc, r ? T[r].as : 0);
+  out.desc = mx(bf.desc, r ? T[r].ds : 0);
   out.cx = lx; out.cy = ly; out.ch = lh;
+}
+int mi_build_big;
+void mi_build(const char * s, int len, int caret, const mi_metrics & m, mi_layout & out, int sa, int sb) {
+  mi_build_big = 0;
+  if (!(m.flags & MI_F_BIG) || !(m.flags & MI_F_TIDY)) {
+    build1(s, len, caret, m, out, sa, sb);
+    if (!(ovf || broken) || !(m.flags & MI_F_TIDY) || cap != MAXN) return;
+  }
+  // a large result: again, in a bigger pool if the heap has room for it and for the ops (the
+  // first try's ops given back first; on Numworks a failing new is fatal: the room is checked)
+  { std::vector<mi_op> e; out.ops.swap(e); }
+  mi_node * big = (mi_node *) malloc((MAXNB + 1) * sizeof(mi_node));
+  void * probe = big ? malloc((MAXOPSB + 16) * sizeof(mi_op)) : 0;
+  if (!probe) { free(big); build1(s, len, caret, m, out, sa, sb); return; } // the first try again
+  free(probe);
+  T = big; cap = MAXNB; maxops = MAXOPSB;
+  build1(s, len, caret, m, out, sa, sb);
+  mi_build_big = 1;
+  T = T0; cap = MAXN; maxops = MAXOPS; nn = 1; // the static pool is empty: the next calls parse again
+  free(big);
 }
 
 // LEFT/RIGHT walk what is drawn: in the constructs whose slots are not drawn in buffer order

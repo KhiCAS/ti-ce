@@ -24,11 +24,12 @@ typedef int (*mi_wfn)(const char * s, int n, int sm, int st);
 // flags: MI_F_IMPLDOT draws * as implicit multiplication (a 1 px gap, no dot) unless a digit
 // follows it (2*x -> 2x, x*y -> xy, 2*3 -> 2.3): for results printed by giac.
 // MI_F_CALLBOX: f() shows a box in its empty argument (template previews)
+// MI_F_SMALL: the whole layout in the small font (a result too wide for the history)
 // MI_F_TIDY: read-only (the history): the user's group around a whole numerator or denominator
 // is not drawn, 1/(x+1) typed is (1)/((x+1))
 // MI_F_HINTS (the edit line, with MI_F_CALLBOX): an empty argument of a call whose arguments have
 // names (mi_arg_label) is a box around its name, in the small font (powmod(a,n,p))
-enum { MI_F_IMPLDOT = 1, MI_F_CALLBOX = 2, MI_F_TIDY = 4, MI_F_HINTS = 8 };
+enum { MI_F_IMPLDOT = 1, MI_F_CALLBOX = 2, MI_F_TIDY = 4, MI_F_HINTS = 8, MI_F_SMALL = 16, MI_F_BIG = 32 };
 struct mi_metrics { mi_font big, small; short opgap; mi_wfn wf; short bar, gap, rad, isw, flags; };
 
 // display list op codes
@@ -55,6 +56,10 @@ struct mi_op {
   const char * lit;
   unsigned char style;       // MI_TEXT: MI_UP, MI_IT or MI_SYM (lit)
 };
+
+// MI_F_BIG (with MI_F_TIDY): straight in the heap's big pool, skipping the static one (a result
+// known to need it); mi_build_big: the last mi_build used the big pool
+extern int mi_build_big;
 
 struct mi_layout {
   std::vector<mi_op> ops;

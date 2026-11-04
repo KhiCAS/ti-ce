@@ -1047,6 +1047,14 @@ int Console_GetDispLen(const Char *str)
 /*
   The following functions are used to move the cursor.
 */
+int mi_hist_hscroll(const char * s,bool output); // mathinput_glue.cc
+// a line drawn in 2D on several rows (its first line, the one the cursor selects): arrow presses
+// that scroll it to its right end (0: it fits the screen); -1: not such a line (text scrolling)
+static int console_hmax2d(int l){
+  if (l<0 || l>=Last_Line || Line[l].type==LINE_TYPE_CONT || Line[l+1].type!=LINE_TYPE_CONT)
+    return -1;
+  return mi_hist_hscroll((const char *)Line[l].str,Line[l].type==LINE_TYPE_OUTPUT);
+}
 int Console_MoveCursor(int direction){
   switch (direction){
     case CURSOR_UP:
@@ -1187,6 +1195,13 @@ int Console_MoveCursor(int direction){
 	}
       }
     case CURSOR_SHIFT_RIGHT:
+      if (Line[Current_Line].readonly){
+        const int m2=console_hmax2d(Current_Line);
+        if (m2>=0){
+          Line[Current_Line].start_col=m2;
+          break;
+        }
+      }
       if (!Line[Current_Line].readonly)
         Cursor.x = std::min<int>(Line[Current_Line].disp_len,COL_DISP_MAX);
       if (Line[Current_Line].disp_len > COL_DISP_MAX)
@@ -1194,6 +1209,12 @@ int Console_MoveCursor(int direction){
       break;
     case CURSOR_RIGHT:
       if (Line[Current_Line].readonly){
+        const int m2=console_hmax2d(Current_Line);
+        if (m2>=0){ // drawn in 2D: scrolled by the drawing (mi_hist_draw)
+          if (Line[Current_Line].start_col<m2)
+            Line[Current_Line].start_col++;
+          break;
+        }
 	if (Line[Current_Line].disp_len - Line[Current_Line].start_col > COL_DISP_MAX){
 	  Line[Current_Line].start_col++;
 	}
@@ -1428,10 +1449,13 @@ int Console_NewLine(int pre_line_type, int pre_line_readonly)
 // session) followed by k-1 LINE_TYPE_CONT lines (text "\x01"): the history keeps counting rows,
 // the cursor steps over the continuation rows (a 2D line is one entry). As in FlowCE.
 int mi_hist_rows(const char * s,bool output,int rowh,int maxrows); // mathinput_glue.cc
-bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax);
+bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax,int scroll);
+int mi_hist_hscroll(const char * s,bool output);
+bool mi_hist_tight(const char * s,bool output,int height);
+static void console_reselect(int prev,int prevrow); // after console_displine
 
 int console_newline2d(int type){
-  const int rows=mi_hist_rows((const char *)Edit_Line,type==LINE_TYPE_OUTPUT,15,LINE_DISP_MAX-2);
+  const int rows=mi_hist_rows((const char *)Edit_Line,type==LINE_TYPE_OUTPUT,15,type==LINE_TYPE_OUTPUT?LINE_DISP_MAX:LINE_DISP_MAX-2);
   const int r=Console_NewLine(type,1);
   for (int k=1;k<rows && r==CONSOLE_NEW_LINE_SET;++k){
     Console_Output((const Char *)"\x01");
@@ -1495,7 +1519,7 @@ static bool console_replace_line(int l,const char * text){
   int cur=0;
   while (l+1+cur<Last_Line && Line[l+1+cur].type==LINE_TYPE_CONT)
     ++cur;
-  const int rows=mi_hist_rows(text,Line[l].type==LINE_TYPE_OUTPUT,15,LINE_DISP_MAX-2);
+  const int rows=mi_hist_rows(text,Line[l].type==LINE_TYPE_OUTPUT,15,Line[l].type==LINE_TYPE_OUTPUT?LINE_DISP_MAX:LINE_DISP_MAX-2);
   if (Last_Line+(rows-1-cur)>=LINE_MAX-1)
     return false;
   Char * s=(Char *)malloc(strlen(text)+1);
@@ -2226,6 +2250,21 @@ int Console_GetKey(){
       continue;
     }
 #endif
+    if ((key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT) && Current_Line<Last_Line){
+      // a result drawn in 2D wider than the screen: the arrows scroll it; past an end, they
+      // open the editors as for any line
+      const int m2=console_hmax2d(Current_Line);
+      if (m2>0){
+        int & sc=Line[Current_Line].start_col;
+        if (sc>m2)
+          sc=m2;
+        if ((key==KEY_CTRL_RIGHT && sc<m2) || (key==KEY_CTRL_LEFT && sc>0)){
+          sc+=key==KEY_CTRL_RIGHT?1:-1;
+          Console_Disp(1);
+          continue;
+        }
+      }
+    }
     if ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT || key==KEY_EQW_TEMPLATE) && Current_Line<Last_Line){
       int l=Current_Line;
       int lt;
@@ -2544,13 +2583,10 @@ int Console_GetKey(){
         return CONSOLE_MEM_ERR;
       while (Current_Line>0 && Line[Current_Line].type==LINE_TYPE_CONT) // a 2D line is one entry
         Console_MoveCursor(CURSOR_UP);
-      if (Start_Line!=prevstart || console_in_block(prevstart+prevcursor) || console_in_block(Current_Line)){
+      if (Start_Line!=prevstart)
         Console_Disp(1); // improve: scroll area and redraw line?
-      }
-      else {
-        console_displine(prevcursor,2);
-        console_displine(Cursor.y,2);
-      }
+      else
+        console_reselect(prevstart+prevcursor,prevcursor);
       continue;
     }
     if ( (key == KEY_CTRL_DOWN || key=='\t' || key==KEY_CTRL_F10
@@ -2568,13 +2604,10 @@ int Console_GetKey(){
         return CONSOLE_MEM_ERR;
       while (Current_Line<Last_Line && Line[Current_Line].type==LINE_TYPE_CONT)
         Console_MoveCursor(CURSOR_DOWN);
-      if (Start_Line!=prevstart || console_in_block(prevstart+prevcursor) || console_in_block(Current_Line)){
+      if (Start_Line!=prevstart)
         Console_Disp(1); // improve: scroll area and redraw line?
-      }
-      else {
-        console_displine(prevcursor,2);
-        console_displine(Cursor.y,2);
-      }
+      else
+        console_reselect(prevstart+prevcursor,prevcursor);
       continue;
     }
     if (key == KEY_CTRL_LEFT){
@@ -3203,6 +3236,42 @@ void Print(const Char * s,int color,bool colorsyntax){
 }
 
 
+// the frame of 2D line head (its first line, on the screen): drawn (selected) or erased; erased
+// only if the drawing does not reach the frame's rows (false: the line must be drawn again)
+static bool console_frame2d(int head,bool on){
+  int k=1;
+  while (head+k<Last_Line && Line[head+k].type==LINE_TYPE_CONT)
+    ++k;
+  const int top=STATUS_AREA_PX+(head-Start_Line)*vfontsize,height=k*vfontsize,ymax=STATUS_AREA_PX+LINE_DISP_MAX*vfontsize;
+  const int y1=top+height<ymax?top+height:ymax;
+  if (head<Start_Line || top>=ymax)
+    return true;
+  if (!on && (top+height>ymax || mi_hist_tight((const char *)Line[head].str,Line[head].type==LINE_TYPE_OUTPUT,height)))
+    return false; // cut at the bottom (drawn as text), or touching its first or last row
+  const int c=on?COLOR_BLUE:_WHITE;
+  draw_line(0,top,LCD_WIDTH_PX-1,top,c);
+  draw_line(0,y1-1,LCD_WIDTH_PX-1,y1-1,c);
+  draw_line(0,top,0,y1-1,c);
+  draw_line(LCD_WIDTH_PX-1,top,LCD_WIDTH_PX-1,y1-1,c);
+  return true;
+}
+// the selection moved from line prev (on screen row prevrow) to Current_Line, the screen not
+// scrolled: the two lines updated; a 2D line only gets or loses its frame (drawing a large one
+// again is slow)
+static void console_reselect(int prev,int prevrow){
+  if (console_in_block(prev)){
+    const int h=console_head(prev);
+    if (!console_frame2d(h,false))
+      console_displine(h-Start_Line,2);
+  }
+  else
+    console_displine(prevrow,2);
+  if (console_in_block(Current_Line))
+    console_frame2d(Current_Line,true);
+  else
+    console_displine(Cursor.y,2);
+}
+
 void console_displine(int i,int redraw_mode){
   const int l=i+Start_Line;
   int tw,th;
@@ -3233,7 +3302,7 @@ void console_displine(int i,int redraw_mode){
             y1=ymax;
           if (y1>STATUS_AREA_PX){
             drawRectangle(0,STATUS_AREA_PX,LCD_WIDTH_PX,y1-STATUS_AREA_PX,_WHITE);
-            mi_hist_draw((const char *)Line[head].str,true,top,k*vfontsize,STATUS_AREA_PX,y1);
+            mi_hist_draw((const char *)Line[head].str,true,top,k*vfontsize,STATUS_AREA_PX,y1,0);
           }
         }
         return;
@@ -3249,19 +3318,15 @@ void console_displine(int i,int redraw_mode){
     const int y1=top+height<ymax?top+height:ymax;
     drawRectangle(0,top,LCD_WIDTH_PX,y1-top,_WHITE);
     const bool output=Line[head].type==LINE_TYPE_OUTPUT;
-    if (top+height>ymax || !mi_hist_draw((const char *)Line[head].str,output,top,height,top,y1)){
+    if (top+height>ymax || !mi_hist_draw((const char *)Line[head].str,output,top,height,top,y1,Line[head].start_col)){
       // cut at the bottom of the screen, or too large: the text on the first row
       const bool thumb=mi_thumb_size((const char *)Line[head].str,&tw,&th);
       int c=output?COL_DISP_MAX-(thumb?14:Line[head].disp_len)+1:1;
       locate(c<1?1:c,i+1);
       Print(thumb?(const Char *)"Graphic object":Line[head].str,TEXT_COLOR_BLACK,false);
     }
-    if (Current_Line==head){ // selected: a frame
-      draw_line(0,top,LCD_WIDTH_PX-1,top,COLOR_BLUE);
-      draw_line(0,y1-1,LCD_WIDTH_PX-1,y1-1,COLOR_BLUE);
-      draw_line(0,top,0,y1-1,COLOR_BLUE);
-      draw_line(LCD_WIDTH_PX-1,top,LCD_WIDTH_PX-1,y1-1,COLOR_BLUE);
-    }
+    if (Current_Line==head) // selected: a frame
+      console_frame2d(head,true);
     return;
   }
   int print_y=i*vfontsize;
@@ -3338,7 +3403,7 @@ void console_displine(int i,int redraw_mode){
         matchdirection=1;
       if (ch=='}' || ch==']' || ch==')')
         matchdirection=-1;
-      if (!matchdirection && pos){
+      if (!matchdirection && pos && pos<=l){ // pos<=l: the edit line emptied (console_disp_tail) or scrolled
         --pos;
         ch=str[pos];
         if (ch=='(' || ch=='[' || ch=='{')

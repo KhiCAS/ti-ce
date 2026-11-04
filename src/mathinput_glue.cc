@@ -3,6 +3,7 @@
 #include <string.h>
 #include "console.h"
 #include "main.h"
+#include <ctype.h>
 #include "mathinput.h" // last: it maps std to ustl on the calculator
 #include <sys/lcd.h> // lcd_Ram: the screen, 8 bits per pixel (graph thumbnails)
 
@@ -121,7 +122,8 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
       break;
     case MI_LPAREN: case MI_RPAREN: { // curved: 3 segments, 2 px apart at the middle
       const bool l=o.code==MI_LPAREN;
-      const int xo=l?x+w-2:x+1,xi=l?x+1:x+w-2,q=h/4;
+      // narrow (the small font: 3 px) the curve uses the whole width, else it would be a bar
+      const int xo=w<5?(l?x+w-1:x):(l?x+w-2:x+1),xi=w<5?(l?x:x+w-1):(l?x+1:x+w-2),q=h/4;
       mi_line(xo,y,xi,y+q,x0,y0,x1,y1,MI_INK);
       mi_line(xi,y+q,xi,y+h-1-q,x0,y0,x1,y1,MI_INK);
       mi_line(xi,y+h-1-q,xo,y+h-1,x0,y0,x1,y1,MI_INK);
@@ -316,24 +318,104 @@ static void mi_hist_metrics(mi_metrics & m,bool output){
   if (output)
     m.flags|=MI_F_IMPLDOT|MI_F_TIDY;
 }
+// the layout of history line s: a result too wide in the normal font is laid out in the small
+// one (MI_F_SMALL); still too wide, it is scrolled with the arrows (mi_hist_hscroll)
+static const int MI_HSTEP=16; // pixels per arrow press
+// a large result costs up to 4 layouts (the static pool overflows: again in the big one; too
+// wide: again in the small font), at each redraw: what the last such results needed is
+// remembered (by a hash of the text), they are laid out once
+struct mi_hist_memo { unsigned long h; int n; int flags, ad; }; // ad: asc+desc
+static mi_hist_memo mi_memo[4];
+static int mi_memo_next;
+static unsigned long mi_hash(const char * s,int n){
+  unsigned long h=2166136261UL;
+  for (int i=0;i<n;++i)
+    h=((h^(unsigned char)s[i])*16777619UL)&0xffffffffUL;
+  return h;
+}
+static void mi_hist_layout(const char * s,int n,bool output,mi_metrics & m,mi_layout & L){
+  mi_hist_metrics(m,output);
+  if (!output){
+    mi_build(s,n,-1,m,L);
+    return;
+  }
+  const unsigned long h=mi_hash(s,n);
+  for (int i=0;i<4;++i){
+    if (mi_memo[i].n==n && mi_memo[i].h==h){
+      m.flags|=mi_memo[i].flags;
+      mi_build(s,n,-1,m,L);
+      return;
+    }
+  }
+  mi_build(s,n,-1,m,L);
+  if (L.width>LCD_WIDTH_PX-6){
+    m.flags|=MI_F_SMALL;
+    mi_build(s,n,-1,m,L);
+  }
+  const int f=(m.flags & MI_F_SMALL)|(mi_build_big?MI_F_BIG:0);
+  if (f){
+    mi_memo[mi_memo_next].h=h;
+    mi_memo[mi_memo_next].n=n;
+    mi_memo[mi_memo_next].flags=f;
+    mi_memo[mi_memo_next].ad=L.asc+L.desc;
+    mi_memo_next=(mi_memo_next+1)%4;
+  }
+}
 // rows of rowh pixels that line s takes in 2D (at most maxrows), 0: drawn as text (Python,
 // programs, strings, too wide or too tall)
+// a plain text (a message, a print output: "Session saved") and not a result: two words separated
+// by blanks, outside the strings; giac's results have blanks only around a few operators
+static bool mi_hist_words(const char * s,int n){
+  static const char * const kw[]={"and","or","xor","not","mod","div","union","intersect","minus",0};
+  bool inq=false;
+  for (int i=0;i<n;++i){
+    if (s[i]=='"')
+      inq=!inq;
+    if (inq || s[i]!=' ' || i==0)
+      continue;
+    int a=i,b=i;
+    while (a>0 && (isalnum((unsigned char)s[a-1]) || s[a-1]=='_'))
+      --a;
+    while (b<n && s[b]==' ')
+      ++b;
+    int e=b;
+    while (e<n && (isalnum((unsigned char)s[e]) || s[e]=='_'))
+      ++e;
+    if (a==i || e==b || isdigit((unsigned char)s[a]) || isdigit((unsigned char)s[b]))
+      continue; // not two words (a blank near an operator, a number)
+    bool op=false;
+    for (int k=0;kw[k];++k){
+      const int l=strlen(kw[k]);
+      if ((i-a==l && !strncmp(s+a,kw[k],l)) || (e-b==l && !strncmp(s+b,kw[k],l)))
+        op=true;
+    }
+    if (!op)
+      return true;
+  }
+  return false;
+}
 static int mi_hist_k(const char * s,bool output,int rowh,int maxrows){
   if (!s || !s[0] || !mi_hist2d || mi_python_mode())
     return 0;
   const int n=strlen(s);
-  if (n>512)
+  if (n>1024)
     return 0;
   for (int i=0;i<n;++i){
-    if (s[i]=='\n' || s[i]=='"' || s[i]==1) // programs, strings: as text
-      return 0;
+    if (s[i]==1 || (s[i]=='\n' && !(output && s[0]=='['))) // programs: as text (giac prints a
+      return 0;                                    // matrix result with a newline after each row)
+    if (s[i]=='"' && (!output || i==0)) // an input with a string, a string result: as text; strings
+      return 0;                         // inside a result (tabvar's cells): drawn, without quotes
   }
+  int b0=0; // the first non blank
+  while (b0<n && (s[b0]==' ' || s[b0]=='\t'))
+    ++b0;
+  if ((s[b0]=='/' && s[b0+1]=='/') || mi_hist_words(s,n) || (output && s[b0]=='\'')) // a comment
+    return 0; // (// Success, also loaded as an input from a session), a message, a Python string: as text
   mi_metrics m;
-  mi_hist_metrics(m,output);
   mi_layout L;
-  mi_build(s,n,-1,m,L);
-  if (L.width>LCD_WIDTH_PX-6)
-    return 0; // too wide: the text, scrolled with the arrows
+  mi_hist_layout(s,n,output,m,L);
+  if (!output && L.width>LCD_WIDTH_PX-6)
+    return 0; // an input too wide: the text, scrolled with the arrows (a result: scrolled in 2D)
   int k=(L.asc+L.desc+1+rowh-1)/rowh; // 1 px margin: a plain line takes one row
   if (k<1)
     k=1;
@@ -355,7 +437,37 @@ bool mi_hist_shows(const char * s,int rowh,int maxrows){
 }
 // draws history line s in 2D in the block [top,top+height) (an input left-aligned, a result
 // right-aligned), nothing outside [ymin,ymax); false if it does not fit (drawn as text then)
-bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax){
+// 2D line s drawn on height px reaches its first or last row (where the selection's frame is)
+bool mi_hist_tight(const char * s,bool output,int height){
+  int tw,th;
+  if (mi_thumb_size(s,&tw,&th))
+    return true;
+  const int n=strlen(s);
+  if (output){ // a large result: known without laying it out
+    const unsigned long h=mi_hash(s,n);
+    for (int i=0;i<4;++i){
+      if (mi_memo[i].n==n && mi_memo[i].h==h)
+        return mi_memo[i].ad+1>=height;
+    }
+  }
+  mi_metrics m;
+  mi_layout L;
+  mi_hist_layout(s,n,output,m,L);
+  return L.asc+L.desc+1>=height;
+}
+// arrow presses that scroll result s, drawn in 2D, to its right end (0: it fits the screen)
+int mi_hist_hscroll(const char * s,bool output){
+  int tw,th;
+  if (!s || !s[0] || !output || mi_thumb_size(s,&tw,&th))
+    return 0;
+  mi_metrics m;
+  mi_layout L;
+  mi_hist_layout(s,strlen(s),output,m,L);
+  const int over=L.width-(LCD_WIDTH_PX-16);
+  return over>0?(over+MI_HSTEP-1)/MI_HSTEP:0;
+}
+// scroll: arrow presses to the right (a result wider than the screen; clamped)
+bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int ymax,int scroll){
   int tw,th;
   if (mi_thumb_size(s,&tw,&th)){
     if (th>height || tw>LCD_WIDTH_PX)
@@ -364,12 +476,35 @@ bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int yma
     return true;
   }
   mi_metrics m;
-  mi_hist_metrics(m,output);
   mi_layout L;
-  mi_build(s,strlen(s),-1,m,L);
-  if (L.asc+L.desc+1>height || L.width>LCD_WIDTH_PX-4)
+  mi_hist_layout(s,strlen(s),output,m,L);
+  if (L.asc+L.desc+1>height || (!output && L.width>LCD_WIDTH_PX-4))
     return false;
-  const int bx=output?LCD_WIDTH_PX-4-L.width:2,by=top+(height-(L.asc+L.desc))/2+L.asc;
-  mi_draw(L,s,bx,by,0,ymin,LCD_WIDTH_PX,ymax,false,-1);
+  const int by=top+(height-(L.asc+L.desc))/2+L.asc;
+  if (L.width<=LCD_WIDTH_PX-6){
+    const int bx=output?LCD_WIDTH_PX-4-L.width:2;
+    mi_draw(L,s,bx,by,0,ymin,LCD_WIDTH_PX,ymax,false,-1);
+    return true;
+  }
+  // wider than the screen: left-aligned, shifted by the scroll, clipped inside the frame; a
+  // chevron at each side where there is more
+  const int maxoff=L.width-(LCD_WIDTH_PX-16);
+  int off=scroll*MI_HSTEP;
+  if (off>maxoff)
+    off=maxoff;
+  if (off<0)
+    off=0;
+  mi_draw(L,s,8-off,by,7,ymin,LCD_WIDTH_PX-7,ymax,false,-1); // the chevrons outside
+  const int ym=top+height/2;
+  if (ym-3>=ymin && ym+3<ymax){
+    if (off>0){
+      mi_line(4,ym-3,1,ym,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+      mi_line(1,ym,4,ym+3,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+    }
+    if (off<maxoff){
+      mi_line(LCD_WIDTH_PX-5,ym-3,LCD_WIDTH_PX-2,ym,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+      mi_line(LCD_WIDTH_PX-2,ym,LCD_WIDTH_PX-5,ym+3,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+    }
+  }
   return true;
 }
