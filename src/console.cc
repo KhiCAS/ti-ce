@@ -1826,6 +1826,13 @@ const char * trig(){
     constexpr const int textsize=512;
     const bool alph=keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     static char text[textsize];
+    // [2nd][1] through [2nd][9]: shared by the console and the 2D editor.
+    if (key>=KEY_LIST1 && key<=KEY_LIST9){
+      text[0]='Y';
+      text[1]='1'+key-KEY_LIST1;
+      text[2]=0;
+      return text;
+    }
     switch (key){
     case KEY_CHAR_PLUS:
       return "+";
@@ -2137,7 +2144,7 @@ int Console_GetKey(){
     // arrows, OK and EXIT, codes 0..5 here) opens the 2D
     // editor with it, its EXE puts the expression on the edit line (not sto: =>, then EXE, saves
     // the session)
-    if (mi_hist2d && !mi_python_mode() && Current_Line==Last_Line && !Edit_Line[0] && ((key>KEY_CTRL_EXIT && key<30000 && key!=KEY_CHAR_CR && key!=KEY_CHAR_FRAC && key!=KEY_CHAR_STORE) || key==KEY_CHAR_PMINUS || key==KEY_CHAR_IMGNRY || key==KEY_CHAR_ANGLE || key==KEY_CTRL_XTT)){
+    if (mi_hist2d && !mi_python_mode() && Current_Line==Last_Line && !Edit_Line[0] && ((key>KEY_CTRL_EXIT && key<30000 && key!=KEY_CHAR_CR && key!=KEY_CHAR_FRAC && key!=KEY_CHAR_STORE) || key==KEY_CHAR_PMINUS || key==KEY_CHAR_IMGNRY || key==KEY_CHAR_ANGLE || key==KEY_CTRL_XTT || (key>=KEY_LIST1 && key<=KEY_LIST9))){
       char buf[GEN_PRINT_BUFSIZE];
       buf[0]=0;
       if (mi_edit_key(buf,sizeof(buf),key) && buf[0])
@@ -2158,14 +2165,6 @@ int Console_GetKey(){
     }
     if (key==KEY_CHAR_LIST)
       return Console_FMenu(KEY_CTRL_F12);
-    if (key>=KEY_LIST1 && key<=KEY_LIST9){
-      tmp_str[0] = 'Y';
-      tmp_str[1] = key-KEY_LIST1+'1';
-      tmp_str[2] = '\0';
-      Console_Input(tmp_str);
-      Console_Disp(0);
-      continue;
-    }
     if (
         // key >= '.' && key <= '9'
         key>=' ' && key<=126

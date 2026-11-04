@@ -742,7 +742,7 @@ static void mie_undo_push(mie_state & u){ // takes u (the oldest state goes when
 // (shift QUIT, or ANNUL with nothing to undo)
 // keys that change only the edit area (the history above it is not drawn again)
 static bool mie_simple_key(int key){
-  return (key>=' ' && key<=126) || key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN || key==KEY_CTRL_DEL || key==KEY_CTRL_SETUP || key==KEY_CTRL_UNDO || key==KEY_CTRL_AC || key==KEY_EQW_TEMPLATE || key==KEY_EQW_TEMPLATE2 || key==KEY_CHAR_POW || key==KEY_CHAR_SQUARE || key==KEY_CHAR_RECIP || key==KEY_CHAR_PMINUS || key==KEY_SHIFT_LEFT || key==KEY_SHIFT_RIGHT;
+  return (key>=' ' && key<=126) || (key>=KEY_LIST1 && key<=KEY_LIST9) || key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN || key==KEY_CTRL_DEL || key==KEY_CTRL_SETUP || key==KEY_CTRL_UNDO || key==KEY_CTRL_AC || key==KEY_EQW_TEMPLATE || key==KEY_EQW_TEMPLATE2 || key==KEY_CHAR_POW || key==KEY_CHAR_SQUARE || key==KEY_CHAR_RECIP || key==KEY_CHAR_PMINUS || key==KEY_SHIFT_LEFT || key==KEY_SHIFT_RIGHT;
 }
 
 // firstkey (not 0): the key that opened the editor, handled first (the console's empty line, or
