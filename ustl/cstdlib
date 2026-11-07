@@ -1,0 +1,56 @@
+#ifdef TICE
+#ifndef KHICAS_USTL_CSTDLIB
+#define KHICAS_USTL_CSTDLIB
+
+#pragma push_macro("std")
+#undef std
+#pragma push_macro("KHICAS_LOADING_SDK_HEADERS")
+#define KHICAS_LOADING_SDK_HEADERS
+#define KHICAS_LOADING_SDK_CSTDLIB
+#include_next <cstdlib>
+#undef KHICAS_LOADING_SDK_CSTDLIB
+// Preserve the C library names used by code with std mapped to ustl.
+namespace ustl {
+using std::abs;
+using std::div;
+using ::calloc;
+using ::malloc;
+using ::realloc;
+using ::free;
+using ::atof;
+using ::atoi;
+using ::atol;
+using ::atoll;
+using ::strtof;
+using ::strtod;
+using ::strtold;
+using ::strtol;
+using ::strtoll;
+using ::strtoul;
+using ::strtoull;
+using ::srand;
+using ::rand;
+using ::bsearch;
+using ::qsort;
+using ::abort;
+using ::atexit;
+using ::on_exit;
+using ::exit;
+using ::at_quick_exit;
+using ::quick_exit;
+using ::_Exit;
+using ::labs;
+using ::llabs;
+using ::ldiv;
+using ::lldiv;
+#ifdef __SIZEOF_INT48__
+using ::i48abs;
+using ::i48div;
+#endif
+}
+#pragma pop_macro("KHICAS_LOADING_SDK_HEADERS")
+#pragma pop_macro("std")
+#endif
+#else
+#include_next <cstdlib>
+#endif

@@ -1,1 +1,5 @@
+#ifdef KHICAS_LOADING_SDK_HEADERS
+#include_next <limits>
+#else
 #include "ulimits.h"
+#endif

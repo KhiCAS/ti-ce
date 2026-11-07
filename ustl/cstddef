@@ -1,0 +1,27 @@
+#ifdef TICE
+#ifndef KHICAS_USTL_CSTDDEF
+#define KHICAS_USTL_CSTDDEF
+
+// Keep SDK implementation templates out of the std-to-ustl macro mapping.
+#pragma push_macro("std")
+#undef std
+#pragma push_macro("KHICAS_LOADING_SDK_HEADERS")
+#define KHICAS_LOADING_SDK_HEADERS
+#include_next <cstddef>
+namespace ustl {
+using std::ptrdiff_t;
+using std::size_t;
+#if __cplusplus >= 201103L
+using std::max_align_t;
+using std::nullptr_t;
+#endif
+#if __cplusplus >= 201703L
+using std::byte;
+#endif
+}
+#pragma pop_macro("KHICAS_LOADING_SDK_HEADERS")
+#pragma pop_macro("std")
+#endif
+#else
+#include_next <cstddef>
+#endif

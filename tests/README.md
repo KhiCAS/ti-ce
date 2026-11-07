@@ -2,11 +2,17 @@
 
 The Python tests exercise the real CEdev compile/merge/codegen pipeline,
 configuration invalidation, per-source inlining and compiler capability fallback,
-plus safe preparation of disposable ROM copies. With CEdev on `PATH`, run:
+safe preparation of disposable ROM copies, and SDK/uSTL math-header compatibility.
+With CEdev on `PATH`, run:
 
 ```sh
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
+
+The math-header tests use that SDK's compiler and headers. They check C math,
+C++14/17/23 include orders, preservation of the `std` macro, scalar/complex
+overloads, and separation of SDK and uSTL numeric limits. Run the same command
+with a different SDK's `bin` directory first on `PATH` to check another version.
 
 Build/packaging helpers remain in `app_tools/`. The optional calculator-side
 benchmark implementation lives in `tests/benchmark.cc`; `BENCHMARK=YES` adds it
