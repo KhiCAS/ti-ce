@@ -65,9 +65,9 @@ public:
   inline const_reverse_iterator	rend (void) const		{ return (const_reverse_iterator (begin()));	}
   inline const_reverse_iterator	crbegin (void) const		{ return (rbegin()); }
   inline const_reverse_iterator	crend (void) const		{ return (rend()); }
-    inline iterator		data (void)			{ return (m_Data.data()); }
-    inline const_iterator	data (void) const		{ return (m_Data.data()); }
-    inline const_iterator	cdata (void) const		{ return (m_Data.cdata()); }
+    inline iterator		data (void)			{ return (iterator(m_Data.data())); }
+    inline const_iterator	data (void) const		{ return (const_iterator(m_Data.data())); }
+    inline const_iterator	cdata (void) const		{ return (const_iterator(m_Data.cdata())); }
     inline iterator		iat (size_type i)		{ assert (i <= size()); return (begin() + i); }
     inline const_iterator	iat (size_type i) const		{ assert (i <= size()); return (begin() + i); }
     inline reference		at (size_type i)		{ assert (i < size()); return (begin()[i]); }
@@ -80,7 +80,7 @@ public:
     inline const_reference	back (void) const		{ assert (!empty()); return (end()[-1]); }
     inline void			push_back (const T& v = T());
     inline void			pop_back (void)			{ destroy (end()-1); m_Data.memlink::resize (m_Data.size() - sizeof(T)); }
-    inline void			clear (void)			{ destroy (begin(), end()); m_Data.clear(); }
+    inline void			clear (void)			{ destroy_all(); m_Data.clear(); }
     inline void			shrink_to_fit (void)		{ m_Data.shrink_to_fit(); }
     inline void			deallocate (void) noexcept;
     inline void			assign (const_iterator i1, const_iterator i2);
@@ -123,6 +123,8 @@ protected:
 private:
     inline iterator		insert_hole (const_iterator ip, size_type n);
     inline iterator		append_hole (size_type n);
+    inline void			destroy_all (void) noexcept
+				    { if (!is_linked()) destroy (begin(), end()); }
 private:
     memblock			m_Data;	///< Raw element data, consecutively stored.
 };
@@ -137,20 +139,26 @@ inline void vector<T>::reserve (size_type n, bool bExact)
 template <typename T>
 inline typename vector<T>::iterator vector<T>::append_hole (size_type n)
 {
-    m_Data.reserve (m_Data.size() + n*sizeof(T));
-    m_Data.memlink::resize (m_Data.size()+n*sizeof(T));
-    return (end()-n);
+    const size_type nb = m_Data.size() + n*sizeof(T);
+    m_Data.reserve (nb);
+    iterator hole = end();
+    m_Data.memlink::resize (nb);
+    return (hole);
 }
 
 /// Resizes the vector to contain \p n elements.
 template <typename T>
 inline void vector<T>::resize (size_type n, bool bExact)
 {
-    destroy (begin()+n, end());
     const size_type nb = n * sizeof(T);
-    if (m_Data.capacity() < nb)
-	reserve (n, bExact);
-    construct (end(), end() + (nb - m_Data.size())/sizeof(T));
+    if (nb < m_Data.size()) {
+	if (!is_linked())
+	    destroy (begin()+n, end());
+    } else if (nb > m_Data.size()) {
+	if (m_Data.capacity() < nb)
+	    reserve (n, bExact);
+	construct (end(), begin()+n);
+    }
     m_Data.memlink::resize (nb);
 }
 
@@ -158,7 +166,7 @@ inline void vector<T>::resize (size_type n, bool bExact)
 template <typename T>
 inline void vector<T>::deallocate (void) noexcept
 {
-    destroy (begin(), end());
+    destroy_all();
     m_Data.deallocate();
 }
 
@@ -205,7 +213,7 @@ vector<T>::vector (const_iterator i1, const_iterator i2)
 template <typename T>
 inline vector<T>::~vector (void) noexcept
 {
-    destroy (begin(), end());
+    destroy_all();
 }
 
 /// Copies the range [\p i1, \p i2]

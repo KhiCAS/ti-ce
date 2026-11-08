@@ -213,7 +213,7 @@ string::iterator string::erase (const_iterator ep, size_type n)
 /// Erases \p n bytes at byte offset \p epo.
 string& string::erase (size_type epo, size_type n)
 {
-    erase (iat(epo), n);
+    erase (iat(epo), min(n, size()-epo));
     return (*this);
 }
 
@@ -328,21 +328,20 @@ string::size_type string::find_last_not_of (const string& s, size_type pos) cons
 /// Equivalent to a vsprintf on the string.
 int string::vformat (const char* fmt, va_list args)
 {
-#if HAVE_VA_COPY
-    va_list args2;
-#else
-    #define args2 args
-    #undef __va_copy
-    #define __va_copy(x,y)
-#endif
-    int rv = size();
-    do {
+    for (;;) {
+	const size_type space = memblock::capacity();
+	va_list copy;
+	va_copy (copy, args);
+	const int rv = vsnprintf (data(), space, fmt, copy);
+	va_end (copy);
+	if (rv < 0) {
+	    clear();
+	    return (rv);
+	}
 	resize (rv);
-	__va_copy (args2, args);
-	rv = vsprintf (data(), fmt, args2);
-	// rv = vsnprintf (data(), memblock::capacity(), fmt, args2);
-    } while (rv >= (int)memblock::capacity());
-    return (rv);
+	if (size_type(rv) < space)
+	    return (rv);
+    }
 }
 
 /// Equivalent to a sprintf on the string.

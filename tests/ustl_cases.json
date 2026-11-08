@@ -1,6 +1,46 @@
 {
   "cases": [
-    {"id": 0, "name": "bit-width-boundaries", "category": "ustl", "expression": "FirstBit and NextPow2 across 24/32/64-bit boundaries"},
-    {"id": 1, "name": "geometric-growth", "category": "ustl", "expression": "Growing buffers preserve contents and exact reserve"}
+    {
+      "id": 0,
+      "name": "bit-width-boundaries",
+      "category": "ustl",
+      "expression": "FirstBit and NextPow2 across 24/32/64-bit boundaries"
+    },
+    {
+      "id": 1,
+      "name": "geometric-growth",
+      "category": "ustl",
+      "expression": "Growing buffers preserve contents and exact reserve"
+    },
+    {
+      "id": 2,
+      "name": "vector-lifetimes",
+      "category": "ustl",
+      "expression": "Owned and linked vector construction, shrink, clear, deallocate and typed data"
+    },
+    {
+      "id": 3,
+      "name": "linked-buffers",
+      "category": "ustl",
+      "expression": "Copy and erase linked buffers without truncating the source"
+    },
+    {
+      "id": 4,
+      "name": "erase-to-end",
+      "category": "ustl",
+      "expression": "Clamp string erase lengths including npos"
+    },
+    {
+      "id": 5,
+      "name": "bounded-formatting",
+      "category": "ustl",
+      "expression": "Format growing, shrinking, empty and linked strings and stream output"
+    },
+    {
+      "id": 6,
+      "name": "heap-algorithms",
+      "category": "ustl",
+      "expression": "Heapify arbitrary duplicates, pop, push, sort and empty ranges with both comparators"
+    }
   ]
 }

@@ -17,11 +17,31 @@ namespace ustl {
 template <typename RandomAccessIterator, typename Compare>
 bool is_heap (RandomAccessIterator first, RandomAccessIterator last, Compare comp)
 {
+    if (last <= first)
+	return (true);
     RandomAccessIterator iChild (first);
     for (; ++iChild < last; ++first)
 	if (comp (*first, *iChild) || (++iChild < last && comp (*first, *iChild)))
 	    return (false);
     return (true);
+}
+
+/// Repairs one subtree whose children are already heaps.
+template <typename RandomAccessIterator, typename Distance, typename Compare>
+void _trickle_down_heap (RandomAccessIterator first, Distance hole, Distance size, Compare comp)
+{
+    typedef typename iterator_traits<RandomAccessIterator>::value_type value_type;
+    const value_type value (first[hole]);
+    Distance child;
+    while ((child = 2 * hole + 1) < size) {
+	if (child + 1 < size)
+	    child += comp(first[child], first[child+1]);
+	if (!comp(value, first[child]))
+	    break;
+	first[hole] = first[child];
+	hole = child;
+    }
+    first[hole] = value;
 }
 
 /// \brief make_heap turns the range [first, last) into a heap
@@ -33,19 +53,11 @@ bool is_heap (RandomAccessIterator first, RandomAccessIterator last, Compare com
 template <typename RandomAccessIterator, typename Compare>
 void make_heap (RandomAccessIterator first, RandomAccessIterator last, Compare comp)
 {
-    typedef typename iterator_traits<RandomAccessIterator>::value_type value_type;
-    const value_type v (*first);
-    uoff_t iChild, iHole = 0, iEnd (distance (first, last));
-    while ((iChild = 2 * iHole + 1) < iEnd) {
-	if (iChild + 1 < iEnd)	// Pick the greater child
-	    iChild += comp (first[iChild], first[iChild + 1]);
-	if (comp (first[iChild], v))
-	    break;		// Done when parent is greater than both children.
-	first[iHole] = first[iChild];
-	iHole = iChild;
-    }
-    if (iHole < iEnd)
-	first[iHole] = v;
+    typedef typename iterator_traits<RandomAccessIterator>::difference_type distance_type;
+    const distance_type size = last - first;
+    // Visit every parent without forming an iterator before first.
+    for (distance_type parent = size/2; parent > 0; )
+	_trickle_down_heap(first, --parent, size, comp);
 }
 
 /// \brief Inserts the *--last into the preceeding range assumed to be a heap.
@@ -75,10 +87,12 @@ void push_heap (RandomAccessIterator first, RandomAccessIterator last, Compare c
 template <typename RandomAccessIterator, typename Compare>
 void pop_heap (RandomAccessIterator first, RandomAccessIterator last, Compare comp)
 {
-    if (--last <= first)
+    if (last - first <= 1)
 	return;
+    --last;
+    typedef typename iterator_traits<RandomAccessIterator>::difference_type distance_type;
     iter_swap (first, last);
-    make_heap (first, last, comp);
+    _trickle_down_heap(first, distance_type(0), distance_type(last-first), comp);
 }
 
 /// Sorts heap [first, last) in descending order according to comp.

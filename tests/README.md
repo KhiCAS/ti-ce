@@ -79,7 +79,7 @@ which also include the harness.
 
 ## uSTL regressions
 
-Run the CE-side bit-width and buffer-growth checks with the actual KhiCAS
+Run the CE-side bit-width, buffer-growth and upstream correctness checks with the actual KhiCAS
 allocator. Clean when switching between the regular CAS harness and this entry
 point, since the selected extra source list is not a build-configuration key:
 
@@ -94,5 +94,7 @@ make -j8 APPLANG=fr BENCHMARK=NO
 The checks cover runtime inputs at 24/32/64-bit boundaries, the documented
 `NextPow2` overflow result, exact initial allocations followed by geometric growth,
 contents across reallocations,
-and explicit exact-capacity requests. These optional tests are not production
+explicit exact-capacity requests, vector lifetimes and borrowed storage, linked
+buffer erasure, `erase(..., npos)`, bounded variadic formatting, and heap
+algorithms with shuffled duplicates and both comparators. These optional tests are not production
 sources and do not change the frozen 34-case CAS input list.

@@ -114,18 +114,14 @@ void ostringstream::iwrite (bool v)
 /// Equivalent to a vsprintf on the string.
 int ostringstream::vformat (const char* fmt, va_list args)
 {
-#if HAVE_VA_COPY
-    va_list args2;
-#else
-    #define args2 args
-    #undef __va_copy
-    #define __va_copy(x,y)
-#endif
     int rv, space;
     do {
 	space = remaining();
-	__va_copy (args2, args);
-	if (0 > (rv = vsnprintf (ipos(), space, fmt, args2))) return (rv);
+	va_list copy;
+	va_copy (copy, args);
+	rv = vsnprintf (ipos(), space, fmt, copy);
+	va_end (copy);
+	if (rv < 0) return (rv);
     } while (rv >= space && rv < (int)overflow(rv+1));
     SetPos (pos() + min (rv, space));
     return (rv);

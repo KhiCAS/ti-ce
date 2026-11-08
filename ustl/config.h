@@ -123,7 +123,7 @@
 #define HAVE_SIGNAL_H 1
 
 // Define to 1 if you have the __va_copy function
-#define HAVE_VA_COPY 0
+#define HAVE_VA_COPY 1
 
 // Define to 1 if you have the <stdarg.h> header file.
 #define HAVE_STDARG_H 1
