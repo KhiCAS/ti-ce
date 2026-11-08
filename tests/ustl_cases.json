@@ -1,0 +1,6 @@
+{
+  "cases": [
+    {"id": 0, "name": "bit-width-boundaries", "category": "ustl", "expression": "FirstBit and NextPow2 across 24/32/64-bit boundaries"},
+    {"id": 1, "name": "geometric-growth", "category": "ustl", "expression": "Growing buffers preserve contents and exact reserve"}
+  ]
+}

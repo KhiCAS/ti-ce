@@ -339,7 +339,8 @@ inline uoff_t FirstBit (uint32_t v, uoff_t nbv)
     if (!__builtin_constant_p(v)) asm ("bsr\t%1, %k0":"+r,r"(n):"r,m"(v)); else
 #endif
 #if __GNUC__
-    if (v) n = 31 - __builtin_clz(v);
+    // unsigned int is only 24 bits on eZ80; clzl preserves the full uint32_t.
+    if (v) n = BitsInType(unsigned long) - 1 - __builtin_clzl(v);
 #else
     if (v) for (uint32_t m = uint32_t(1)<<(n=31); !(v & m); m >>= 1) --n;
 #endif
@@ -349,27 +350,24 @@ inline uoff_t FirstBit (uint32_t v, uoff_t nbv)
 inline uoff_t FirstBit (uint64_t v, uoff_t nbv)
 {
     uoff_t n = nbv;
-#if __x86_64__
-    if (!__builtin_constant_p(v)) asm ("bsr\t%1, %0":"+r,r"(n):"r,m"(v)); else
-#endif
-#if __GNUC__
-    if (v) n = 63 - __builtin_clzl(v);
-#else
-    if (v) for (uint64_t m = uint64_t(1)<<(n=63); !(v & m); m >>= 1) --n;
-#endif
+    // Neither long (32 bits) nor long long (48 bits) holds uint64_t on eZ80.
+    const uint32_t high = uint32_t(v >> 32);
+    if (high)
+	n = 32 + FirstBit(high, 0);
+    else
+	n = FirstBit(uint32_t(v), nbv);
     return (n);
 }
 
 /// Returns the next power of 2 >= \p v.
-/// Values larger than UINT32_MAX/2 will return 2^0
+/// Values larger than 2^31 will return 2^0
 inline uint32_t NextPow2 (uint32_t v)
 {
-    uint32_t r = v-1;
-#if __i386__ || __x86_64__
-    if (!__builtin_constant_p(r)) asm("bsr\t%0, %0":"+r"(r)); else
-#endif
-    { r = FirstBit(r,r); if (r >= BitsInType(r)-1) r = uint32_t(-1); }
-    return (1<<(1+r));
+    if (v <= 1)
+	return 1;
+    const uoff_t shift = FirstBit(uint32_t(v-1), 0) + 1;
+    // Keep the documented wrap-to-one result without shifting by 32.
+    return shift < BitsInType(uint32_t) ? uint32_t(1) << shift : uint32_t(1);
 }
 
 /// Bitwise rotate value left

@@ -86,22 +86,21 @@ void memblock::assign (const void* p, size_type n)
 ///
 void memblock::reserve (size_type newSize, bool bExact)
 {
-  // dbg_printf("reserve block size %d\n",newSize);
     if ((newSize += minimumFreeCapacity()) <= m_Capacity)
       return;
     pointer oldBlock (is_linked() ? NULL : data());
-    // NextPow2 implementation is wrong on the TI83, commenting alignement
-    const size_t alignedSize (NextPow2 (newSize));
-    if (0) // (!bExact) 
-      newSize = alignedSize;
-    // dbg_printf("reserve block size %d\n",newSize);
+    // Do not narrow a rounded capacity that exceeds the 24-bit size_t range.
+    // Keep initial allocations exact; only repeated growth needs spare capacity.
+    if (!bExact && m_Capacity) {
+	const uint32_t alignedSize = NextPow2(newSize);
+	if (alignedSize >= newSize && alignedSize <= SIZE_MAX)
+	    newSize = size_type(alignedSize);
+    }
     pointer newBlock = (pointer) nrealloc (oldBlock, newSize);
     if (!newBlock) USTL_THROW( bad_alloc (newSize));
     if (!oldBlock & (cdata() != NULL))
       copy_n (cdata(), min (size() + 1, newSize), newBlock);
     link (newBlock, size());
-    //dbg_printf("reserve %x %i\n",m_Data,m_Size);
-    
     m_Capacity = newSize;
 }
 

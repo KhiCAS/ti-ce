@@ -76,3 +76,23 @@ checkout). They are not versioned fixtures. The README summary records the
 measured size/speed tradeoff; rerun these commands for a different compiler or
 flag set. Compare clean production app sizes separately from benchmark app sizes,
 which also include the harness.
+
+## uSTL regressions
+
+Run the CE-side bit-width and buffer-growth checks with the actual KhiCAS
+allocator. Clean when switching between the regular CAS harness and this entry
+point, since the selected extra source list is not a build-configuration key:
+
+```sh
+make clean
+make -j8 APPLANG=fr BENCHMARK=YES EXTRA_CXX_SOURCES=tests/ustl_regressions.cc
+python3 tests/benchmark_representative.py --runner /path/to/cemu-headless --rom /path/to/app-enabled.rom --app-bin bin/_KhiCAS.bin --cases tests/ustl_cases.json --out tests/results/ustl
+make clean
+make -j8 APPLANG=fr BENCHMARK=NO
+```
+
+The checks cover runtime inputs at 24/32/64-bit boundaries, the documented
+`NextPow2` overflow result, exact initial allocations followed by geometric growth,
+contents across reallocations,
+and explicit exact-capacity requests. These optional tests are not production
+sources and do not change the frozen 34-case CAS input list.
