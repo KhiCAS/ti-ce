@@ -1,0 +1,311 @@
+{
+  "flowce_commit": "68cddf63227fac3e17b571a43ff8aa2b22cc1839",
+  "cases": [
+    {
+      "id": 0,
+      "name": "rational-gcd",
+      "category": "algebra",
+      "expression": "normal(((6)*x^0+(1)*x^1+(5)*x^2+(1)*x^3+(-2)*x^4+(5)*x^5+(1)*x^6+(1)*x^7+(-1)*x^8+(1)*x^9)/((2)*x^0+(5)*x^1+(5)*x^3+(-4)*x^4+(2)*x^5+(1)*x^6+(2)*x^7+(-2)*x^8+(1)*x^9))",
+      "kind": "exact",
+      "aux": "((3)*x^0+(2)*x^1+(-1)*x^2+(1)*x^4+(1)*x^5)/((1)*x^0+(3)*x^1+(-1)*x^3+(1)*x^5)",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 1,
+      "name": "rational-common-denominator",
+      "category": "algebra",
+      "expression": "normal(((1)*x^0+(-2)*x^1+(1)*x^3)/((3)*x^0+(2)*x^1+(-1)*x^2+(1)*x^4+(1)*x^5)+((2)*x^0+(3)*x^2+(1)*x^3)/((1)*x^0+(3)*x^1+(-1)*x^3+(1)*x^5))",
+      "kind": "exact",
+      "aux": "(((1)*x^0+(1)*x^1+(-6)*x^2+(5)*x^4+(1)*x^5+(-3)*x^6+(1)*x^8)+((6)*x^0+(4)*x^1+(7)*x^2+(9)*x^3+(1)*x^4+(1)*x^5+(3)*x^6+(4)*x^7+(1)*x^8))/(((3)*x^0+(2)*x^1+(-1)*x^2+(1)*x^4+(1)*x^5)*((1)*x^0+(3)*x^1+(-1)*x^3+(1)*x^5))",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 2,
+      "name": "factor-sophie-germain",
+      "category": "factor",
+      "expression": "factor(x^4+4)",
+      "kind": "factor",
+      "aux": "x^4+4",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 3,
+      "name": "factor-general-degree8",
+      "category": "factor",
+      "expression": "factor((30)*x^0+(-38)*x^1+(33)*x^2+(2)*x^3+(-16)*x^4+(14)*x^5+(-2)*x^7+(1)*x^8)",
+      "kind": "factor",
+      "aux": "(30)*x^0+(-38)*x^1+(33)*x^2+(2)*x^3+(-16)*x^4+(14)*x^5+(-2)*x^7+(1)*x^8",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 4,
+      "name": "solve-general-degree5",
+      "category": "solve",
+      "expression": "solve((-6)*x^0+(-1)*x^1+(13)*x^2+(-4)*x^3+(-3)*x^4+(1)*x^5=0,x)",
+      "kind": "solve",
+      "aux": "(-6)*x^0+(-1)*x^1+(13)*x^2+(-4)*x^3+(-3)*x^4+(1)*x^5",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 5,
+      "name": "solve-linear-system",
+      "category": "solve",
+      "expression": "solve([2*x+y-z=8,-3*x-y+2*z=-11,-2*x+y+2*z=-3],[x,y,z])",
+      "kind": "exact",
+      "aux": "[[2,3,-1]]",
+      "source": "FlowCE tools/emu/cases/equations2.tsv eq12"
+    },
+    {
+      "id": 6,
+      "name": "c1a",
+      "category": "derivative",
+      "expression": "diff(sin(x)/x,x)",
+      "kind": "exact",
+      "aux": "(x*cos(x)-sin(x))/x^2",
+      "source": "FlowCE tools/emu/cases/timing.tsv c1a"
+    },
+    {
+      "id": 7,
+      "name": "trig2",
+      "category": "integration",
+      "expression": "integrate(tan(x)^2*sec(x)^4,x)",
+      "kind": "integral",
+      "aux": "tan(x)^2*sec(x)^4",
+      "source": "FlowCE tools/emu/cases/calc2.tsv trig2"
+    },
+    {
+      "id": 8,
+      "name": "tsub3",
+      "category": "integration",
+      "expression": "integrate(x^3/sqrt(x^2+4),x)",
+      "kind": "integral",
+      "aux": "x^3/sqrt(x^2+4)",
+      "source": "FlowCE tools/emu/cases/calc2.tsv tsub3"
+    },
+    {
+      "id": 9,
+      "name": "r1",
+      "category": "integration",
+      "expression": "integrate(1/(x*(x-1)^2),x)",
+      "kind": "integral",
+      "aux": "1/(x*(x-1)^2)",
+      "source": "FlowCE tools/emu/cases/calc2b.tsv r1"
+    },
+    {
+      "id": 10,
+      "name": "sec3",
+      "category": "integration",
+      "expression": "integrate(sec(x)^3,x)",
+      "kind": "integral",
+      "aux": "sec(x)^3",
+      "source": "FlowCE tools/emu/cases/fixes1.tsv sec3"
+    },
+    {
+      "id": 11,
+      "name": "integral-asin-parts",
+      "category": "integration",
+      "expression": "integrate(asin(x)*x,x)",
+      "kind": "integral",
+      "aux": "asin(x)*x",
+      "source": "FlowCE tools/hostgiac/corpus_calc23.txt"
+    },
+    {
+      "id": 12,
+      "name": "integral-trig-powers",
+      "category": "integration",
+      "expression": "integrate(sin(3*x)^8*cos(3*x)^5,x)",
+      "kind": "integral",
+      "aux": "sin(3*x)^8*cos(3*x)^5",
+      "source": "FlowCE answer.cc trig_powers slow example"
+    },
+    {
+      "id": 13,
+      "name": "integral-quartic",
+      "category": "integration",
+      "expression": "integrate(1/(x^4+1),x)",
+      "kind": "integral",
+      "aux": "1/(x^4+1)",
+      "source": "FlowCE tools/emu/cases/quartic.tsv bq90"
+    },
+    {
+      "id": 14,
+      "name": "definite-sec3",
+      "category": "definite",
+      "expression": "integrate(sec(x)^3,x,0,pi/4)",
+      "kind": "numeric",
+      "aux": "(sqrt(2)+ln(1+sqrt(2)))/2",
+      "source": "FlowCE tools/hostgiac/numcheck_calc.txt"
+    },
+    {
+      "id": 15,
+      "name": "tsub2",
+      "category": "definite",
+      "expression": "integrate(sqrt(1-x^2),x,0,1)",
+      "kind": "numeric",
+      "aux": "pi/4",
+      "source": "FlowCE tools/emu/cases/timing2.tsv tsub2"
+    },
+    {
+      "id": 16,
+      "name": "numeric-gaussian",
+      "category": "definite",
+      "expression": "integrate(exp(-x^2),x,0.0,1.0)",
+      "kind": "numeric",
+      "aux": "0.746824132812427",
+      "source": "FlowCE tools/hostgiac/numcheck_calc.txt; decimal bounds select quadrature"
+    },
+    {
+      "id": 17,
+      "name": "b5",
+      "category": "limit",
+      "expression": "limit(sqrt(x^2+x)-x,x,inf)",
+      "kind": "exact",
+      "aux": "1/2",
+      "source": "FlowCE tools/emu/cases/calc1.tsv b5"
+    },
+    {
+      "id": 18,
+      "name": "seq2",
+      "category": "limit",
+      "expression": "limit((1+2/n)^n,n,inf)",
+      "kind": "exact",
+      "aux": "exp(2)",
+      "source": "FlowCE tools/emu/cases/calc2.tsv seq2"
+    },
+    {
+      "id": 19,
+      "name": "limit-cancellation",
+      "category": "limit",
+      "expression": "limit((exp(x)-1-x-x^2/2)/x^3,x,0)",
+      "kind": "exact",
+      "aux": "1/6",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 20,
+      "name": "tay7",
+      "category": "series",
+      "expression": "series(atan(x),x,0,7)",
+      "kind": "series",
+      "aux": "x-x^3/3+x^5/5-x^7/7",
+      "source": "FlowCE tools/emu/cases/timing.tsv tay7"
+    },
+    {
+      "id": 21,
+      "name": "series-composed",
+      "category": "series",
+      "expression": "series(exp(sin(x)),x,0,8)",
+      "kind": "series",
+      "aux": "1+x+x^2/2-x^4/8-x^5/15-x^6/240+x^7/90+31*x^8/5760",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 22,
+      "name": "q4",
+      "category": "series",
+      "expression": "series(e^(-x^2),x,0,6)",
+      "kind": "series",
+      "aux": "1-x^2+x^4/2-x^6/6",
+      "source": "FlowCE tools/emu/cases/calc2b.tsv q4"
+    },
+    {
+      "id": 23,
+      "name": "ser1",
+      "category": "sum",
+      "expression": "sum(1/n^2,n,1,inf)",
+      "kind": "numeric",
+      "aux": "pi^2/6",
+      "source": "FlowCE tools/emu/cases/calc2.tsv ser1"
+    },
+    {
+      "id": 24,
+      "name": "inverse-dense6",
+      "category": "matrix",
+      "expression": "inv([[12,2,3,4,1,2],[2,13,4,1,2,3],[3,4,14,2,3,4],[4,1,2,15,4,1],[1,2,3,4,16,2],[2,3,4,1,2,17]])",
+      "kind": "exact",
+      "aux": "[[15131/156156,-535/66924,-6715/468468,-515/21294,187/42588,-2675/468468],[-535/66924,17483/200772,-3901/200772,5/4563,-107/18252,-1853/200772],[-6715/468468,-3901/200772,121787/1405404,-173/63882,-1343/127764,-19505/1405404],[-515/21294,5/4563,-173/63882,2494/31941,-1133/63882,25/31941],[187/42588,-107/18252,-1343/127764,-1133/63882,8929/127764,-535/127764],[-2675/468468,-1853/200772,-19505/1405404,25/31941,-535/127764,91121/1405404]]",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 25,
+      "name": "determinant-dense8",
+      "category": "matrix",
+      "expression": "det([[16,1,1,1,1,1,1,1],[4,17,4,4,4,4,4,4],[2,2,18,2,2,2,2,2],[5,5,5,19,5,5,5,5],[3,3,3,3,20,3,3,3],[1,1,1,1,1,21,1,1],[4,4,4,4,4,4,22,4],[2,2,2,2,2,2,2,23]])",
+      "kind": "exact",
+      "aux": "13475437920",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 26,
+      "name": "eigenvalues-dense4",
+      "category": "matrix",
+      "expression": "egvl([[7.0,2.0,1.0,3.0],[2.0,9.0,4.0,1.0],[1.0,4.0,8.0,2.0],[3.0,1.0,2.0,6.0]])",
+      "kind": "eigenvalues",
+      "aux": "[[7,2,1,3],[2,9,4,1],[1,4,8,2],[3,1,2,6]]",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 27,
+      "name": "eigenvectors-dense4",
+      "category": "matrix",
+      "expression": "egv([[7.0,2.0,1.0,3.0],[2.0,9.0,4.0,1.0],[1.0,4.0,8.0,2.0],[3.0,1.0,2.0,6.0]])",
+      "kind": "eigenvectors",
+      "aux": "[[7,2,1,3],[2,9,4,1],[1,4,8,2],[3,1,2,6]]",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 28,
+      "name": "matrix-power-dense4",
+      "category": "matrix",
+      "expression": "matpow([[7.0,2.0,1.0,3.0],[2.0,9.0,4.0,1.0],[1.0,4.0,8.0,2.0],[3.0,1.0,2.0,6.0]],5)",
+      "kind": "numeric",
+      "aux": "[[106420,145715,130110,93550],[145715,252135,223660,130110],[130110,223660,202965,118735],[93550,130110,118735,84230]]",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 29,
+      "name": "plot-sine-compute",
+      "category": "plot",
+      "expression": "plot(sin(x)):;",
+      "kind": "plot",
+      "aux": "plot(sin(x))",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 30,
+      "name": "plot-parametric-compute",
+      "category": "plot",
+      "expression": "plotparam([cos(t),sin(3*t)],t,0,pi):;",
+      "kind": "plot",
+      "aux": "plotparam([cos(t),sin(3*t)],t,0,pi)",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 31,
+      "name": "tabvar-quadratic-root",
+      "category": "tabvar",
+      "expression": "tabvar(sqrt(x^2+x+1),x)",
+      "kind": "table",
+      "aux": "0",
+      "source": "FlowCE UI catalog / Parisse suggestion"
+    },
+    {
+      "id": 32,
+      "name": "tabvar-rational",
+      "category": "tabvar",
+      "expression": "tabvar((x^3-3*x+1)/(x^2-1),x)",
+      "kind": "table",
+      "aux": "0",
+      "source": "Parisse suggestions / added fixed input"
+    },
+    {
+      "id": 33,
+      "name": "holdout-derivative",
+      "category": "derivative",
+      "expression": "diff(x^5/(cos(x)-2*x^2),x)",
+      "kind": "exact",
+      "aux": "(5*x^4*(cos(x)-2*x^2)+x^5*(sin(x)+4*x))/(cos(x)-2*x^2)^2",
+      "source": "FlowCE tools/hostgiac/corpus_holdout.txt APEX 2.4 Ex20"
+    }
+  ]
+}

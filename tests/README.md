@@ -30,32 +30,36 @@ them:
 python3 tests/build_benchmark_runner.py --source ../CEmu --out /tmp/khicas-cemu-bench
 ```
 
-Build and measure the original policy, then the balanced policy, using the same
-ROM and application language:
+Build and measure each policy using the same ROM, language and frozen case set:
 
 ```sh
 make -j8 APPLANG=fr BENCHMARK=YES LTO_TUNING=NO
-python3 tests/benchmark_cas.py --runner /tmp/khicas-cemu-bench/tests/autotester/cemu-headless --rom /path/to/app-enabled.rom --app bin/_KhiCAS.8ek --out tests/results/reference
+python3 tests/benchmark_representative.py --runner /tmp/khicas-cemu-bench/tests/autotester/cemu-headless --rom /path/to/app-enabled.rom --app-bin bin/_KhiCAS.bin --out tests/results/reference
 make -j8 APPLANG=fr BENCHMARK=YES LTO_TUNING=YES
-python3 tests/benchmark_cas.py --runner /tmp/khicas-cemu-bench/tests/autotester/cemu-headless --rom /path/to/app-enabled.rom --app bin/_KhiCAS.8ek --out tests/results/balanced --reference tests/results/reference/results.json
+python3 tests/benchmark_representative.py --runner /tmp/khicas-cemu-bench/tests/autotester/cemu-headless --rom /path/to/app-enabled.rom --app-bin bin/_KhiCAS.bin --out tests/results/balanced
 make -j8 APPLANG=fr BENCHMARK=NO
 ```
 
-The benchmark app runs automatically on launch and returns to the OS. Its
-volatile runtime selector retains the ordinary UI paths during LTO. Production
-builds contain neither this selector nor the benchmark implementation. The
-harness uses the CE SDK's real `clock()` (Giac disables its own internal clock
-macro), with 32,768 ticks per second. Parsing, evaluation and printing are timed
-separately; result logging is outside those intervals. Three measurements follow
-one warmup, with a fixed random seed. Every repetition must return the same
-result, all results must match the reference, and 32 independent exact-zero
-identities must pass. Unevaluated inputs, resets and incomplete samples fail.
+The [representative suite](REPRESENTATIVE_BENCHMARKS.md) contains 34 fixed inputs,
+including polynomial GCD/factorization, harder integrals, limits, Taylor series,
+dense matrices, calculation-only plots and variation tables. The runner boots a
+fresh disposable ROM for every case, records a warmup and three measurements,
+checks the result and retains failures. Parsing, evaluation and result formatting
+are timed separately on the CE SDK's real 32,768-Hz clock; diagnostic console and
+graph UI work are excluded. `--ids 0,26,29` selects a smaller set.
 
-ROM preparation removes app chains from a disposable file copy. OS Reset Apps
-preserves the active language pack, which otherwise changes the load address of
-a pre-relocated app. The tested image still contains a 50,965-byte
-French language app; the original ROM is never edited. The app placement was
-checked against the installed Flash bytes before collecting measurements.
+The tested Giac revision leaves `factor(x^4+4)` and `sum(1/n^2,n,1,inf)`
+unevaluated. The full command therefore returns nonzero while preserving all
+34 results; these failures must remain visible and outside successful-workload
+aggregates. Compare matching case IDs, expressions and valid result values
+between configurations before comparing their timings. The older
+`benchmark_cas.py` parser supports the historical 12-input harness and remains
+available for its artifacts; it does not parse the current harness protocol.
+
+The benchmark-only volatile mode flag retains the ordinary UI paths during LTO.
+Production builds contain neither the selector nor the benchmark implementation.
+The runner removes existing app chains, including language packs, from its
+ROM copy to preserve first-app placement; the original ROM is not modified.
 
 `test_cas_usage.py` also checks entry through the current 2D editor, graph-menu
 cancellation for three Clear-hold durations, held-Clear consumption and arrow

@@ -121,7 +121,9 @@ and 32 exact-zero factoring/integration identities passed. These are emulator
 measurements, not physical-calculator timings. The balanced policy was selected
 from 46 runtime-tested configurations, following a 76-candidate size-only sweep.
 Generated measurements and emulator artifacts are local outputs under the ignored
-`tests/results/` directory; the commands below reproduce the comparisons.
+`tests/results/` directory. Those historical timings used the smaller 12-input
+suite; the current commands run a broader 34-case suite and do not reproduce
+those historical totals.
 Broader inlining, IR outlining and more aggressive native outlining did not offer
 a better balance on this suite. No math or UI feature was removed.
 
