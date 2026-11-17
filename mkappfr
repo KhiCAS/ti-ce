@@ -3,8 +3,8 @@
 set -e
 
 # standalone compilation
-make -j APPLANG=fr # V=1
-echo "Francais done"
+make -j APPLANG=fr VARIANT=normal # V=1
+echo "Francais normal done"
 
 # local install, assumes you have a link to a folder shared/ti with artifice
 if [ ! -d "shared/ti" ]

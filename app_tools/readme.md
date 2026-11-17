@@ -25,12 +25,11 @@ under the `nightly` release tag.
 
 For `APPLANG=fr`, the relocator preserves the legacy French-app metadata bit
 (byte 0x0E of the eZ8 metadata, bit 3, or raw app byte 0x10E). English leaves
-the bit clear; French and French L2 set it (`0x00` -> `0x08`). Language and L2
-code differences come from `FRANCAIS` and `WITH_QUAD`/`WITH_PERIODIC` compiler
-defines in the root makefile.
+the bit clear; French normal and light set it (`0x00` -> `0x08`). Language and edition differences come from `FRANCAIS` and the feature defines
+in the root makefile. Both editions now include `WITH_QUAD`.
 
-`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT`, `BENCHMARK`, `INLINE_THRESHOLDS`
-and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
+`obj/.khicas-build-config` tracks `APPLANG`, `VARIANT`, `BENCHMARK`, `FEATURE_DEFS`, `EXTRA_CXX_SOURCES`,
+`INLINE_THRESHOLDS` and `LTOFLAGS` for the compiler, linker and relocator. Switching these settings
 in the same build directory rebuilds the code and final installer files without
 requiring `make clean`. A changed
 configuration forces the complete build, including LTO and packaging, so this

@@ -3,8 +3,8 @@
 set -e
 
 # standalone compilation
-make -j APPLANG=fr VARIANT=l2 # V=1
-echo "L2 done"
+make -j APPLANG=fr VARIANT=light # V=1
+echo "Francais light done"
 
 # local install, assumes you have a link to a folder shared/ti with artifice
 if [ ! -d "shared/ti" ]
@@ -14,7 +14,7 @@ then
 fi
 cp bin/_KhiCAS.8ek shared/ti/KhiCAS.8ek
 cp bin/INST.8xp shared/ti/
-rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app 
+rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app
 echo "Creating bundle file..."
 ./bundle khicasl2 b83
 ls -l shared/ti/KhiCAS.8ek

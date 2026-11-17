@@ -6,7 +6,8 @@
 # APPLANG=fr (French)
 #
 # VARIANT=normal (default)
-# VARIANT=l2 (L2 variant with quad support instead of the periodic table)
+# VARIANT=light (no spreadsheet, periodic table or approximate complex factorization)
+# VARIANT=l2 is a compatibility alias for light
 
 APPLANG ?= en
 VARIANT ?= normal
@@ -16,7 +17,7 @@ ifeq ($(filter $(BENCHMARK),YES NO),)
     $(error BENCHMARK must be YES or NO)
 endif
 
-FEATURE_DEFS = -DWITH_UNITS -DWITH_LAPLACE -DWITH_DESOLVE -DWITH_EQW -DWITH_PLOT -DWITH_SHEET -DWITH_TABVAR
+FEATURE_DEFS = -DWITH_UNITS -DWITH_LAPLACE -DWITH_DESOLVE -DWITH_EQW -DWITH_PLOT -DWITH_TABVAR -DWITH_QUAD -DNO_MODFACTOR
 
 ifeq ($(APPLANG),fr)
     LANG_DEF = -DFRANCAIS
@@ -24,12 +25,12 @@ else ifneq ($(APPLANG),en)
     $(error APPLANG must be either 'en' (default) or 'fr')
 endif
 
-ifeq ($(VARIANT),l2)
-    FEATURE_DEFS += -DWITH_QUAD
+ifneq ($(filter $(VARIANT),light l2),)
+    FEATURE_DEFS += -DNO_APPROX_CFACTOR
 else ifeq ($(VARIANT),normal)
-    FEATURE_DEFS += -DWITH_PERIODIC
+    FEATURE_DEFS += -DWITH_PERIODIC -DWITH_SHEET
 else
-    $(error VARIANT must be either 'normal' (default) or 'l2')
+    $(error VARIANT must be either 'normal' (default), 'light' or 'l2')
 endif
 
 NAME = KhiCAS

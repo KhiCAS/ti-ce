@@ -9,20 +9,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [ fr, en, l2 ]
         include:
-          - variant: "fr"
-            langname: "Francais"
-            buildscript: "mkappfr"
-            bundlename: "khicas83.b83"
-          - variant: "en"
-            langname: "English"
-            buildscript: "mkappen"
-            bundlename: "khicas84.b84"
-          - variant: "l2"
-            langname: "FrancaisL2"
-            buildscript: "mkappl2"
-            bundlename: "khicasl2.b83"
+          - langname: Francais_normal
+            buildscript: mkappfr
+            bundlename: khicas83.b83
+          - langname: English_normal
+            buildscript: mkappen
+            bundlename: khicas84.b84
+          - langname: Francais_light
+            buildscript: mkappl2
+            bundlename: khicasl2.b83
+          - langname: English_light
+            buildscript: mkappl
+            bundlename: khicasl.b84
 
     steps:
       - name: Checkout repository
@@ -50,7 +49,10 @@ jobs:
           from pathlib import Path
           size = Path('bin/_KhiCAS.bin').stat().st_size
           count = len(list(Path('bin').glob('AppIns??.8xv')))
-          print(f'Pre-relocated app: {size:,} bytes; {count} installer AppVars')
+          sectors = (size + 3 + 65535) // 65536
+          headroom = sectors * 65536 - size - 3
+          print(f'Pre-relocated app: {size:,} bytes; {sectors} Flash sectors; '
+                f'{headroom:,} bytes headroom; {count} installer AppVars')
           PY
 
       - name: Prepare files for upload

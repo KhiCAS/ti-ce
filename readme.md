@@ -74,7 +74,27 @@ pulling so that the Giac sources match the referenced revision.
 
 ### KhiCAS build
 
-Run the `./mkappen` (English build) or `./mkappfr` (French build) script.
+Build one of the four language/feature combinations:
+
+| Edition | English | French |
+| --- | --- | --- |
+| Normal | `./mkappen` → `khicas84.b84` | `./mkappfr` → `khicas83.b83` |
+| Light | `./mkappl` → `khicasl.b84` | `./mkappl2` → `khicasl2.b83` |
+
+Both editions include units, Laplace transforms, differential equations, the 2D
+editor, plots, variation tables and quadratic-form support. Normal also includes the
+spreadsheet, periodic table and approximate complex factorization. Light omits
+these to save Flash. Both use hybrid real polynomial factorization without the
+modular fallback (`NO_MODFACTOR`); difficult inputs can therefore remain partly
+factored. This is a size/capability tradeoff, not an equivalent replacement for
+the complete factorizer.
+
+Use, for example, `make APPLANG=fr VARIANT=light` to build directly. Choose
+`APPLANG=en` or `fr`, and `VARIANT=normal` or `light`. The old
+`VARIANT=l2` spelling remains an alias for light; established bundle filenames
+are retained. Flash usage is `ceil((raw app bytes + 3) / 65536)` sectors, including
+the installer's three-byte length trailer. The number of installer AppVars is a
+transfer detail and is not the app's Flash-sector allocation.
 
 It will create, in the bin/ folder, many appvars (.8xv files) and an installer (.8xp).  
 A bundle file (.b83/.b84), only usable on TI Connect CE for Windows, will also be created with those files.
@@ -106,12 +126,12 @@ Changing the settings rebuilds the app automatically.
 
 Clean builds with the tested ez80 Clang 22.1.8 (opts branch) binary on 2026-11-04 produced:
 
-| Build           | Original bytes | Balanced bytes | Saved bytes | Installer AppVars, old → new |
-|-----------------|---------------:|---------------:|------------:|-----------------------------:|
-| English, normal |      2,481,035 |      2,299,572 |     181,463 |                      39 → 36 |
-| French, normal  |      2,482,915 |      2,301,439 |     181,476 |                      39 → 36 |
-| English, L2     |      2,477,329 |      2,297,347 |     179,982 |                      38 → 36 |
-| French, L2      |      2,478,925 |      2,298,930 |     179,995 |                      39 → 36 |
+| Build            | Original bytes | Balanced bytes | Saved bytes | Installer AppVars, old → new |
+|------------------|---------------:|---------------:|------------:|-----------------------------:|
+| English (normal) |      2,481,035 |      2,299,572 |     181,463 |                      39 → 36 |
+| French (normal)  |      2,482,915 |      2,301,439 |     181,476 |                      39 → 36 |
+| English light/L2 |      2,477,329 |      2,297,347 |     179,982 |                      38 → 36 |
+| French light/L2  |      2,478,925 |      2,298,930 |     179,995 |                      39 → 36 |
 
 In CEmu, 12 CAS workloads (three measured repetitions after a warmup) had a
 2.7% aggregate evaluation slowdown; including parsing and result formatting,
@@ -125,7 +145,8 @@ Generated measurements and emulator artifacts are local outputs under the ignore
 suite; the current commands run a broader 34-case suite and do not reproduce
 those historical totals.
 Broader inlining, IR outlining and more aggressive native outlining did not offer
-a better balance on this suite. No math or UI feature was removed.
+a better balance on this suite. Those historical builds retained the
+feature selection used at the time.
 
 [Reproduce the benchmarks](tests/README.md#cas-benchmarks) with
 `BENCHMARK=YES`; return to `BENCHMARK=NO` for a normal app. This optional mode
@@ -141,8 +162,9 @@ Stock toolchain v15.0's Clang 19 lacks these controls; a newer compiler or night
 must contain those patches to enable them. `AUTO` checks the options rather than
 the compiler version.
 
-CI prints the compiler version, pre-relocated app size and installer AppVar
-count. CI follows the nightly toolchain release; CEdev v15.0 ships Clang 19.
+CI builds all four editions and prints the compiler version, pre-relocated app
+size, Flash-sector allocation and installer AppVar count. CI follows the nightly
+toolchain release; CEdev v15.0 ships Clang 19.
 
 This pre-relocation assumes KhiCAS is the first installed app: delete all apps
 before installing it with `INST`, as described in the installation instructions.

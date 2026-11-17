@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+# standalone compilation
+make -j APPLANG=en VARIANT=light # V=1
+echo "English light done"
+
+# local install, assumes you have a link to a folder shared/ti with artifice
+if [ ! -d "shared/ti" ]
+then
+  echo "./shared/ti/ folder didn't exist, creating it..."
+  mkdir -p shared/ti/
+fi
+cp bin/_KhiCAS.8ek shared/ti/KhiCAS.8ek
+cp bin/INST.8xp shared/ti/
+rm -rf shared/ti/app && mkdir -p shared/ti/app && cp bin/App*x* shared/ti/app
+echo "Creating bundle file..."
+./bundle khicasl b84
+ls -l shared/ti/KhiCAS.8ek
