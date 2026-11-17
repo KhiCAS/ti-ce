@@ -86,6 +86,22 @@ static bool mi_eqw_(giac::gen & ge,int mode){
 bool mi_eqw_matrix(giac::gen & ge,bool sel){
   return mi_eqw_(ge,sel?1:0);
 }
+// a new matrix or list (input_matrix in main.cc): text with empty cells ([[,],[,]], 0 when
+// validated, mie_clean), the caret at caret; ge parsed; false if cancelled
+bool mi_edit_at(char * s,int cap,int caret); // mathinput_edit.cc
+bool mi_eqw_new(giac::gen & ge,const char * text,int caret){
+  if (int(strlen(text))>=GEN_PRINT_BUFSIZE)
+    return false;
+  char * buf=(char *)malloc(GEN_PRINT_BUFSIZE); // on the heap
+  if (!buf)
+    return false;
+  strcpy(buf,text);
+  const bool ok=mi_edit_at(buf,GEN_PRINT_BUFSIZE,caret);
+  if (ok)
+    ge=giac::gen(std::string(buf),contextptr);
+  free(buf);
+  return ok;
+}
 // a result in the 2D editor (check_do_graph): too large for the history, its first part selected
 bool mi_eqw_result(giac::gen & ge){
   return mi_eqw_(ge,2);

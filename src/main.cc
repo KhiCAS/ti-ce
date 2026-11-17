@@ -118,6 +118,7 @@ int micropy_ck_eval(const char *line){
 #if defined WITH_EQW && !defined FAKE_GIAC
 
 bool mi_eqw_matrix(giac::gen & ge,bool sel=false); // mathinput_eval.cc
+bool mi_eqw_new(giac::gen & ge,const char * text,int caret); // mathinput_eval.cc
 
 const char * input_matrix(const giac::gen &g,giac::gen & ge,const giac::context *){
   if (ge.type==giac::_VECT)
@@ -181,14 +182,25 @@ const char * input_matrix(bool list){
 	      inputline(tmp.c_str(),lang?"Colonnes:":"Columns:",*sptr,true);
 	      c=strtol(sptr->c_str(),nullptr,10);
 	    }
-	    if (c==0){
-	      ge=giac::vecteur(l);
+	    // the 2D editor (mathinput_eval.cc) with empty cells (0 when validated), the caret in the
+	    // first one; a single cell: 0 ([] and [[]] are not drawn as a list, a matrix)
+	    std::string t="[";
+	    if (c>=0 && c<256 && l*c<256){
+	      for (int i=0;i<l;++i){
+	        if (i) t+=',';
+	        if (c){ // a row
+	          t+='[';
+	          for (int j=1;j<c;++j) t+=',';
+	          if (c==1) t+='0';
+	          t+=']';
+	        }
+	      }
+	      if (c==0 && l==1) t+='0';
+	      t+=']';
 	    }
-	    else {
-	      if (c>0 && l*c<256)
-		ge=giac::_matrix(giac::makesequence(l,c),contextptr);
-	    }
-	    if (!mi_eqw_matrix(ge)) // the 2D editor (mathinput_eval.cc)
+	    else
+	      t="";
+	    if (t.empty() ? !mi_eqw_matrix(ge) : !mi_eqw_new(ge,t.c_str(),c==0?1:2))
 	      return nullptr;
 	    ge=giac::eval(ge,1,contextptr);
       oom_rearm();//freeze=giac::ctrl_c=giac::kbd_interrupted=giac::interrupted=false;

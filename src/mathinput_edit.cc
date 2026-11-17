@@ -748,8 +748,22 @@ static bool mie_simple_key(int key){
 // firstkey (not 0): the key that opened the editor, handled first (the console's empty line, or
 // DOWN for a result too large for the history: its first part selected); firsttext (not 0): a
 // command chosen in a menu of the console, inserted first (integrate( as its template)
+bool is_alphanum(char c); // textGUI.cc
+
+// mi_select on s with the device metrics
+static int mie_sel(const char * s,int * sa,int * sb,int dir,int * slv){
+  return mi_select(s,strlen(s),sa,sb,dir,mi_device_metrics,slv);
+}
+// the arrow keys: 0 left, 1 right, 2 up, 3 down, -1 another key
+static int mie_dir(int key){
+  return key==KEY_CTRL_LEFT?0:key==KEY_CTRL_RIGHT?1:key==KEY_CTRL_UP?2:key==KEY_CTRL_DOWN?3:-1;
+}
+
+static int mie_p0=-1; // the initial caret (mi_edit_at), else the end of the text
 static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttext){
-  int p=strlen(s),sa=0,sb=0,slv=9,scrollx=0,scrolly=0,oldkeyflag=-1,hrows=-1; // sa<sb: a selection
+  int p=mie_p0>=0 && mie_p0<=int(strlen(s))?mie_p0:strlen(s);
+  mie_p0=-1;
+  int sa=0,sb=0,slv=9,scrollx=0,scrolly=0,oldkeyflag=-1,hrows=-1; // sa<sb: a selection
   bool full=true; // the history above the edit area drawn again
   mie_state pend={0,0,0,0}; // the state before the last key, kept if the key changed the text
   mie_undo_clear();
@@ -758,7 +772,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
   if (sel && p){ // the whole expression selected, as in the equation editor
     sa=0;
     sb=p;
-    if (!mi_select(s,p,&sa,&sb,-2,mi_device_metrics,&slv))
+    if (!mie_sel(s,&sa,&sb,-2,&slv))
       sa=sb=0;
   }
   for (;;){
@@ -786,8 +800,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       continue;
     if (key==KEY_CHAR_MAT) // the matrix menu, as in the console (matrix(: a 2x2 matrix)
       key=KEY_CTRL_F10;
-    if (full)
-      oldkeyflag=-1; // the menu line is drawn again after a key that may have opened a menu over it
+    if (full) oldkeyflag=-1; // the menu line is drawn again after each key (a menu may have covered it)
     if (key==KEY_CTRL_EXE){
       mie_clean(s,cap);
       mie_undo_clear();
@@ -806,7 +819,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
         sb=u.sb;
         mie_state_free(u);
         if (sa<sb)
-          mi_select(s,strlen(s),&sa,&sb,-2,mi_device_metrics,&slv);
+          mie_sel(s,&sa,&sb,-2,&slv);
         continue;
       }
       if (key==KEY_CTRL_UNDO)
@@ -820,7 +833,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       }
       else {
         sa=sb=p;
-        if (!mi_select(s,strlen(s),&sa,&sb,-1,mi_device_metrics,&slv))
+        if (!mie_sel(s,&sa,&sb,-1,&slv))
           sa=sb=0;
       }
       continue;
@@ -832,6 +845,50 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       pend.sa=sa;
       pend.sb=sb;
     }
+    if (key=='\t'){ // the completion key (under math): help on the name left of the caret, or
+      // on the call the caret is in (an example chosen replaces this call), as in the console
+      int i=p,b=p,d=0,back;
+      const bool typed=i && (is_alphanum(s[i-1]) || s[i-1]=='_');
+      if (!typed){ // s[i-1]: the ( of the innermost call around the caret, s[b-1] its )
+        for (;i>0;--i){
+          const char c=s[i-1];
+          if (c==')' || c==']')
+            ++d;
+          else if ((c=='(' || c=='[') && --d<0)
+            break;
+        }
+        for (d=0;s[b];){
+          const char c=s[b++];
+          if (c=='(' || c=='[')
+            ++d;
+          else if ((c==')' || c==']') && --d<0)
+            break;
+        }
+      }
+      if (typed || (i>1 && s[i-1]=='(' && is_alphanum(s[i-2]))){
+        const char c=s[i];
+        s[i]=0;
+        const std::string h=help_insert(s,back,false);
+        s[i]=c;
+        if (!h.empty() && back<=i){
+          if (typed){
+            // Expand the template before replacing the name: a full buffer must
+            // leave the user's text intact rather than just deleting the prefix.
+            char text[h.size()+32];
+            text[0]=0;
+            int caret=0;
+            mie_insert_key_text(text,sizeof(text),&caret,h.c_str());
+            if (mie_replace(s,cap,i-back,i,text))
+              p=i-back+caret;
+          }
+          else if (mie_replace(s,cap,i-back,h[h.size()-1]==')'?b:i,h.c_str()))
+            p=i-back+h.size();
+          sa=sb=0;
+        }
+      }
+      full=true;
+      continue;
+    }
     char catbuf[512]; // MATH: the catalog of all the commands
     if (key==KEY_CTRL_SYMB && !showCatalog(catbuf,0,0))
       continue;
@@ -842,11 +899,11 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       p=sa=sb=0;
       continue;
     }
+    const int dir=mie_dir(key);
     if (sa<sb){ // ---- selection mode
-      if (key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN){
-        const int dir=key==KEY_CTRL_LEFT?0:key==KEY_CTRL_RIGHT?1:key==KEY_CTRL_UP?2:3;
+      if (dir>=0){
         const int a0=sa,b0=sb;
-        mi_select(s,strlen(s),&sa,&sb,dir,mi_device_metrics,&slv);
+        mie_sel(s,&sa,&sb,dir,&slv);
         if (dir==3 && sa==a0 && sb==b0){ // a leaf: the caret at its end
           p=sb;
           sa=sb=0;
@@ -879,7 +936,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
           if (strlen(h)<sizeof(buf)){
             strcpy(buf,h);
             mie_put(s,cap,&sa,&sb,buf,mie_level(buf),0,-1);
-            mi_select(s,strlen(s),&sa,&sb,-2,mi_device_metrics,&slv);
+            mie_sel(s,&sa,&sb,-2,&slv);
           }
         }
         continue;
@@ -906,7 +963,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
         sa=sb=0;
       }
       else if (r==-1) // the selection may have changed: its level again
-        mi_select(s,strlen(s),&sa,&sb,-2,mi_device_metrics,&slv);
+        mie_sel(s,&sa,&sb,-2,&slv);
       continue;
     }
     // ---- caret mode
@@ -914,16 +971,15 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
       const int l=strlen(s);
       sa=0;
       sb=l;
-      if (l && mi_select(s,l,&sa,&sb,-2,mi_device_metrics,&slv)){
+      if (l && mie_sel(s,&sa,&sb,-2,&slv)){
         mie_sel_key(s,cap,&sa,&sb,slv,key,"eval(");
-        mi_select(s,strlen(s),&sa,&sb,-2,mi_device_metrics,&slv);
+        mie_sel(s,&sa,&sb,-2,&slv);
       }
       else
         sa=sb=0;
       continue;
     }
-    if (key==KEY_CTRL_LEFT || key==KEY_CTRL_RIGHT || key==KEY_CTRL_UP || key==KEY_CTRL_DOWN){
-      const int dir=key==KEY_CTRL_LEFT?0:key==KEY_CTRL_RIGHT?1:key==KEY_CTRL_UP?2:3;
+    if (dir>=0){
       const int q=mi_move(s,strlen(s),p,dir,mi_device_metrics);
       if (dir==3 && mie_in_cell(s,p) && mie_M.r==mie_M.nr-1 && (q<0 || q<mie_M.a || q>=mie_M.b)){
         // down out of the last row of a matrix: a new row (not after an empty one)
@@ -943,7 +999,7 @@ static bool mie_run(char * s,int cap,bool sel,int firstkey,const char * firsttex
         p=q;
       else if (dir==2){ // up at the top level: select the subexpression left of the caret
         sa=sb=p;
-        if (!mi_select(s,strlen(s),&sa,&sb,-1,mi_device_metrics,&slv))
+        if (!mie_sel(s,&sa,&sb,-1,&slv))
           sa=sb=0;
       }
       continue;
@@ -1048,6 +1104,11 @@ static bool mie_edit(char * s,int cap,bool sel,int firstkey,const char * firstte
 }
 bool mi_edit(char * s,int cap,bool sel){
   return mie_edit(s,cap,sel,0,0);
+}
+// s edited, the caret at caret (a new matrix: in its first empty cell)
+bool mi_edit_at(char * s,int cap,int caret){
+  mie_p0=caret;
+  return mie_edit(s,cap,false,0,0);
 }
 // the console's empty line in 2D (console.cc): key starts the expression in the 2D editor
 bool mi_edit_key(char * s,int cap,int key){

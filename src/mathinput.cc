@@ -633,6 +633,15 @@ static void dtext(const char * lit, int ng, int sm, int x, int y) { // literal t
   else if (gm == GM_DECO) op(MI_TEXT, sm, ox + x, oy + y, lw(lit, ng, sm), f.asc + f.desc, -1, ng, lit, MI_SYM);
 }
 
+// slot 0 at t, in parentheses if i (h + 1 px each, content extent ca, cd): the x after them
+static int psl(int i, int t, int sm, int h, int ca, int cd) {
+  const int w = T[sn[0]].w;
+  if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
+  sl(0, t, 0, sm);
+  if (i) { dec(MI_RPAREN, sm, t + w, -ca, h + 1, ca + cd); t += h + 1; }
+  return t;
+}
+
 static void cons(int n, int x, int y, int sm) {
   const mi_font & f = fnt(sm), & sf = M->small;
   int k = T[n].k, a = f.adv, h = a / 2, ax = f.asc / 3, t, u, v, i;
@@ -704,9 +713,7 @@ static void cons(int n, int x, int y, int sm) {
       dec(MI_INTEGRAL, sm, 0, -ca - g, s, ca + cd + 2 * g);
       t = s + 1 + g;
     }
-    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
-    sl(0, t, 0, sm);
-    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    t = psl(i, t, sm, h, ca, cd);
     t += A.w + 2 * g; // a gap before the d of dx
     dtext("d", 1, sm, t, 0);
     if (sn[1]) sl(1, t + dw, 0, sm);
@@ -722,10 +729,8 @@ static void cons(int n, int x, int y, int sm) {
     dtext("d", 1, sm, g, -ax + b + g + u);
     sl(1, g + dw, -ax + b + g + u, sm);
     t = v + g;
-    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
-    sl(0, t, 0, sm);
-    if (i) dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd);
-    cw = t + A.w + (i ? h + 1 : 2);
+    t = psl(i, t, sm, h, ca, cd);
+    cw = t + A.w + (i ? 0 : 2);
   } break;
   case K_SUM: { // column: b, sigma, k=a (in the construct's font); then f
     int sh = 2 * f.asc + 6, sw = M->wf ? 3 * lw("S", 1, sm) / 2 : a + 8, st = -ax - sh / 2, bx, bb, ew = lw("=", 1, sm);
@@ -739,9 +744,7 @@ static void cons(int n, int x, int y, int sm) {
     sl(3, (t - D.w) / 2, st - 2 - D.ds, sm);
     i = needp(sn[0]); // a sum in parentheses: the sum of (1-(-1)^n), not of 1, minus (-1)^n
     t += 2;
-    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
-    sl(0, t, 0, sm);
-    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    t = psl(i, t, sm, h, ca, cd);
     cw = t + 2 + A.w;
   } break;
   case K_SER: { // series(f,x,a,n[,polynom]), as lim: column "series" (the command's name) over
@@ -779,9 +782,7 @@ static void cons(int n, int x, int y, int sm) {
     }
     i = needp(sn[0]); // the limit of (1-(-1)^n), not of 1, minus (-1)^n
     t += h;
-    if (i) { dec(MI_LPAREN, sm, t, -ca, h + 1, ca + cd); t += h + 1; }
-    sl(0, t, 0, sm);
-    if (i) { dec(MI_RPAREN, sm, t + A.w, -ca, h + 1, ca + cd); t += h + 1; }
+    t = psl(i, t, sm, h, ca, cd);
     cw = t + A.w + 2;
   } break;
   }

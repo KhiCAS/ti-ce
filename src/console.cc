@@ -2260,7 +2260,10 @@ int Console_GetKey(){
           sc=m2;
         if ((key==KEY_CTRL_RIGHT && sc<m2) || (key==KEY_CTRL_LEFT && sc>0)){
           sc+=key==KEY_CTRL_RIGHT?1:-1;
-          Console_Disp(1);
+          if (Current_Line>=Start_Line && Cursor.y>=0 && Cursor.y<LINE_DISP_MAX)
+            console_displine(Cursor.y,2); // only this line (the rest of the history has not moved)
+          else
+            Console_Disp(1);
           continue;
         }
       }

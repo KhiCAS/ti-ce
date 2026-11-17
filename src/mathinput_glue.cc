@@ -18,12 +18,32 @@ extern const mi_metrics mi_device_metrics={{8,11,3},{5,7,2},2,0,0,0,0,0,0}; // e
 
 static const int MI_INK=COLOR_BLACK;
 
-// line clipped to the box [x0,x1) x [y0,y1) (the input area); only axis-aligned clipping
-// of the endpoints is needed: shapes are drawn whole or not at all
-static void mi_line(int xa,int ya,int xb,int yb,int x0,int y0,int x1,int y1,int c){
-  if (xa<x0 || xb<x0 || xa>=x1 || xb>=x1 || ya<y0 || yb<y0 || ya>=y1 || yb>=y1)
+// Clip horizontal and vertical bars to the visible area; draw diagonals whole or not at all.
+static int mi_x0,mi_y0,mi_x1,mi_y1,mi_ink; // mi_line: the clip box [x0,x1) x [y0,y1), the color
+static void mi_line(int xa,int ya,int xb,int yb){
+  if (ya==yb){ // horizontal (fraction bars, overbars): its visible part
+    if (ya<mi_y0 || ya>=mi_y1)
+      return;
+    if (xa>xb){ const int t=xa; xa=xb; xb=t; }
+    if (xa<mi_x0) xa=mi_x0;
+    if (xb>=mi_x1) xb=mi_x1-1;
+    if (xa<=xb)
+      draw_line(xa,ya,xb,yb,mi_ink);
     return;
-  draw_line(xa,ya,xb,yb,c);
+  }
+  if (xa==xb){ // vertical: its visible part
+    if (xa<mi_x0 || xa>=mi_x1)
+      return;
+    if (ya>yb){ const int t=ya; ya=yb; yb=t; }
+    if (ya<mi_y0) ya=mi_y0;
+    if (yb>=mi_y1) yb=mi_y1-1;
+    if (ya<=yb)
+      draw_line(xa,ya,xb,yb,mi_ink);
+    return;
+  }
+  if (xa<mi_x0 || xb<mi_x0 || xa>=mi_x1 || xb>=mi_x1 || ya<mi_y0 || yb<mi_y0 || ya>=mi_y1 || yb>=mi_y1)
+    return;
+  draw_line(xa,ya,xb,yb,mi_ink);
 }
 
 // draws layout L of buffer s with its baseline at screen y=by and its left edge at x=bx,
@@ -32,6 +52,7 @@ static void mi_line(int xa,int ya,int xb,int yb,int x0,int y0,int x1,int y1,int 
 void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int x1,int y1,bool caret,int selbg){
   const mi_metrics & m=mi_device_metrics;
   int sx0=0,sy0=0,sx1=0,sy1=0;
+  mi_x0=x0; mi_y0=y0; mi_x1=x1; mi_y1=y1; mi_ink=MI_INK;
   if (selbg>=0 && L.sw>0){ // 1 px around the box, clipped to the area
     sx0=bx+L.sx-1; sy0=by+L.sy-1; sx1=bx+L.sx+L.sw+1; sy1=by+L.sy+L.sh+1;
     if (sx0<x0) sx0=x0;
@@ -92,70 +113,72 @@ void mi_draw(const mi_layout & L,const char * s,int bx,int by,int x0,int y0,int 
         drawRectangle(x+w/2-1,y+h/2-1,2,2,MI_INK);
       break;
     case MI_HLINE: // fraction bar, 2 px like the results'
-      mi_line(x,y,x+w-1,y,x0,y0,x1,y1,MI_INK);
-      mi_line(x,y+1,x+w-1,y+1,x0,y0,x1,y1,MI_INK);
+      mi_line(x,y,x+w-1,y);
+      mi_line(x,y+1,x+w-1,y+1);
       break;
     case MI_SQRT: { // radical sign (6 px) and overbar, doubled like the results'
       const int ym=y+(2*h)/3;
       for (int d=0;d<2;++d){
-        mi_line(x,ym+d,x+2,y+h-1,x0,y0,x1,y1,MI_INK);
-        mi_line(x+2,y+h-1,x+5,y+d,x0,y0,x1,y1,MI_INK);
-        mi_line(x+5,y+d,x+w-1,y+d,x0,y0,x1,y1,MI_INK);
+        mi_line(x,ym+d,x+2,y+h-1);
+        mi_line(x+2,y+h-1,x+5,y+d);
+        mi_line(x+5,y+d,x+w-1,y+d);
       }
       break;
     }
     case MI_INTEGRAL: { // a tall S: stem, hooks at both ends, 3 px beyond the box each way
       const int ya=y-3>=y0?y-3:y0,yz=y+h+2<y1?y+h+2:y1-1;
-      mi_line(x+3,ya+2,x+3,yz-2,x0,y0,x1,y1,MI_INK);
-      mi_line(x+4,ya+2,x+4,yz-2,x0,y0,x1,y1,MI_INK);
-      mi_line(x+4,ya+1,x+5,ya,x0,y0,x1,y1,MI_INK);
-      mi_line(x+5,ya,x+7,ya,x0,y0,x1,y1,MI_INK);
-      mi_line(x+2,yz-1,x+3,yz-1,x0,y0,x1,y1,MI_INK);
-      mi_line(x,yz,x+2,yz,x0,y0,x1,y1,MI_INK);
+      mi_line(x+3,ya+2,x+3,yz-2);
+      mi_line(x+4,ya+2,x+4,yz-2);
+      mi_line(x+4,ya+1,x+5,ya);
+      mi_line(x+5,ya,x+7,ya);
+      mi_line(x+2,yz-1,x+3,yz-1);
+      mi_line(x,yz,x+2,yz);
       break;
     }
     case MI_SIGMA:
-      mi_line(x,y,x+w-1,y,x0,y0,x1,y1,MI_INK);
-      mi_line(x,y+h-1,x+w-1,y+h-1,x0,y0,x1,y1,MI_INK);
-      mi_line(x,y,x+w/2,y+h/2,x0,y0,x1,y1,MI_INK);
-      mi_line(x+w/2,y+h/2,x,y+h-1,x0,y0,x1,y1,MI_INK);
+      mi_line(x,y,x+w-1,y);
+      mi_line(x,y+h-1,x+w-1,y+h-1);
+      mi_line(x,y,x+w/2,y+h/2);
+      mi_line(x+w/2,y+h/2,x,y+h-1);
       break;
     case MI_LPAREN: case MI_RPAREN: { // curved: 3 segments, 2 px apart at the middle
       const bool l=o.code==MI_LPAREN;
       // narrow (the small font: 3 px) the curve uses the whole width, else it would be a bar
       const int xo=w<5?(l?x+w-1:x):(l?x+w-2:x+1),xi=w<5?(l?x:x+w-1):(l?x+1:x+w-2),q=h/4;
-      mi_line(xo,y,xi,y+q,x0,y0,x1,y1,MI_INK);
-      mi_line(xi,y+q,xi,y+h-1-q,x0,y0,x1,y1,MI_INK);
-      mi_line(xi,y+h-1-q,xo,y+h-1,x0,y0,x1,y1,MI_INK);
+      mi_line(xo,y,xi,y+q);
+      mi_line(xi,y+q,xi,y+h-1-q);
+      mi_line(xi,y+h-1-q,xo,y+h-1);
       break;
     }
     case MI_LBRACKET: case MI_RBRACKET: {
       const bool l=o.code==MI_LBRACKET;
       const int xs=l?x+1:x+w-2,xe=l?x+w-1:x;
-      mi_line(xs,y,xs,y+h-1,x0,y0,x1,y1,MI_INK);
-      mi_line(xs,y,xe,y,x0,y0,x1,y1,MI_INK);
-      mi_line(xs,y+h-1,xe,y+h-1,x0,y0,x1,y1,MI_INK);
+      mi_line(xs,y,xs,y+h-1);
+      mi_line(xs,y,xe,y);
+      mi_line(xs,y+h-1,xe,y+h-1);
       break;
     }
     case MI_LBRACE: case MI_RBRACE: {
       const bool l=o.code==MI_LBRACE;
       const int xo=l?x+w-1:x,xm=l?x+w/2:x+w/2,xi=l?x:x+w-1,ym=y+h/2;
-      mi_line(xo,y,xm,y+1,x0,y0,x1,y1,MI_INK);
-      mi_line(xm,y+1,xm,ym-1,x0,y0,x1,y1,MI_INK);
-      mi_line(xm,ym-1,xi,ym,x0,y0,x1,y1,MI_INK);
-      mi_line(xi,ym,xm,ym+1,x0,y0,x1,y1,MI_INK);
-      mi_line(xm,ym+1,xm,y+h-2,x0,y0,x1,y1,MI_INK);
-      mi_line(xm,y+h-2,xo,y+h-1,x0,y0,x1,y1,MI_INK);
+      mi_line(xo,y,xm,y+1);
+      mi_line(xm,y+1,xm,ym-1);
+      mi_line(xm,ym-1,xi,ym);
+      mi_line(xi,ym,xm,ym+1);
+      mi_line(xm,ym+1,xm,y+h-2);
+      mi_line(xm,y+h-2,xo,y+h-1);
       break;
     }
     case MI_BAR:
-      mi_line(x+w/2,y,x+w/2,y+h-1,x0,y0,x1,y1,MI_INK);
+      mi_line(x+w/2,y,x+w/2,y+h-1);
       break;
     case MI_BOX: // an empty slot: a light frame, like an online calculator's placeholder
-      mi_line(x,y,x+w-1,y,x0,y0,x1,y1,COLOR_BLUE);
-      mi_line(x,y+h-1,x+w-1,y+h-1,x0,y0,x1,y1,COLOR_BLUE);
-      mi_line(x,y,x,y+h-1,x0,y0,x1,y1,COLOR_BLUE);
-      mi_line(x+w-1,y,x+w-1,y+h-1,x0,y0,x1,y1,COLOR_BLUE);
+      mi_ink=COLOR_BLUE;
+      mi_line(x,y,x+w-1,y);
+      mi_line(x,y+h-1,x+w-1,y+h-1);
+      mi_line(x,y,x,y+h-1);
+      mi_line(x+w-1,y,x+w-1,y+h-1);
+      mi_ink=MI_INK;
       break;
     }
   }
@@ -498,12 +521,12 @@ bool mi_hist_draw(const char * s,bool output,int top,int height,int ymin,int yma
   const int ym=top+height/2;
   if (ym-3>=ymin && ym+3<ymax){
     if (off>0){
-      mi_line(4,ym-3,1,ym,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
-      mi_line(1,ym,4,ym+3,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+      draw_line(4,ym-3,1,ym,COLOR_BLUE);
+      draw_line(1,ym,4,ym+3,COLOR_BLUE);
     }
     if (off<maxoff){
-      mi_line(LCD_WIDTH_PX-5,ym-3,LCD_WIDTH_PX-2,ym,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
-      mi_line(LCD_WIDTH_PX-2,ym,LCD_WIDTH_PX-5,ym+3,0,ymin,LCD_WIDTH_PX,ymax,COLOR_BLUE);
+      draw_line(LCD_WIDTH_PX-5,ym-3,LCD_WIDTH_PX-2,ym,COLOR_BLUE);
+      draw_line(LCD_WIDTH_PX-2,ym,LCD_WIDTH_PX-5,ym+3,COLOR_BLUE);
     }
   }
   return true;
